@@ -30,4 +30,6 @@ Rigidbody mesh generation uses a modified [Marching Squares implementation](http
 Uses [FastNoise](https://github.com/Auburns/FastNoise) for Perlin/Simplex/Cellular noise<br>
 Uses [FMOD](https://fmod.com/) for audio.
 
+### Progress & Feature Requests
 See the [Trello](https://trello.com/b/JCKJ65yP/falling-everything-survival) to get an idea of my progress.
+Please use the [GitHub issues](https://github.com/PieKing1215/FallingEverythingSurvival/issues) page for feature requests.
