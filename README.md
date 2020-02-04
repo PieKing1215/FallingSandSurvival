@@ -1,6 +1,8 @@
 # FallingEverythingSurvival
 2D survival game inspired by Noita and slightly Terraria<br>
 
+![](preview_1.gif)
+
 ### Overview:<br>
 Inspired by Noita and the Falling Everything Engine, I am replicating the engine in order to create a survival game.<br>
 One of the main things is that I don’t want it to get stale like other survival games where there’s a fixed progression and repetitive world generation and items you have to craft to progress. I want it to be very procedurally generated.<br>
