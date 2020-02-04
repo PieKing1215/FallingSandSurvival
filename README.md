@@ -27,5 +27,5 @@ Written in c++<br>
 Uses [SDL](https://www.libsdl.org/) for rendering<br>
 Uses [Box2D](https://box2d.org/) for rigidbody physics<br>
 Rigidbody mesh generation uses a modified [Marching Squares implementation](https://github.com/reunanen/cpp-marching-squares) along with a modified Douglas Peucker implementation and feeds it into [polypartition](https://github.com/ivanfratric/polypartition) for triangulation.<br>
-Uses [FastNoise](https://github.com/Auburns/FastNoise) for Perlin/Simplex/Cellular noise
+Uses [FastNoise](https://github.com/Auburns/FastNoise) for Perlin/Simplex/Cellular noise<br>
 Uses [FMOD](https://fmod.com/) for audio.
