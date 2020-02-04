@@ -29,3 +29,5 @@ Uses [Box2D](https://box2d.org/) for rigidbody physics<br>
 Rigidbody mesh generation uses a modified [Marching Squares implementation](https://github.com/reunanen/cpp-marching-squares) along with a modified Douglas Peucker implementation and feeds it into [polypartition](https://github.com/ivanfratric/polypartition) for triangulation.<br>
 Uses [FastNoise](https://github.com/Auburns/FastNoise) for Perlin/Simplex/Cellular noise<br>
 Uses [FMOD](https://fmod.com/) for audio.
+
+See the [Trello](https://trello.com/b/JCKJ65yP/falling-everything-survival) to get an idea of my progress.
