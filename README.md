@@ -26,7 +26,7 @@ It’s more like Noita with its simulated physics, but less “chaotic”, since
 Written in c++<br>
 Uses [SDL](https://www.libsdl.org/) for rendering<br>
 Uses [Box2D](https://box2d.org/) for rigidbody physics<br>
-Rigidbody mesh generation uses a modified [Marching Squares implementation](https://github.com/reunanen/cpp-marching-squares) along with a modified Douglas Peucker implementation and feeds it into [polypartition](https://github.com/ivanfratric/polypartition) for triangulation.<br>
+Mesh generation uses a combination Marching Squares, Douglas Peucker and [polypartition](https://github.com/ivanfratric/polypartition).<br>
 Uses [FastNoise](https://github.com/Auburns/FastNoise) for Perlin/Simplex/Cellular noise<br>
 Uses [FMOD](https://fmod.com/) for audio.
 
