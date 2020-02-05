@@ -18,7 +18,7 @@ It’s more like Noita with its simulated physics, but less “chaotic”, since
 - Design/construct objects/tools/mechanisms
 
 ### Informational Resources / Inspiration:<br>
-[Noita](https://noitagame.com/)<br>
+[Noita](https://noitagame.com/) / [Falling Everything Engine](https://nollagames.com/fallingeverything/)<br>
 [Exploring the Tech and Design of Noita](https://www.youtube.com/watch?v=prXuyMCgbTc)<br>
 [How to Add Infinite Features into Minecraft (with one update)](https://www.youtube.com/watch?v=CS5DQVSp058)<br>
 
