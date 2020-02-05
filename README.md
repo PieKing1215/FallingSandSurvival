@@ -1,7 +1,8 @@
 # FallingEverythingSurvival
 2D survival game inspired by Noita and slightly Terraria<br>
 
-![](preview_1.gif)
+![](preview_1.gif)<br>
+*Preview (2/4/20)*
 
 ### Overview:<br>
 Inspired by Noita and the Falling Everything Engine, I am replicating the engine in order to create a survival game.<br>
@@ -17,7 +18,7 @@ It’s more like Noita with its simulated physics, but less “chaotic”, since
 - Design/construct objects/tools/mechanisms
 
 ### Informational Resources / Inspiration:<br>
-[Noita](https://noitagame.com/)<br>
+[Noita](https://noitagame.com/) / [Falling Everything Engine](https://nollagames.com/fallingeverything/)<br>
 [Exploring the Tech and Design of Noita](https://www.youtube.com/watch?v=prXuyMCgbTc)<br>
 [How to Add Infinite Features into Minecraft (with one update)](https://www.youtube.com/watch?v=CS5DQVSp058)<br>
 
@@ -25,5 +26,10 @@ It’s more like Noita with its simulated physics, but less “chaotic”, since
 Written in c++<br>
 Uses [SDL](https://www.libsdl.org/) for rendering<br>
 Uses [Box2D](https://box2d.org/) for rigidbody physics<br>
-Rigidbody mesh generation uses a modified [Marching Squares implementation](https://github.com/reunanen/cpp-marching-squares) along with a modified Douglas Peucker implementation and feeds it into [polypartition](https://github.com/ivanfratric/polypartition) for triangulation.<br>
-Uses [FastNoise](https://github.com/Auburns/FastNoise) for Perlin/Simplex/Cellular noise
+Mesh generation uses a combination Marching Squares, Douglas Peucker and [polypartition](https://github.com/ivanfratric/polypartition).<br>
+Uses [FastNoise](https://github.com/Auburns/FastNoise) for Perlin/Simplex/Cellular noise<br>
+Uses [FMOD](https://fmod.com/) for audio.
+
+### Progress & Feature Requests<br>
+See the [Trello](https://trello.com/b/JCKJ65yP/falling-everything-survival) to get an idea of my progress.<br>
+Please use the [GitHub issues](https://github.com/PieKing1215/FallingEverythingSurvival/issues) page for feature requests.
