@@ -5,14 +5,14 @@
 *Preview (2/4/20)*
 
 ### Overview:<br>
-Inspired by Noita and the Falling Everything Engine, I am replicating the engine in order to create a survival game.<br>
-One of the main things is that I don’t want it to get stale like other survival games where there’s a fixed progression and repetitive world generation and items you have to craft to progress. I want it to be very procedurally generated.<br>
+Inspired by Noita and the Falling Everything Engine, I am replicating the engine in order to create a survival game.<br><br>
 It’s vaguely like Terraria in that it’s a 2d side view survival.<br>
-It’s more like Noita with its simulated physics, but less “chaotic”, since dying is somewhat more impactful.<br>
+It’s more like Noita with its simulated physics, but less “chaotic”, since dying is somewhat more impactful.<br><br>
+One of the main things is that I don’t want it to get stale like other survival games where there’s a fixed progression and repetitive world generation and items you have to craft to progress. I want it to be very procedurally generated.<br>
 
 ### Main ideas:
 [Ideas Document](https://docs.google.com/document/d/1SOCFCpsvNiFs13mo8QgG-blD-eoXye1Jaay1aRuqXpI/edit?usp=sharing)
-- Physics engine similar to Noita's Falling Everything Engine
+- Physics engine similar to Nolla Games' Falling Everything Engine
 - No traditional inventory: hold/wear/move things in the world
 - Procedural world generation: including procedural materials, biomes, etc.
 - Design/construct objects/tools/mechanisms
@@ -33,6 +33,10 @@ Uses [FMOD](https://fmod.com/) for audio.
 ### Progress & Feature Requests<br>
 See the [Trello](https://trello.com/b/JCKJ65yP/falling-everything-survival) to get an idea of my progress.<br>
 Please use the [GitHub issues](https://github.com/PieKing1215/FallingEverythingSurvival/issues) page for feature requests.
+
+### Other notes<br>
+I am not personally affiliated with Nolla Games, nor has Nolla Games endorsed this project.<br>
+Noita and the Falling Everything Engine are © Nolla Games
 
 ### More Gifs<br>
 ![](preview_2.gif)<br>
