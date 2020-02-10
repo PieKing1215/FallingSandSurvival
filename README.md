@@ -23,7 +23,7 @@ One of the main things is that I don’t want it to get stale like other surviva
 [How to Add Infinite Features into Minecraft (with one update)](https://www.youtube.com/watch?v=CS5DQVSp058)<br>
 
 ### Tech<br>
-Written in c++<br>
+Written in C++<br>
 Uses [SDL](https://www.libsdl.org/) for rendering<br>
 Uses [Box2D](https://box2d.org/) for rigidbody physics<br>
 Mesh generation uses a combination Marching Squares, Douglas Peucker and [polypartition](https://github.com/ivanfratric/polypartition).<br>
