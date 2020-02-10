@@ -4,6 +4,14 @@
 ![](preview_1.gif)<br>
 *Preview (2/4/20)*
 
+## Table of contents<br>
+- [Overview](#overview)
+- [Main ideas](#main-ideas)
+- [Informational Resources / Inspiration](#informational-resources-/-inspiration)
+- [Progress & Feature Requests](#progress-&-feature-requests)
+- [Other notes](#other-notes)
+- [More Gifs](#more-gifs)
+
 ## Overview:<br>
 Inspired by Noita and the Falling Everything Engine, I am replicating the engine in order to create a survival game.<br><br>
 It’s vaguely like Terraria in that it’s a 2d side view survival.<br>
