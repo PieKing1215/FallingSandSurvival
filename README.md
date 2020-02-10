@@ -7,8 +7,9 @@
 ## Table of contents<br>
 - [Overview](#overview)
 - [Main ideas](#main-ideas)
-- [Informational Resources / Inspiration](#informational-resources--inspiration)
+- [Resources / References / Inspiration](#resources--references--inspiration)
 - [Progress & Feature Requests](#progress--feature-requests)
+- [Tech](#tech)
 - [Other notes](#other-notes)
 - [More Gifs](#more-gifs)
 
@@ -25,10 +26,14 @@ One of the main things is that I don’t want it to get stale like other surviva
 - Procedural world generation: including procedural materials, biomes, etc.
 - Design/construct objects/tools/mechanisms
 
-## Informational Resources / Inspiration:<br>
+## Resources / References / Inspiration:<br>
 [Noita](https://noitagame.com/) / [Falling Everything Engine](https://nollagames.com/fallingeverything/)<br>
 [Exploring the Tech and Design of Noita](https://www.youtube.com/watch?v=prXuyMCgbTc)<br>
 [How to Add Infinite Features into Minecraft (with one update)](https://www.youtube.com/watch?v=CS5DQVSp058)<br>
+
+## Progress & Feature Requests<br>
+See the [Trello](https://trello.com/b/JCKJ65yP/falling-everything-survival) to get an idea of my progress.<br>
+Please use the [GitHub issues](https://github.com/PieKing1215/FallingEverythingSurvival/issues) page for feature requests.
 
 ## Tech<br>
 Written in C++<br>
@@ -37,10 +42,6 @@ Uses [Box2D](https://box2d.org/) for rigidbody physics<br>
 Mesh generation uses a combination Marching Squares, Douglas Peucker and [polypartition](https://github.com/ivanfratric/polypartition).<br>
 Uses [FastNoise](https://github.com/Auburns/FastNoise) for Perlin/Simplex/Cellular noise<br>
 Uses [FMOD](https://fmod.com/) for audio.
-
-## Progress & Feature Requests<br>
-See the [Trello](https://trello.com/b/JCKJ65yP/falling-everything-survival) to get an idea of my progress.<br>
-Please use the [GitHub issues](https://github.com/PieKing1215/FallingEverythingSurvival/issues) page for feature requests.
 
 ## Other notes<br>
 I am not personally affiliated with Nolla Games, nor has Nolla Games endorsed this project.<br>
