@@ -36,7 +36,7 @@ Please use the [GitHub issues](https://github.com/PieKing1215/FallingEverythingS
 
 ### Other notes<br>
 I am not personally affiliated with Nolla Games, nor has Nolla Games endorsed this project.<br>
-Noita and the Falling Everything Engine are © Nolla Games
+Noita and Falling Everything Engine are © Nolla Games.
 
 ### More Gifs<br>
 ![](preview_2.gif)<br>
