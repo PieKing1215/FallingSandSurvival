@@ -7,8 +7,8 @@
 ## Table of contents<br>
 - [Overview](#overview)
 - [Main ideas](#main-ideas)
-- [Informational Resources / Inspiration](#informational-resources-/-inspiration)
-- [Progress & Feature Requests](#progress-&-feature-requests)
+- [Informational Resources / Inspiration](#informational-resources--inspiration)
+- [Progress & Feature Requests](#progress--feature-requests)
 - [Other notes](#other-notes)
 - [More Gifs](#more-gifs)
 
