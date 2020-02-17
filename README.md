@@ -1,4 +1,4 @@
-# FallingEverythingSurvival
+# FallingSandSurvival
 2D survival game inspired by Noita and slightly Terraria<br>
 
 ![](preview_1.gif)<br>
