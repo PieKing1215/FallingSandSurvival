@@ -33,7 +33,7 @@ One of the main things is that I don’t want it to get stale like other surviva
 
 ## Progress & Feature Requests<br>
 See the [Trello](https://trello.com/b/JCKJ65yP/falling-sand-survival) to get an idea of my progress.<br>
-Please use the [GitHub issues](https://github.com/PieKing1215/FallingEverythingSurvival/issues) page for feature requests.
+Please use the [GitHub issues](https://github.com/PieKing1215/FallingSandSurvival/issues) page for feature requests.
 
 ## Tech<br>
 Written in C++<br>
