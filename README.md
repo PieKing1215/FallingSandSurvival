@@ -32,7 +32,7 @@ One of the main things is that I don’t want it to get stale like other surviva
 [How to Add Infinite Features into Minecraft (with one update)](https://www.youtube.com/watch?v=CS5DQVSp058)<br>
 
 ## Progress & Feature Requests<br>
-See the [Trello](https://trello.com/b/JCKJ65yP/falling-everything-survival) to get an idea of my progress.<br>
+See the [Trello](https://trello.com/b/JCKJ65yP/falling-sand-survival) to get an idea of my progress.<br>
 Please use the [GitHub issues](https://github.com/PieKing1215/FallingEverythingSurvival/issues) page for feature requests.
 
 ## Tech<br>
