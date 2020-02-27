@@ -50,6 +50,6 @@ Any textures that very closely resemble Noita's are temporary and will change in
 
 ## More Gifs<br>
 ![](preview_2.gif)<br>
-*Containers and temperature (2/10/20)*
+*Containers and temperature (2/10/20)*<br>
 ![](preview_3.gif)<br>
 *Chisel tool (WIP) (2/27/20)*
