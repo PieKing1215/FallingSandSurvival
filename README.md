@@ -37,7 +37,7 @@ Please use the [GitHub issues](https://github.com/PieKing1215/FallingSandSurviva
 
 ## Tech<br>
 Written in C++<br>
-Uses [SDL](https://www.libsdl.org/) for rendering<br>
+Uses [SDL2](https://www.libsdl.org/) for rendering<br>
 Uses [Box2D](https://box2d.org/) for rigidbody physics<br>
 Mesh generation uses a combination of Marching Squares, Douglas Peucker and [polypartition](https://github.com/ivanfratric/polypartition).<br>
 Uses [FastNoise](https://github.com/Auburns/FastNoise) for Perlin/Simplex/Cellular noise<br>
