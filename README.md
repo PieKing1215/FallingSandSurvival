@@ -50,8 +50,10 @@ I am not personally affiliated with Nolla Games, nor has Nolla Games endorsed th
 Noita and Falling Everything Engine are © Nolla Games.<br>
 Any textures that very closely resemble Noita's are temporary and will change in the future.<br>
 
-## More Gifs<br>
+## More Images<br>
 ![](preview_2.gif)<br>
 *Containers and temperature (2/10/20)*<br><br>
 ![](preview_3.gif)<br>
-*Chisel tool (WIP) (2/27/20)*
+*Chisel tool (WIP) (2/27/20)*<br><br>
+![](preview_shader.png)<br>
+*Experimental raycasted lighting shader (4/22/20)*
