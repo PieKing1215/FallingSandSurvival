@@ -37,11 +37,13 @@ Please use the [GitHub issues](https://github.com/PieKing1215/FallingSandSurviva
 
 ## Tech<br>
 Written in C++<br>
-Uses [SDL2](https://www.libsdl.org/) for rendering<br>
-Uses [Box2D](https://box2d.org/) for rigidbody physics<br>
+Uses [SDL2](https://www.libsdl.org/) for rendering.<br>
+Specifically using [SDL_gpu](https://github.com/grimfang4/sdl-gpu) so I get GLSL shader support.<br>
+Uses [Box2D](https://box2d.org/) for rigidbody physics.<br>
 Mesh generation uses a combination of Marching Squares, Douglas Peucker and [polypartition](https://github.com/ivanfratric/polypartition).<br>
-Uses [FastNoise](https://github.com/Auburns/FastNoise) for Perlin/Simplex/Cellular noise<br>
-Uses [FMOD](https://fmod.com/) for audio.
+Uses [FastNoise](https://github.com/Auburns/FastNoise) for Perlin/Simplex/Cellular noise.<br>
+Uses [FMOD](https://fmod.com/) for audio.<br>
+Supports SteamAPI and Discord Game SDK.
 
 ## Other notes<br>
 I am not personally affiliated with Nolla Games, nor has Nolla Games endorsed this project.<br>
