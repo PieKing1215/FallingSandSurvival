@@ -11,7 +11,7 @@
 - [Progress & Feature Requests](#progress--feature-requests)
 - [Tech](#tech)
 - [Other notes](#other-notes)
-- [More Gifs](#more-gifs)
+- [More Images](#more-images)
 
 ## Overview:<br>
 Inspired by Noita and the Falling Everything Engine, I am replicating the engine in order to create a survival game.<br><br>
