@@ -18,6 +18,8 @@ Inspired by Noita and the Falling Everything Engine, I am replicating the engine
 It’s vaguely like Terraria in that it’s a 2d side view survival.<br>
 It’s more like Noita with its simulated physics, but less “chaotic”, since dying is somewhat more impactful.<br><br>
 One of the main things is that I don’t want it to get stale like other survival games where there’s a fixed progression and repetitive world generation and items you have to craft to progress. I want it to be very procedurally generated.<br>
+<br>
+[State of Open Source](https://github.com/PieKing1215/FallingSandSurvival/issues/1#issuecomment-640101480)<br>
 
 ## Main ideas:
 [Ideas Document](https://docs.google.com/document/d/1SOCFCpsvNiFs13mo8QgG-blD-eoXye1Jaay1aRuqXpI/edit?usp=sharing)
