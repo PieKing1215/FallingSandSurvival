@@ -1,0 +1,443 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source Files\libraries">
+      <UniqueIdentifier>{2723379a-16b5-45c3-b57d-7249a13a8a5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libraries\polypartition">
+      <UniqueIdentifier>{4d4a735d-828e-4c5a-8277-26769e0bf225}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libraries\sparsehash">
+      <UniqueIdentifier>{703c8849-f215-4075-a552-38a4467c00fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libraries\marching-squares">
+      <UniqueIdentifier>{3960dd58-d63e-4187-bd14-c66b3a9320ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libraries\audioAdventure">
+      <UniqueIdentifier>{2ac064a2-370d-48bd-9b2f-8eebcac2d190}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libraries\ctpl-threadpool">
+      <UniqueIdentifier>{bc2203e4-6c36-4969-9d23-1abe536c2405}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libraries\discord-game-sdk">
+      <UniqueIdentifier>{e2bb739f-7d49-4242-a11c-4dc85df75ab9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libraries\douglas-peucker">
+      <UniqueIdentifier>{c3e7b760-1807-4df5-8606-99666baeab07}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libraries\fastNoise">
+      <UniqueIdentifier>{68d5a43c-adb0-4964-baf2-f1e0b4e66e22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libraries\fastNoiseSIMD">
+      <UniqueIdentifier>{a8526e6d-70f6-44d9-80c4-5deebf773a44}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\world">
+      <UniqueIdentifier>{cb3149ed-fb00-45c2-a6b9-b851ca38fdd7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\world\generation">
+      <UniqueIdentifier>{f4b131ee-be51-4b1a-b181-18b9897721f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\world\materials">
+      <UniqueIdentifier>{3933d21b-1e0b-4d09-aab0-be63a87f6241}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\util">
+      <UniqueIdentifier>{1b47b07f-4754-44cc-937d-ef67b4db644d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\objects">
+      <UniqueIdentifier>{dc4c7562-212d-4e69-9e64-807603bddf14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\vfx">
+      <UniqueIdentifier>{7390daf8-e2ff-4731-be2d-c6de2e097f0b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\world\structures">
+      <UniqueIdentifier>{ad0982c7-fd5a-4631-9a72-402fb6079681}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\net">
+      <UniqueIdentifier>{bdd14dcd-2f91-4e09-86a1-b435f86cd145}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\polypartition-master\src\polypartition.cpp">
+      <Filter>Source Files\libraries\polypartition</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\FastNoise\FastNoise.cpp">
+      <Filter>Source Files\libraries\fastNoise</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\FastNoiseSIMD\FastNoiseSIMD.cpp">
+      <Filter>Source Files\libraries\fastNoiseSIMD</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\FastNoiseSIMD\FastNoiseSIMD_avx2.cpp">
+      <Filter>Source Files\libraries\fastNoiseSIMD</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\FastNoiseSIMD\FastNoiseSIMD_avx512.cpp">
+      <Filter>Source Files\libraries\fastNoiseSIMD</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\FastNoiseSIMD\FastNoiseSIMD_internal.cpp">
+      <Filter>Source Files\libraries\fastNoiseSIMD</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\FastNoiseSIMD\FastNoiseSIMD_neon.cpp">
+      <Filter>Source Files\libraries\fastNoiseSIMD</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\FastNoiseSIMD\FastNoiseSIMD_sse2.cpp">
+      <Filter>Source Files\libraries\fastNoiseSIMD</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\FastNoiseSIMD\FastNoiseSIMD_sse41.cpp">
+      <Filter>Source Files\libraries\fastNoiseSIMD</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\AudioAdventure\source\AudioEngine.cpp">
+      <Filter>Source Files\libraries\audioAdventure</Filter>
+    </ClCompile>
+    <ClCompile Include="Settings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Controls.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Game.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\douglas-peucker\polygon-simplify.cc">
+      <Filter>Source Files\libraries\douglas-peucker</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\achievement_manager.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\activity_manager.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\application_manager.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\core.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\image_manager.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\lobby_manager.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\network_manager.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\overlay_manager.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\relationship_manager.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\storage_manager.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\store_manager.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\types.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\user_manager.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\discord_game_sdk\cpp\voice_manager.cpp">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClCompile>
+    <ClCompile Include="Background.cpp">
+      <Filter>Source Files\world</Filter>
+    </ClCompile>
+    <ClCompile Include="Biome.cpp">
+      <Filter>Source Files\world</Filter>
+    </ClCompile>
+    <ClCompile Include="Chunk.cpp">
+      <Filter>Source Files\world</Filter>
+    </ClCompile>
+    <ClCompile Include="world.cpp">
+      <Filter>Source Files\world</Filter>
+    </ClCompile>
+    <ClCompile Include="DefaultGenerator.cpp">
+      <Filter>Source Files\world\generation</Filter>
+    </ClCompile>
+    <ClCompile Include="MaterialTestGenerator.cpp">
+      <Filter>Source Files\world\generation</Filter>
+    </ClCompile>
+    <ClCompile Include="Populator.cpp">
+      <Filter>Source Files\world\generation</Filter>
+    </ClCompile>
+    <ClCompile Include="Populators.cpp">
+      <Filter>Source Files\world\generation</Filter>
+    </ClCompile>
+    <ClCompile Include="Material.cpp">
+      <Filter>Source Files\world\materials</Filter>
+    </ClCompile>
+    <ClCompile Include="MaterialInstance.cpp">
+      <Filter>Source Files\world\materials</Filter>
+    </ClCompile>
+    <ClCompile Include="Materials.cpp">
+      <Filter>Source Files\world\materials</Filter>
+    </ClCompile>
+    <ClCompile Include="Tiles.cpp">
+      <Filter>Source Files\world\materials</Filter>
+    </ClCompile>
+    <ClCompile Include="UTime.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="Entity.cpp">
+      <Filter>Source Files\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Item.cpp">
+      <Filter>Source Files\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Particle.cpp">
+      <Filter>Source Files\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>Source Files\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="RigidBody.cpp">
+      <Filter>Source Files\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="Drawing.cpp">
+      <Filter>Source Files\vfx</Filter>
+    </ClCompile>
+    <ClCompile Include="Textures.cpp">
+      <Filter>Source Files\vfx</Filter>
+    </ClCompile>
+    <ClCompile Include="UI.cpp">
+      <Filter>Source Files\vfx</Filter>
+    </ClCompile>
+    <ClCompile Include="PlacedStructure.cpp">
+      <Filter>Source Files\world\structures</Filter>
+    </ClCompile>
+    <ClCompile Include="Structure.cpp">
+      <Filter>Source Files\world\structures</Filter>
+    </ClCompile>
+    <ClCompile Include="Structures.cpp">
+      <Filter>Source Files\world\structures</Filter>
+    </ClCompile>
+    <ClCompile Include="Networking.cpp">
+      <Filter>Source Files\net</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="lib\polypartition-master\src\polypartition.h">
+      <Filter>Source Files\libraries\polypartition</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\cpp-marching-squares-master\Direction.h">
+      <Filter>Source Files\libraries\marching-squares</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\cpp-marching-squares-master\MarchingSquares.h">
+      <Filter>Source Files\libraries\marching-squares</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\cpp-marching-squares-master\Utility.h">
+      <Filter>Source Files\libraries\marching-squares</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\FastNoise\FastNoise.h">
+      <Filter>Source Files\libraries\fastNoise</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\FastNoiseSIMD\FastNoiseSIMD.h">
+      <Filter>Source Files\libraries\fastNoiseSIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\FastNoiseSIMD\FastNoiseSIMD_internal.h">
+      <Filter>Source Files\libraries\fastNoiseSIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\AudioAdventure\include\AudioEngine.h">
+      <Filter>Source Files\libraries\audioAdventure</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Controls.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\CTPL-ctpl_v.0.0.2\ctpl_stl.h">
+      <Filter>Source Files\libraries\ctpl-threadpool</Filter>
+    </ClInclude>
+    <ClInclude Include="Macros.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Game.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ProfilerConfig.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\douglas-peucker\polygon-simplify.hh">
+      <Filter>Source Files\libraries\douglas-peucker</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\sparsehash\dense_hash_map.h">
+      <Filter>Source Files\libraries\sparsehash</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\sparsehash\sparse_hash_map.h">
+      <Filter>Source Files\libraries\sparsehash</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\sparsehash\internal\densehashtable.h">
+      <Filter>Source Files\libraries\sparsehash</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\sparsehash\internal\hashtable-common.h">
+      <Filter>Source Files\libraries\sparsehash</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\sparsehash\internal\libc_allocator_with_realloc.h">
+      <Filter>Source Files\libraries\sparsehash</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\sparsehash\internal\sparsehashtable.h">
+      <Filter>Source Files\libraries\sparsehash</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\achievement_manager.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\activity_manager.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\application_manager.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\core.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\discord.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\event.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\ffi.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\image_manager.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\lobby_manager.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\network_manager.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\overlay_manager.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\relationship_manager.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\storage_manager.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\store_manager.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\types.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\user_manager.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\discord_game_sdk\cpp\voice_manager.h">
+      <Filter>Source Files\libraries\discord-game-sdk</Filter>
+    </ClInclude>
+    <ClInclude Include="Background.h">
+      <Filter>Source Files\world</Filter>
+    </ClInclude>
+    <ClInclude Include="Biome.h">
+      <Filter>Source Files\world</Filter>
+    </ClInclude>
+    <ClInclude Include="Chunk.h">
+      <Filter>Source Files\world</Filter>
+    </ClInclude>
+    <ClInclude Include="ChunkReadyToMerge.h">
+      <Filter>Source Files\world</Filter>
+    </ClInclude>
+    <ClInclude Include="world.h">
+      <Filter>Source Files\world</Filter>
+    </ClInclude>
+    <ClInclude Include="Populator.h">
+      <Filter>Source Files\world\generation</Filter>
+    </ClInclude>
+    <ClInclude Include="WorldGenerator.h">
+      <Filter>Source Files\world\generation</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Source Files\world\materials</Filter>
+    </ClInclude>
+    <ClInclude Include="MaterialInstance.h">
+      <Filter>Source Files\world\materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Materials.h">
+      <Filter>Source Files\world\materials</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsType.h">
+      <Filter>Source Files\world\materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Tiles.h">
+      <Filter>Source Files\world\materials</Filter>
+    </ClInclude>
+    <ClInclude Include="UTime.h">
+      <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Entity.h">
+      <Filter>Source Files\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Item.h">
+      <Filter>Source Files\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Particle.h">
+      <Filter>Source Files\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>Source Files\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="RigidBody.h">
+      <Filter>Source Files\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Drawing.h">
+      <Filter>Source Files\vfx</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders.h">
+      <Filter>Source Files\vfx</Filter>
+    </ClInclude>
+    <ClInclude Include="Textures.h">
+      <Filter>Source Files\vfx</Filter>
+    </ClInclude>
+    <ClInclude Include="UI.h">
+      <Filter>Source Files\vfx</Filter>
+    </ClInclude>
+    <ClInclude Include="PlacedStructure.h">
+      <Filter>Source Files\world\structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structure.h">
+      <Filter>Source Files\world\structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structures.h">
+      <Filter>Source Files\world\structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Networking.h">
+      <Filter>Source Files\net</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
+    <None Include=".editorconfig" />
+    <None Include="lib\sparsehash\dense_hash_set">
+      <Filter>Source Files\libraries\sparsehash</Filter>
+    </None>
+    <None Include="lib\sparsehash\sparse_hash_set">
+      <Filter>Source Files\libraries\sparsehash</Filter>
+    </None>
+    <None Include="lib\sparsehash\sparsetable">
+      <Filter>Source Files\libraries\sparsehash</Filter>
+    </None>
+    <None Include="lib\sparsehash\traits">
+      <Filter>Source Files\libraries\sparsehash</Filter>
+    </None>
+  </ItemGroup>
+</Project>

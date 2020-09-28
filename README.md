@@ -1,7 +1,7 @@
 # FallingSandSurvival
 2D survival game inspired by Noita and slightly Terraria<br>
 
-![](preview_1.gif)<br>
+![](../media/preview_1.gif)<br>
 *Preview (2/4/20)*
 
 ## Table of contents<br>
@@ -10,8 +10,10 @@
 - [Resources / References / Inspiration](#resources--references--inspiration)
 - [Progress & Feature Requests](#progress--feature-requests)
 - [Tech](#tech)
-- [Other notes](#other-notes)
+- [Building](#building)
 - [More Images](#more-images)
+- [Licensing](#licensing)
+- [Disclaimer](#disclaimer)
 
 ## Overview:<br>
 Inspired by Noita and the Falling Everything Engine, I am replicating the engine in order to create a survival game.<br><br>
@@ -38,24 +40,28 @@ See the [Trello](https://trello.com/b/JCKJ65yP/falling-sand-survival) to get an 
 Please use the [GitHub issues](https://github.com/PieKing1215/FallingSandSurvival/issues) page for feature requests.
 
 ## Tech<br>
-Written in C++<br>
-Uses [SDL2](https://www.libsdl.org/) for rendering.<br>
-Specifically using [SDL_gpu](https://github.com/grimfang4/sdl-gpu) so I get GLSL shader support.<br>
-Uses [Box2D](https://box2d.org/) for rigidbody physics.<br>
-Mesh generation uses a combination of Marching Squares, Douglas Peucker and [polypartition](https://github.com/ivanfratric/polypartition).<br>
-Uses [FastNoise](https://github.com/Auburns/FastNoise) for Perlin/Simplex/Cellular noise.<br>
-Uses [FMOD](https://fmod.com/) for audio.<br>
-Supports SteamAPI and Discord Game SDK.
+See [Tech & Integrations](../../wiki/Tech-&-Integrations)
 
-## Other notes<br>
+## Building<br>
+See [SETUP.txt](SETUP.txt)
+
+## More Images<br>
+![](../media/preview_2.gif)<br>
+*Containers and temperature (2/10/20)*<br><br>
+![](../media/preview_3.gif)<br>
+*Chisel tool (WIP) (2/27/20)*<br><br>
+![](../media/preview_shader.png)<br>
+*Experimental raycasted lighting shader (4/22/20)*
+
+## Licensing
+
+### Code
+All original code files are licensed under the [BSD 3-Clause License](LICENSE.md).
+
+### Assets
+All art assets (everything in FallingSandSurvival/assets/) are licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License](https://creativecommons.org/licenses/by-nc/4.0/).
+
+## Disclaimer<br>
 I am not personally affiliated with Nolla Games, nor has Nolla Games endorsed this project.<br>
 Noita and Falling Everything Engine are © Nolla Games.<br>
 Any textures that very closely resemble Noita's are temporary and will change in the future.<br>
-
-## More Images<br>
-![](preview_2.gif)<br>
-*Containers and temperature (2/10/20)*<br><br>
-![](preview_3.gif)<br>
-*Chisel tool (WIP) (2/27/20)*<br><br>
-![](preview_shader.png)<br>
-*Experimental raycasted lighting shader (4/22/20)*

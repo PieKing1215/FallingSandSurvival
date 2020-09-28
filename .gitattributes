@@ -1,2 +1,4 @@
-*.md linguist-language=cpp
-*.gif linguist-language=cpp
+# ignore libraries when calculating languages
+FallingSandSurvival/lib/* linguist-vendored
+FallingSandSurvival/assets/* linguist-vendored
+FallingSandSurvival/*.h linguist-language=cpp

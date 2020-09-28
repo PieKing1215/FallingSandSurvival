@@ -1,0 +1,84 @@
+
+== FallingSandSurvival setup guide ==
+Repo: https://github.com/PieKing1215/FallingSandSurvival
+
+== Before you start ==
+This guide assumes you have at least some basic understanding of Git and C++.
+There's a lot of steps here that could go wrong, so start an issue on the GitHub if it doesn't go smoothly.
+  There should be an issue template called "Setup" or similar which will tell you what info to include.
+  Or use this link: https://github.com/PieKing1215/FallingSandSurvival/new?assignees=&labels=setup&template=setup-problem.md&title=
+
+The code, libraries, and project files are currently only set up and tested to build using Visual Studio 2017 in the Debug/x86 configuration on Windows (10).
+This will be made more flexible in the future.
+
+For this guide, I'm using Git Bash for Windows:
+  https://gitforwindows.org/
+
+You also need to install CMake in order for Conan to set up the libraries:
+  https://cmake.org/download/
+  MAKE SURE TO CHECK "Add CMake to system path" IN THE INSTALLER
+  Also note that if you install CMake while Visual Studio is open, you have to restart Visual Studio for it to see CMake.
+  
+You will also need Visual Studio (Community) 2017:
+  https://visualstudio.microsoft.com/vs/older-downloads/#visual-studio-2017-family
+  https://my.visualstudio.com/Downloads?q=Visual%20Studio%202017
+  (When you get to the part of the installer that lists "Workloads" all you need for this is "Desktop development with C++")
+
+You could probably get it working with other setups but this is the only one tested so far (this will change very soon).
+
+== Setup ==
+
+-- Set up Git repo
+
+First, clone the repo:
+$ git clone https://github.com/PieKing1215/FallingSandSurvival.git
+
+CD into the directory where it was cloned and switch to the branch that you want.
+  Use 'dev' for the active development version.
+  Use 'master' for the latest stable version (note: as of now, there is no stable version so you should use 'dev').
+$ cd FallingSandSurvival/
+$ git checkout dev
+
+-- Setup script
+
+If that goes well, you should be ready to run the setup script.
+Note that this has some required and some optional steps that you will need to make accounts for (this is explained by the script).
+$ sh setup.sh
+It will guide you through setting up the required and optional tools+libraries.
+
+-- Set up Visual Studio solution+project
+
+Once the setup script finishes, make sure you install the Conan Extension for Visual Studio:
+https://marketplace.visualstudio.com/items?itemName=conan-io.conan-vs-extension
+
+Open the .sln in Visual Studio 2017
+
+Right click on the solution and click "Retarget solution"
+This will open a popup with a dropdown, where you should select the version you have installed and click "OK"
+
+Right click on the project and click "Properties"
+In the top right, click "Configuration Manager"
+Change the "Active solution configuration" to Debug
+Change the "Active solution platform" to x86
+
+-- Run Conan
+
+Right click the project and click "Install (Current Project)" (should be the first thing in the right-click menu).
+  If you don't have this option, then you didn't install the Conan Extension for Visual Studio like I said before: https://marketplace.visualstudio.com/items?itemName=conan-io.conan-vs-extension
+  
+This will build/install all of the Conan libraries (this may take 5+ minutes).
+(You can monitor its progress by clicking on the "Output" tab on the bottom and switching "Show output from:" to "Conan")
+  If you don't have the "Output" window visible, open it in View->Output (Ctrl+Alt+O by default)
+  
+When it's done, there should be a line (bottom or second to bottom) that says:
+"[Conan.VisualStudio] Conan has succsessfully installed configuration 'Architecture: x86, build type: Debug, ..."
+
+-- Build the game
+
+Right click the project and click "Build" to build the project (it should succeed).
+(You can monitor its progress by clicking on the "Output" tab on the bottom and switching "Show output from:" to "Build")
+  If you don't have the "Output" window visible, open it in View->Output (Ctrl+Alt+O by default)
+
+-- Run the game
+
+Once the build succeeds, in the top toolbar click "Debug" -> "Start Debugging" (F5 by default) to run the program.

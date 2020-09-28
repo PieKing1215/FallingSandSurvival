@@ -1,0 +1,11 @@
+404754__owlstorm__retro-video-game-sfx-explode.wav
+  LICENSE: CC0
+  SOURCE:  https://freesound.org/people/OwlStorm/sounds/404754/
+  
+thump.wav
+  LICENSE: CC0
+  SOURCE:  https://freesound.org/people/Harrisando/sounds/466351/
+  
+windloop.wav
+  LICENSE: CC0
+  SOURCE:  https://freesound.org/people/Karas_Homemade_SFX/sounds/350578/
