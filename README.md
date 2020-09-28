@@ -24,6 +24,8 @@ One of the main things is that I don’t want it to get stale like other surviva
 [State of Open Source](https://github.com/PieKing1215/FallingSandSurvival/issues/1#issuecomment-640101480)<br>
 
 ## Main ideas:
+*(note: anything is subject to change)*
+
 [Ideas Document](https://docs.google.com/document/d/1SOCFCpsvNiFs13mo8QgG-blD-eoXye1Jaay1aRuqXpI/edit?usp=sharing)
 - Physics engine similar to Nolla Games' Falling Everything Engine
 - No traditional inventory: hold/wear/move things in the world
