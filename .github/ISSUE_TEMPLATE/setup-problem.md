@@ -1,6 +1,6 @@
 ---
 name: Setup problem
-about: Having trouble building the code
+about: Trouble building the code
 title: ''
 labels: setup
 assignees: ''
