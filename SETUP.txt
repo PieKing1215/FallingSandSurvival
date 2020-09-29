@@ -8,7 +8,7 @@ There's a lot of steps here that could go wrong, so start an issue on the GitHub
   There should be an issue template called "Setup" or similar which will tell you what info to include.
   Or use this link: https://github.com/PieKing1215/FallingSandSurvival/new?assignees=&labels=setup&template=setup-problem.md&title=
 
-The code, libraries, and project files are currently only set up and tested to build using Visual Studio 2017 in the Debug/x86 configuration on Windows (10).
+The code, libraries, and project files are currently only set up and tested to build using Visual Studio 2017 on Windows (10).
 This will be made more flexible in the future.
 
 For this guide, I'm using Git Bash for Windows:
@@ -58,8 +58,12 @@ This will open a popup with a dropdown, where you should select the version you 
 
 Right click on the project and click "Properties"
 In the top right, click "Configuration Manager"
-Change the "Active solution configuration" to Debug
-Change the "Active solution platform" to x86
+Set the "Active solution configuration":
+    "Debug" allows the use of Visual Studio's debugging tools, but disables some compiler optimizations
+    "Release" has full compiler optimization, but debugging tools don't work as well.
+Set the "Active solution platform":
+    "x64" builds a 64-bit executable (you should use x64 by default)
+    "x86" builds a 32-bit executable
 
 -- Run Conan
 
@@ -70,8 +74,10 @@ This will build/install all of the Conan libraries (this may take 5+ minutes).
 (You can monitor its progress by clicking on the "Output" tab on the bottom and switching "Show output from:" to "Conan")
   If you don't have the "Output" window visible, open it in View->Output (Ctrl+Alt+O by default)
   
-When it's done, there should be a line (bottom or second to bottom) that says:
-"[Conan.VisualStudio] Conan has succsessfully installed configuration 'Architecture: x86, build type: Debug, ..."
+When it's done, there should be a line (bottom or second to bottom) that says something like:
+"[Conan.VisualStudio] Conan has succsessfully installed configuration 'Architecture: ###, build type: #####, ..."
+
+Note that if you change the active configuration (Debug/Release, x86/x64), you will need to re-run Conan.
 
 -- Build the game
 
