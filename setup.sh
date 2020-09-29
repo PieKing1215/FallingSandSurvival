@@ -88,20 +88,30 @@ else
         echo "./api/core/lib -> ./FallingSandSurvival/lib/FMOD/lib"
         cp -r ./api/core/lib ./FallingSandSurvival/lib/FMOD/lib
         
-        echo "./FallingSandSurvival/lib/FMOD/lib/x86/fmod.dll -> ./FallingSandSurvival/fmod.dll"
-        cp ./FallingSandSurvival/lib/FMOD/lib/x86/fmod.dll ./FallingSandSurvival/fmod.dll
-        echo "./FallingSandSurvival/lib/FMOD/lib/x86/fmodL.dll -> ./FallingSandSurvival/fmodL.dll"
-        cp ./FallingSandSurvival/lib/FMOD/lib/x86/fmodL.dll ./FallingSandSurvival/fmodL.dll
+        echo "./FallingSandSurvival/lib/FMOD/lib/x86/fmod.dll -> ./FallingSandSurvival/lib/bin/x86/fmod.dll"
+        cp ./FallingSandSurvival/lib/FMOD/lib/x86/fmod.dll ./FallingSandSurvival/lib/bin/x86/fmod.dll
+        echo "./FallingSandSurvival/lib/FMOD/lib/x86/fmodL.dll -> ./FallingSandSurvival/lib/bin/x86/fmodL.dll"
+        cp ./FallingSandSurvival/lib/FMOD/lib/x86/fmodL.dll ./FallingSandSurvival/lib/bin/x86/fmodL.
+        
+        echo "./FallingSandSurvival/lib/FMOD/lib/x64/fmod.dll -> ./FallingSandSurvival/lib/bin/x64/fmod.dll"
+        cp ./FallingSandSurvival/lib/FMOD/lib/x64/fmod.dll ./FallingSandSurvival/lib/bin/x64/fmod.dll
+        echo "./FallingSandSurvival/lib/FMOD/lib/x64/fmodL.dll -> ./FallingSandSurvival/lib/bin/x64/fmodL.dll"
+        cp ./FallingSandSurvival/lib/FMOD/lib/x64/fmodL.dll ./FallingSandSurvival/lib/bin/x64/fmodL.dll
         
         echo "./api/studio/inc -> ./FallingSandSurvival/lib/FMOD_studio/inc"
         cp -r ./api/studio/inc ./FallingSandSurvival/lib/FMOD_studio/inc
         echo "./api/studio/lib -> ./FallingSandSurvival/lib/FMOD_studio/lib"
         cp -r ./api/studio/lib ./FallingSandSurvival/lib/FMOD_studio/lib
         
-        echo "./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudio.dll -> ./FallingSandSurvival/fmodstudio.dll"
-        cp ./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudio.dll ./FallingSandSurvival/fmodstudio.dll
-        echo "./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudioL.dll -> ./FallingSandSurvival/fmodstudioL.dll"
-        cp ./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudioL.dll ./FallingSandSurvival/fmodstudioL.dll
+        echo "./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudio.dll -> ./FallingSandSurvival/lib/bin/x86/fmodstudio.dll"
+        cp ./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudio.dll ./FallingSandSurvival/lib/bin/x86/fmodstudio.dll
+        echo "./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudioL.dll -> ./FallingSandSurvival/lib/bin/x86/fmodstudioL.dll"
+        cp ./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudioL.dll ./FallingSandSurvival/lib/bin/x86/fmodstudioL.dll
+        
+        echo "./FallingSandSurvival/lib/FMOD_studio/lib/x64/fmodstudio.dll -> ./FallingSandSurvival/lib/bin/x64/fmodstudio.dll"
+        cp ./FallingSandSurvival/lib/FMOD_studio/lib/x64/fmodstudio.dll ./FallingSandSurvival/lib/bin/x64/fmodstudio.dll
+        echo "./FallingSandSurvival/lib/FMOD_studio/lib/x64/fmodstudioL.dll -> ./FallingSandSurvival/lib/bin/x64/fmodstudioL.dll"
+        cp ./FallingSandSurvival/lib/FMOD_studio/lib/x64/fmodstudioL.dll ./FallingSandSurvival/lib/bin/x64/fmodstudioL.dll
         
         echo "Done."
         
@@ -134,8 +144,11 @@ else
                 echo "./discord_game_sdk/lib -> ./FallingSandSurvival/lib/discord_game_sdk/lib"
                 cp -r ./discord_game_sdk/lib ./FallingSandSurvival/lib/discord_game_sdk/lib
                 
-                echo "./FallingSandSurvival/lib/discord_game_sdk/lib/x86/discord_game_sdk.dll -> ./FallingSandSurvival/discord_game_sdk.dll"
-                cp ./FallingSandSurvival/lib/discord_game_sdk/lib/x86/discord_game_sdk.dll ./FallingSandSurvival/discord_game_sdk.dll
+                echo "./FallingSandSurvival/lib/discord_game_sdk/lib/x64/discord_game_sdk.dll -> ./FallingSandSurvival/lib/bin/x64/discord_game_sdk.dll"
+                cp ./FallingSandSurvival/lib/discord_game_sdk/lib/x64/discord_game_sdk.dll ./FallingSandSurvival/lib/bin/x64/discord_game_sdk.dll
+                
+                echo "./FallingSandSurvival/lib/discord_game_sdk/lib/x64/discord_game_sdk.dll -> ./FallingSandSurvival/lib/bin/x64/discord_game_sdk.dll"
+                cp ./FallingSandSurvival/lib/discord_game_sdk/lib/x64/discord_game_sdk.dll ./FallingSandSurvival/lib/bin/x64/discord_game_sdk.dll
                 
                 echo "Done."
                 
@@ -184,8 +197,11 @@ else
                     echo "./steamworks_sdk/sdk/redistributable_bin -> ./FallingSandSurvival/lib/steam/redistributable_bin"
                     cp -r ./steamworks_sdk/sdk/redistributable_bin ./FallingSandSurvival/lib/steam/redistributable_bin
                     
-                    echo "./FallingSandSurvival/lib/steam/redistributable_bin/steam_api.dll -> ./FallingSandSurvival/steam_api.dll"
-                    cp ./FallingSandSurvival/lib/steam/redistributable_bin/steam_api.dll ./FallingSandSurvival/steam_api.dll
+                    echo "./FallingSandSurvival/lib/steam/redistributable_bin/steam_api.dll -> ./FallingSandSurvival/lib/bin/x86/steam_api.dll"
+                    cp ./FallingSandSurvival/lib/steam/redistributable_bin/steam_api.dll ./FallingSandSurvival/lib/bin/x86/steam_api.dll
+                    
+                    echo "./FallingSandSurvival/lib/steam/redistributable_bin/win64/steam_api64.dll -> ./FallingSandSurvival/lib/bin/x64/steam_api64.dll"
+                    cp ./FallingSandSurvival/lib/steam/redistributable_bin/win64/steam_api64.dll ./FallingSandSurvival/lib/bin/x64/steam_api64.dll
                     
                     echo "./steamworks_sdk/sdk/public/steam -> ./FallingSandSurvival/lib/steam/include"
                     cp -r ./steamworks_sdk/sdk/public/steam ./FallingSandSurvival/lib/steam/include
