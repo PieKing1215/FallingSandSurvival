@@ -28,6 +28,7 @@
 *.rsuser
 *.suo
 *.user
+!/FallingSandSurvival/FallingSandSurvival.vcxproj.user
 *.userosscache
 *.sln.docstates
 
