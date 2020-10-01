@@ -66,7 +66,7 @@ read -p "Press [Enter] to continue to the next step..."
 echo ""
 
 
-if [ -d "./FallingSandSurvival/lib/FMOD/inc" ] && [ -d "./FallingSandSurvival/lib/FMOD_studio/inc" ]
+if [ -d "./FallingSandSurvival/lib/FMOD/inc" ] && [ -d "./FallingSandSurvival/lib/FMOD_studio/inc" ] && [ -f "./FallingSandSurvival/lib/bin/x64/fmod.dll" ]
 then
     echo "FMOD already set up."
 else
@@ -125,7 +125,7 @@ else
 fi
 
 echo ""
-if [ -d "./FallingSandSurvival/lib/discord_game_sdk/cpp" ]
+if [ -d "./FallingSandSurvival/lib/discord_game_sdk/cpp" ] && [ -f "./FallingSandSurvival/lib/bin/x64/discord_game_sdk.dll" ]
 then
     echo "Discord Game SDK already set up."
 else
@@ -173,7 +173,7 @@ else
 fi
 
 echo ""
-if [ -d "./FallingSandSurvival/lib/steam/include" ]
+if [ -d "./FallingSandSurvival/lib/steam/include" ] && [ -f "./FallingSandSurvival/lib/bin/x64/steam_api64.dll" ]
 then
     echo "Steam API already set up."
 else
