@@ -104,10 +104,11 @@
       <AdditionalLibraryDirectories>$(ProjectDir)lib\FMOD\lib\x86;$(ProjectDir)lib\FMOD_studio\lib\x86;$(ProjectDir)lib\steam\redistributable_bin;$(ProjectDir)lib\discord_game_sdk\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>fmodL_vc.lib;fmodstudioL_vc.lib;ws2_32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
-      <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/ignore:4099 $(ConanLinkerFlags) %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PreBuildEvent>
-      <Command>del $(Configuration)\Game.obj</Command>
+      <Command>del $(Configuration)\Game.obj
+exit 0</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -132,9 +133,11 @@
       <AdditionalLibraryDirectories>$(ProjectDir)lib\FMOD\lib\x64;$(ProjectDir)lib\FMOD_studio\lib\x64;$(ProjectDir)lib\steam\redistributable_bin\win64;$(ProjectDir)lib\discord_game_sdk\lib\x86_64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>fmodL_vc.lib;fmodstudioL_vc.lib;ws2_32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
+      <AdditionalOptions>/ignore:4099 $(ConanLinkerFlags) %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PreBuildEvent>
-      <Command>del $(Configuration)\Game.obj</Command>
+      <Command>del $(Configuration)\Game.obj
+exit 0</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -162,9 +165,11 @@
       <AdditionalLibraryDirectories>$(ProjectDir)lib\FMOD\lib\x86;$(ProjectDir)lib\FMOD_studio\lib\x86;$(ProjectDir)lib\steam\redistributable_bin;$(ProjectDir)lib\discord_game_sdk\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>fmodL_vc.lib;fmodstudioL_vc.lib;ws2_32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
+      <AdditionalOptions>/ignore:4099 $(ConanLinkerFlags) %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PreBuildEvent>
-      <Command>del $(Configuration)\Game.obj</Command>
+      <Command>del $(Configuration)\Game.obj
+exit 0</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>
@@ -204,9 +209,11 @@
       <AdditionalLibraryDirectories>$(ProjectDir)lib\FMOD\lib\x64;$(ProjectDir)lib\FMOD_studio\lib\x64;$(ProjectDir)lib\steam\redistributable_bin\win64;$(ProjectDir)lib\discord_game_sdk\lib\x86_64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>fmodL_vc.lib;fmodstudioL_vc.lib;ws2_32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
+      <AdditionalOptions>/ignore:4099 $(ConanLinkerFlags) %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PreBuildEvent>
-      <Command>del $(Configuration)\Game.obj</Command>
+      <Command>del $(Configuration)\Game.obj
+exit 0</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
