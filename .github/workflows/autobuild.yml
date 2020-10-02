@@ -31,7 +31,7 @@ jobs:
 
       # Runs a set of commands using the runners shell
       - name: Run a script
-        run: yes n | ./setup.sh
+        run: yes n | ./setup.sh || if [[ $? -eq 141 ]]; then true; else exit $?; fi
         shell: bash
 
       # Runs a single command using the runners shell
