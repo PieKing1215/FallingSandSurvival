@@ -39,7 +39,7 @@ public:
         } else if(renderer->shader_language == GPU_LANGUAGE_GLSLES)
             header = "#version 100\nprecision mediump int;\nprecision mediump float;\n";
 
-        header_size = strlen(header);
+        header_size = (int)strlen(header);
 
         // Allocate source buffer
         source = (char*)malloc(sizeof(char) * (header_size + file_size + 1));

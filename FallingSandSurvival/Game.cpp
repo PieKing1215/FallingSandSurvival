@@ -1660,7 +1660,7 @@ void Game::updateFrameEarly() {
             b2PolygonShape s;
             s.SetAsBox(1, 1);
             RigidBody* rb = world->makeRigidBody(b2_dynamicBody, (float)x, (float)y, 0, s, 1, (float)0.3, tex);
-            for(int x = 0; x < tex->w; x++) {
+            for(int tx = 0; tx < tex->w; tx++) {
                 b2Filter bf = {};
                 bf.categoryBits = 0x0002;
                 bf.maskBits = 0x0001;
@@ -1748,7 +1748,7 @@ void Game::updateFrameEarly() {
                 world->player->heldItem->carry.pop_back();
                 world->addParticle(new Particle(mat, (float)x, (float)y, (float)(world->player->vx / 2 + (rand() % 10 - 5) / 10.0f + 1.5f * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f)), (float)(world->player->vy / 2 + -(rand() % 5 + 5) / 10.0f + 1.5f * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f)), 0, (float)0.1));
 
-                int i = world->player->heldItem->carry.size();
+                int i = (int)world->player->heldItem->carry.size();
                 i = (int)((i / (float)world->player->heldItem->capacity) * world->player->heldItem->fill.size());
                 UInt16Point pt = world->player->heldItem->fill[i];
                 PIXEL(world->player->heldItem->surface, pt.x, pt.y) = 0x00;
@@ -1778,7 +1778,7 @@ void Game::updateFrameEarly() {
                             if(world->tiles[(x + xx) + (y + yy) * world->width].mat->physicsType == PhysicsType::SAND || world->tiles[(x + xx) + (y + yy) * world->width].mat->physicsType == PhysicsType::SOUP) {
                                 world->player->heldItem->carry.push_back(world->tiles[(x + xx) + (y + yy) * world->width]);
 
-                                int i = world->player->heldItem->carry.size() - 1;
+                                int i = (int)world->player->heldItem->carry.size() - 1;
                                 i = (int)((i / (float)world->player->heldItem->capacity) * world->player->heldItem->fill.size());
                                 UInt16Point pt = world->player->heldItem->fill[i];
                                 Uint32 c = world->tiles[(x + xx) + (y + yy) * world->width].color;
@@ -1894,7 +1894,7 @@ void Game::tick() {
         // check chunk loading
         #pragma region
         EASY_BLOCK("chunk loading");
-        int lastReadyToMergeSize = world->readyToMerge.size();
+        int lastReadyToMergeSize = (int)world->readyToMerge.size();
 
         // if need to load chunks
         if((abs(accLoadX) > CHUNK_W / 2 || abs(accLoadY) > CHUNK_H / 2)) {
@@ -2070,7 +2070,6 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
         if(world->needToTickGeneration) world->tickChunkGeneration();
 
         // clear objects
-        GPU_Rect r = {0, 0, (float)(world->width), (float)(world->height)};
         GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
         GPU_Clear(textureObjects->target);
 
@@ -2546,13 +2545,13 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                 }
             }
 
-            for(int x = 0; x < cur->surface->w; x++) {
-                for(int y = 0; y < cur->surface->h; y++) {
-                    MaterialInstance mat = cur->tiles[x + y * cur->surface->w];
+            for(int tx = 0; tx < cur->surface->w; tx++) {
+                for(int ty = 0; ty < cur->surface->h; ty++) {
+                    MaterialInstance mat = cur->tiles[tx + ty * cur->surface->w];
                     if(mat.mat->id == Materials::GENERIC_AIR.id) {
-                        PIXEL(cur->surface, x, y) = 0x00000000;
+                        PIXEL(cur->surface, tx, ty) = 0x00000000;
                     } else {
-                        PIXEL(cur->surface, x, y) = (mat.mat->alpha << 24) + mat.color;
+                        PIXEL(cur->surface, tx, ty) = (mat.mat->alpha << 24) + mat.color;
                     }
                 }
             }
@@ -3099,8 +3098,8 @@ void Game::renderLate() {
         // done shader
 
         EASY_BLOCK("lighting shader");
-        int msx = (int)((mx - ofsX - camX) / scale);
-        int msy = (int)((my - ofsY - camY) / scale);
+        int lmsx = (int)((mx - ofsX - camX) / scale);
+        int lmsy = (int)((my - ofsY - camY) / scale);
 
         GPU_Clear(worldTexture->target);
 
@@ -3118,14 +3117,14 @@ void Game::renderLate() {
         //if (Settings::draw_shaders) raycastLightingShader->activate();
         //if (Settings::draw_shaders) raycastLightingShader->update(worldTexture, msx / (float)world->width, msy / (float)world->height);
         if(Settings::draw_shaders) simpleLightingShader->activate();
-        if(Settings::draw_shaders) simpleLightingShader->update(worldTexture, msx / (float)world->width, msy / (float)world->height);
+        if(Settings::draw_shaders) simpleLightingShader->update(worldTexture, lmsx / (float)world->width, lmsy / (float)world->height);
 
         GPU_Clear(lightingTexture->target);
         GPU_BlitRect(worldTexture, NULL, lightingTexture->target, NULL);
         //GPU_BlitRect(worldTexture, NULL, target, &r1);
 
         if(Settings::draw_shaders) simpleLighting2Shader->activate();
-        if(Settings::draw_shaders) simpleLighting2Shader->update(worldTexture, lightingTexture, msx / (float)world->width, msy / (float)world->height);
+        if(Settings::draw_shaders) simpleLighting2Shader->update(worldTexture, lightingTexture, lmsx / (float)world->width, lmsy / (float)world->height);
 
         GPU_BlitRect(worldTexture, NULL, target, &r1);
 
@@ -3413,22 +3412,22 @@ void Game::renderLate() {
             int dbgIndex = 1;
 
             char buff1[32];
-            snprintf(buff1, sizeof(buff1), "world->readyToReadyToMerge (%d)", world->readyToReadyToMerge.size());
+            snprintf(buff1, sizeof(buff1), "world->readyToReadyToMerge (%d)", (int)world->readyToReadyToMerge.size());
             std::string buffAsStdStr1 = buff1;
             Drawing::drawText(target, buffAsStdStr1.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
             for(size_t i = 0; i < world->readyToReadyToMerge.size(); i++) {
                 char buff[10];
-                snprintf(buff, sizeof(buff), "    #%d", i);
+                snprintf(buff, sizeof(buff), "    #%d", (int)i);
                 std::string buffAsStdStr = buff;
                 Drawing::drawText(target, buffAsStdStr.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
             }
             char buff2[30];
-            snprintf(buff2, sizeof(buff2), "world->readyToMerge (%d)", world->readyToMerge.size());
+            snprintf(buff2, sizeof(buff2), "world->readyToMerge (%d)", (int)world->readyToMerge.size());
             std::string buffAsStdStr2 = buff2;
             Drawing::drawText(target, buffAsStdStr2.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
             for(size_t i = 0; i < world->readyToMerge.size(); i++) {
                 char buff[20];
-                snprintf(buff, sizeof(buff), "    #%d (%d, %d)", i, world->readyToMerge[i]->x, world->readyToMerge[i]->y);
+                snprintf(buff, sizeof(buff), "    #%d (%d, %d)", (int)i, world->readyToMerge[i]->x, world->readyToMerge[i]->y);
                 std::string buffAsStdStr = buff;
                 Drawing::drawText(target, buffAsStdStr.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
             }
