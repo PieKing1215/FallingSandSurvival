@@ -20,21 +20,19 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo "Hello, world!\nRunning setup script..."
-        shell: bash
-
       - name: Install Conan
         run: pip install conan
         shell: bash
 
       # Runs a set of commands using the runners shell
-      - name: Run a script
+      - name: Run setup.sh
         run: yes n | ./setup.sh || if [[ $? -eq 141 ]]; then true; else exit $?; fi
         shell: bash
-
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo "Setup completed."
+        
+      - name: Run Conan install
+        run: conan install ./FallingSandSurvival/conanfile.txt -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.toolset=v141 -s compiler.version=16 -s compiler.runtime=MDd  --build=missing --update
+        shell: bash
+        
+      - name: Build Binary
+        run: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\MSBuild\\Current\\Bin\\msbuild.exe" -p:Configuration=Release;Platform=x64
         shell: bash
