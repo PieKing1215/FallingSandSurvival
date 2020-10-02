@@ -313,13 +313,13 @@ public:
                 b2PolygonShape s;
                 s.SetAsBox(1, 1);
                 RigidBody* rb = world->makeRigidBody(b2_dynamicBody, px, py, 0, s, 1, 0.3, tex);
-                for(int x = 0; x < tex->w; x++) {
+                for(int texX = 0; texX < tex->w; texX++) {
                     b2Filter bf = {};
                     bf.categoryBits = 0x0002;
                     bf.maskBits = 0x0001;
                     rb->body->GetFixtureList()[0].SetFilterData(bf);
-                    if(((PIXEL(tex, x, tex->h - 1) >> 24) & 0xff) != 0x00) {
-                        rb->weldX = x;
+                    if(((PIXEL(tex, texX, tex->h - 1) >> 24) & 0xff) != 0x00) {
+                        rb->weldX = texX;
                         rb->weldY = tex->h - 1;
                         break;
                     }

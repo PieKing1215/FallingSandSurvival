@@ -483,10 +483,10 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
         meshes.push_back(worldMesh);
 
         TPPLPoly poly;
-        poly.Init(worldMesh.size());
+        poly.Init((long)worldMesh.size());
 
         for(int i = 0; i < worldMesh.size(); i++) {
-            poly[worldMesh.size() - i - 1] = {worldMesh[i].x, worldMesh[i].y};
+            poly[(int)worldMesh.size() - i - 1] = {worldMesh[i].x, worldMesh[i].y};
         }
 
         if(poly.GetOrientation() == TPPL_CW) {
@@ -822,12 +822,12 @@ found: {};
         TPPLPoly poly;
 
         EASY_BLOCK("TPPLPoly::Init");
-        poly.Init(worldMesh.size());
+        poly.Init((long)worldMesh.size());
         EASY_END_BLOCK;
 
         EASY_BLOCK("build TPPLPoly");
         for(int i = 0; i < worldMesh.size(); i++) {
-            poly[worldMesh.size() - i - 1] = {worldMesh[i].x, worldMesh[i].y};
+            poly[(int)worldMesh.size() - i - 1] = {worldMesh[i].x, worldMesh[i].y};
         }
         EASY_END_BLOCK;
 
@@ -1118,12 +1118,12 @@ found: {};
         TPPLPoly poly;
 
         EASY_BLOCK("TPPLPoly::Init");
-        poly.Init(worldMesh.size());
+        poly.Init((long)worldMesh.size());
         EASY_END_BLOCK;
 
         EASY_BLOCK("build TPPLPoly");
         for(int i = 0; i < worldMesh.size(); i++) {
-            poly[worldMesh.size() - i - 1] = {(tppl_float)worldMesh[i].x + (tppl_float)meshZone.x, (tppl_float)worldMesh[i].y + (tppl_float)meshZone.y};
+            poly[(int)worldMesh.size() - i - 1] = {(tppl_float)worldMesh[i].x + (tppl_float)meshZone.x, (tppl_float)worldMesh[i].y + (tppl_float)meshZone.y};
         }
         EASY_END_BLOCK;
 
@@ -2554,7 +2554,7 @@ void World::tickParticles() {
                         int t = max(X, Y);
                         int maxI = t * t;
 
-                        for(int i = 0; i < maxI; i++) {
+                        for(int j = 0; j < maxI; j++) {
                             if((-X / 2 <= x) && (x <= X / 2) && (-Y / 2 <= y) && (y <= Y / 2)) {
                                 //printf("%d, %d", x, y);
                                 //DO STUFF
@@ -2743,10 +2743,10 @@ void World::frame() {
         if(readyToReadyToMerge[i]._Is_ready()) {
             Chunk* merge = readyToReadyToMerge[i].get();
 
-            for(int i = 0; i < readyToMerge.size(); i++) {
-                if(readyToMerge[i] == merge) {
-                    readyToMerge.erase(readyToMerge.begin() + i);
-                    i--;
+            for(int j = 0; j < readyToMerge.size(); j++) {
+                if(readyToMerge[j] == merge) {
+                    readyToMerge.erase(readyToMerge.begin() + j);
+                    j--;
                 }
             }
 
@@ -2771,7 +2771,7 @@ void World::frame() {
         readyToReadyToMerge.erase(readyToReadyToMerge.begin());
     }*/
 
-    int rtm = readyToMerge.size();
+    int rtm = (int)readyToMerge.size();
     int n = 0;
 
     while(readyToMerge.size() > 0 && n++ < 16) {

@@ -14,9 +14,9 @@ Structure Structures::makeTree(World world, int x, int y) {
     int h = 80 + rand() % 20;
     MaterialInstance* tiles = new MaterialInstance[w * h];
 
-    for(int x = 0; x < w; x++) {
-        for(int y = 0; y < h; y++) {
-            tiles[x + y * w] = Tiles::NOTHING;
+    for(int tx = 0; tx < w; tx++) {
+        for(int ty = 0; ty < h; ty++) {
+            tiles[tx + ty * w] = Tiles::NOTHING;
         }
     }
 
@@ -24,10 +24,10 @@ Structure Structures::makeTree(World world, int x, int y) {
 
     float cx = w / 2;
     float dcx = (((rand() % 10) / 10.0) - 0.5) / 3.0;
-    for(int y = h - 1; y > 20; y--) {
-        int bw = trunk + std::max((y - h + 10) / 3, 0);
+    for(int ty = h - 1; ty > 20; ty--) {
+        int bw = trunk + std::max((ty - h + 10) / 3, 0);
         for(int xx = -bw; xx <= bw; xx++) {
-            tiles[((int)cx + xx - (int)(dcx * (h - 30))) + y * w] = MaterialInstance(&Materials::GENERIC_PASSABLE, xx >= 2 ? 0x683600 : 0x7C4000);
+            tiles[((int)cx + xx - (int)(dcx * (h - 30))) + ty * w] = MaterialInstance(&Materials::GENERIC_PASSABLE, xx >= 2 ? 0x683600 : 0x7C4000);
         }
         cx += dcx;
     }

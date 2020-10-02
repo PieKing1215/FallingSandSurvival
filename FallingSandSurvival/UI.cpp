@@ -225,13 +225,13 @@ void UITextArea::draw(GPU_Target * t, int transformX, int transformY) {
     GPU_Rectangle2(t, tb, {0xff, 0xff, 0xff, 0xff});
 
     int cursorX = 0;
-    if(cursorIndex > text.size()) cursorIndex = text.size();
+    if(cursorIndex > text.size()) cursorIndex = (int)text.size();
     if(cursorIndex < 0) cursorIndex = 0;
     if(text.size() > 0) {
         if(maxLength != -1) {
             if(text.size() > maxLength) {
                 text = text.substr(0, maxLength);
-                if(cursorIndex > text.size()) cursorIndex = text.size();
+                if(cursorIndex > text.size()) cursorIndex = (int)text.size();
                 if(cursorIndex < 0) cursorIndex = 0;
             }
         }
@@ -311,7 +311,7 @@ bool UITextArea::onEvent(SDL_Event ev, GPU_Target * t, World * world, int transf
                     }
                 }
                 if(!found) {
-                    cursorIndex = text.size();
+                    cursorIndex = (int)text.size();
                 }
             } else {
                 cursorIndex = 0;
@@ -346,14 +346,14 @@ bool UITextArea::onEvent(SDL_Event ev, GPU_Target * t, World * world, int transf
             cursorIndex = 0;
             lastCursorTimer = Time::millis();
         } else if(ch == SDLK_END) {
-            cursorIndex = text.size();
+            cursorIndex = (int)text.size();
             lastCursorTimer = Time::millis();
         } else if(ch == SDLK_LEFT) {
             if((ev.key.keysym.mod & SDL_Keymod::KMOD_LCTRL) || (ev.key.keysym.mod & SDL_Keymod::KMOD_RCTRL)) {
                 bool foundAlpha = false;
                 for(int i = cursorIndex; i > 0; i--) {
-                    char ch = text.at(i - 1);
-                    if(!isalnum(ch)) {
+                    char curCh = text.at(i - 1);
+                    if(!isalnum((unsigned char)curCh)) {
                         if(foundAlpha) {
                             cursorIndex++;
                             break;
@@ -372,8 +372,8 @@ bool UITextArea::onEvent(SDL_Event ev, GPU_Target * t, World * world, int transf
             if((ev.key.keysym.mod & SDL_Keymod::KMOD_LCTRL) || (ev.key.keysym.mod & SDL_Keymod::KMOD_RCTRL)) {
                 bool foundNonAlpha = false;
                 for(int i = cursorIndex; i < text.size(); i++) {
-                    char ch = text.at(i);
-                    if(!isalnum(ch)) {
+                    char curCh = text.at(i);
+                    if(!isalnum((unsigned char)curCh)) {
                         foundNonAlpha = true;
                     } else {
                         if(foundNonAlpha) {
