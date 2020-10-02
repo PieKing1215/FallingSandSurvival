@@ -34,5 +34,5 @@ jobs:
         shell: bash
         
       - name: Build Binary
-        run: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\MSBuild\\Current\\Bin\\msbuild.exe" -p:Configuration=Release;Platform=x64
+        run: bash -c "'C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\MSBuild\\Current\\Bin\\msbuild.exe' -p:Configuration=Release;Platform=x64"
         shell: bash
