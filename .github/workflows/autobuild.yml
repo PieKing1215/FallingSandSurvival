@@ -19,23 +19,19 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-        
-      - name: Check WinSDK versions
-        run: dir "C:\Program Files (x86)\Microsoft SDKs\Windows"
+
+      - name: Install Conan
+        run: pip install conan
         shell: bash
 
-#      - name: Install Conan
-#        run: pip install conan
-#        shell: bash
-#
-#      # Runs a set of commands using the runners shell
-#      - name: Run setup.sh
-#        run: yes n | ./setup.sh || if [[ $? -eq 141 ]]; then true; else exit $?; fi
-#        shell: bash
-#        
-#      - name: Run Conan install
-#        run: conan install ./FallingSandSurvival/conanfile.txt -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.toolset=v141 -s compiler.version=16 -s compiler.runtime=MDd  --build=missing --update
-#        shell: bash
+      # Runs a set of commands using the runners shell
+      - name: Run setup.sh
+        run: yes n | ./setup.sh || if [[ $? -eq 141 ]]; then true; else exit $?; fi
+        shell: bash
+        
+      - name: Run Conan install
+        run: conan install ./FallingSandSurvival/conanfile.txt -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.toolset=v142 -s compiler.version=16 -s compiler.runtime=MDd  --build=missing --update
+        shell: bash
 #        
 #      - name: Build Binary
 #        run: bash -c "'C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\MSBuild\\Current\\Bin\\msbuild.exe' -p:Configuration=Release;Platform=x64"
