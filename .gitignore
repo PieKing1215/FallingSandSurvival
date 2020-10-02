@@ -1,4 +1,7 @@
 /FallingSandSurvival/gamedir/worlds/*
+!/FallingSandSurvival/gamedir/worlds/mainMenu/
+!/FallingSandSurvival/gamedir/worlds/mainMenu/world.txt
+/FallingSandSurvival/gamedir/worlds/mainMenu/chunks/*
 /FallingSandSurvival/gamedir/profiler/*
 /FallingSandExtras/*
 /steamworks_sdk_148a/*
