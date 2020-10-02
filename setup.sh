@@ -66,63 +66,63 @@ read -p "Press [Enter] to continue to the next step..."
 echo ""
 
 
-if [ -d "./FallingSandSurvival/lib/FMOD/inc" ] && [ -d "./FallingSandSurvival/lib/FMOD_studio/inc" ] && [ -f "./FallingSandSurvival/lib/bin/x64/fmod.dll" ]
-then
-    echo "FMOD already set up."
-else
-    echo "Setting up FMOD (required):"
-    echo "Go to https://fmod.com/download (you will need to make an account)"
-    echo "Under \"FMOD Studio Suite\"->\"FMOD Engine\"->\"Windows\"->Download"
-    echo "This should get you an installer, so install the FMOD API files (you can uninstall later)."
-    echo ""
-    echo "Go to wherever you installed it to (by default \"C:\\Program Files (x86)\\FMOD SoundSystem\\FMOD Studio API Windows\\\")"
-    echo "Copy the api folder and paste it next to this script (it will be deleted after)."
-    echo ""
-    read -p "Press [Enter] once the api/ folder is placed next to this script..."
+# if [ -d "./FallingSandSurvival/lib/FMOD/inc" ] && [ -d "./FallingSandSurvival/lib/FMOD_studio/inc" ] && [ -f "./FallingSandSurvival/lib/bin/x64/fmod.dll" ]
+# then
+    # echo "FMOD already set up."
+# else
+    # echo "Setting up FMOD (required):"
+    # echo "Go to https://fmod.com/download (you will need to make an account)"
+    # echo "Under \"FMOD Studio Suite\"->\"FMOD Engine\"->\"Windows\"->Download"
+    # echo "This should get you an installer, so install the FMOD API files (you can uninstall later)."
+    # echo ""
+    # echo "Go to wherever you installed it to (by default \"C:\\Program Files (x86)\\FMOD SoundSystem\\FMOD Studio API Windows\\\")"
+    # echo "Copy the api folder and paste it next to this script (it will be deleted after)."
+    # echo ""
+    # read -p "Press [Enter] once the api/ folder is placed next to this script..."
     
-    if [ -d "./api" ]
-    then
-        echo "./api/ found, copying files to the right places..."
-        echo "./api/core/inc -> ./FallingSandSurvival/lib/FMOD/inc"
-        cp -r ./api/core/inc ./FallingSandSurvival/lib/FMOD/inc
-        echo "./api/core/lib -> ./FallingSandSurvival/lib/FMOD/lib"
-        cp -r ./api/core/lib ./FallingSandSurvival/lib/FMOD/lib
+    # if [ -d "./api" ]
+    # then
+        # echo "./api/ found, copying files to the right places..."
+        # echo "./api/core/inc -> ./FallingSandSurvival/lib/FMOD/inc"
+        # cp -r ./api/core/inc ./FallingSandSurvival/lib/FMOD/inc
+        # echo "./api/core/lib -> ./FallingSandSurvival/lib/FMOD/lib"
+        # cp -r ./api/core/lib ./FallingSandSurvival/lib/FMOD/lib
         
-        echo "./FallingSandSurvival/lib/FMOD/lib/x86/fmod.dll -> ./FallingSandSurvival/lib/bin/x86/fmod.dll"
-        cp ./FallingSandSurvival/lib/FMOD/lib/x86/fmod.dll ./FallingSandSurvival/lib/bin/x86/fmod.dll
-        echo "./FallingSandSurvival/lib/FMOD/lib/x86/fmodL.dll -> ./FallingSandSurvival/lib/bin/x86/fmodL.dll"
-        cp ./FallingSandSurvival/lib/FMOD/lib/x86/fmodL.dll ./FallingSandSurvival/lib/bin/x86/fmodL.dll
+        # echo "./FallingSandSurvival/lib/FMOD/lib/x86/fmod.dll -> ./FallingSandSurvival/lib/bin/x86/fmod.dll"
+        # cp ./FallingSandSurvival/lib/FMOD/lib/x86/fmod.dll ./FallingSandSurvival/lib/bin/x86/fmod.dll
+        # echo "./FallingSandSurvival/lib/FMOD/lib/x86/fmodL.dll -> ./FallingSandSurvival/lib/bin/x86/fmodL.dll"
+        # cp ./FallingSandSurvival/lib/FMOD/lib/x86/fmodL.dll ./FallingSandSurvival/lib/bin/x86/fmodL.dll
         
-        echo "./FallingSandSurvival/lib/FMOD/lib/x64/fmod.dll -> ./FallingSandSurvival/lib/bin/x64/fmod.dll"
-        cp ./FallingSandSurvival/lib/FMOD/lib/x64/fmod.dll ./FallingSandSurvival/lib/bin/x64/fmod.dll
-        echo "./FallingSandSurvival/lib/FMOD/lib/x64/fmodL.dll -> ./FallingSandSurvival/lib/bin/x64/fmodL.dll"
-        cp ./FallingSandSurvival/lib/FMOD/lib/x64/fmodL.dll ./FallingSandSurvival/lib/bin/x64/fmodL.dll
+        # echo "./FallingSandSurvival/lib/FMOD/lib/x64/fmod.dll -> ./FallingSandSurvival/lib/bin/x64/fmod.dll"
+        # cp ./FallingSandSurvival/lib/FMOD/lib/x64/fmod.dll ./FallingSandSurvival/lib/bin/x64/fmod.dll
+        # echo "./FallingSandSurvival/lib/FMOD/lib/x64/fmodL.dll -> ./FallingSandSurvival/lib/bin/x64/fmodL.dll"
+        # cp ./FallingSandSurvival/lib/FMOD/lib/x64/fmodL.dll ./FallingSandSurvival/lib/bin/x64/fmodL.dll
         
-        echo "./api/studio/inc -> ./FallingSandSurvival/lib/FMOD_studio/inc"
-        cp -r ./api/studio/inc ./FallingSandSurvival/lib/FMOD_studio/inc
-        echo "./api/studio/lib -> ./FallingSandSurvival/lib/FMOD_studio/lib"
-        cp -r ./api/studio/lib ./FallingSandSurvival/lib/FMOD_studio/lib
+        # echo "./api/studio/inc -> ./FallingSandSurvival/lib/FMOD_studio/inc"
+        # cp -r ./api/studio/inc ./FallingSandSurvival/lib/FMOD_studio/inc
+        # echo "./api/studio/lib -> ./FallingSandSurvival/lib/FMOD_studio/lib"
+        # cp -r ./api/studio/lib ./FallingSandSurvival/lib/FMOD_studio/lib
         
-        echo "./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudio.dll -> ./FallingSandSurvival/lib/bin/x86/fmodstudio.dll"
-        cp ./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudio.dll ./FallingSandSurvival/lib/bin/x86/fmodstudio.dll
-        echo "./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudioL.dll -> ./FallingSandSurvival/lib/bin/x86/fmodstudioL.dll"
-        cp ./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudioL.dll ./FallingSandSurvival/lib/bin/x86/fmodstudioL.dll
+        # echo "./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudio.dll -> ./FallingSandSurvival/lib/bin/x86/fmodstudio.dll"
+        # cp ./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudio.dll ./FallingSandSurvival/lib/bin/x86/fmodstudio.dll
+        # echo "./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudioL.dll -> ./FallingSandSurvival/lib/bin/x86/fmodstudioL.dll"
+        # cp ./FallingSandSurvival/lib/FMOD_studio/lib/x86/fmodstudioL.dll ./FallingSandSurvival/lib/bin/x86/fmodstudioL.dll
         
-        echo "./FallingSandSurvival/lib/FMOD_studio/lib/x64/fmodstudio.dll -> ./FallingSandSurvival/lib/bin/x64/fmodstudio.dll"
-        cp ./FallingSandSurvival/lib/FMOD_studio/lib/x64/fmodstudio.dll ./FallingSandSurvival/lib/bin/x64/fmodstudio.dll
-        echo "./FallingSandSurvival/lib/FMOD_studio/lib/x64/fmodstudioL.dll -> ./FallingSandSurvival/lib/bin/x64/fmodstudioL.dll"
-        cp ./FallingSandSurvival/lib/FMOD_studio/lib/x64/fmodstudioL.dll ./FallingSandSurvival/lib/bin/x64/fmodstudioL.dll
+        # echo "./FallingSandSurvival/lib/FMOD_studio/lib/x64/fmodstudio.dll -> ./FallingSandSurvival/lib/bin/x64/fmodstudio.dll"
+        # cp ./FallingSandSurvival/lib/FMOD_studio/lib/x64/fmodstudio.dll ./FallingSandSurvival/lib/bin/x64/fmodstudio.dll
+        # echo "./FallingSandSurvival/lib/FMOD_studio/lib/x64/fmodstudioL.dll -> ./FallingSandSurvival/lib/bin/x64/fmodstudioL.dll"
+        # cp ./FallingSandSurvival/lib/FMOD_studio/lib/x64/fmodstudioL.dll ./FallingSandSurvival/lib/bin/x64/fmodstudioL.dll
         
-        echo "Done."
+        # echo "Done."
         
-        echo "Deleting ./api/ ..."
-        rm -rf ./api
-        echo "Done."
-    else
-        echo "./api/ not found, exiting..."
-        exit 1; 
-    fi
-fi
+        # echo "Deleting ./api/ ..."
+        # rm -rf ./api
+        # echo "Done."
+    # else
+        # echo "./api/ not found, exiting..."
+        # exit 1; 
+    # fi
+# fi
 
 echo ""
 if [ -d "./FallingSandSurvival/lib/discord_game_sdk/cpp" ] && [ -f "./FallingSandSurvival/lib/bin/x64/discord_game_sdk.dll" ]
