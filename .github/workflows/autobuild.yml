@@ -30,7 +30,7 @@ jobs:
         shell: bash
         
       - name: Run Conan install
-        run: conan install ./FallingSandSurvival/conanfile.txt -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.toolset=v142 -s compiler.version=16 -s compiler.runtime=MDd  --build=missing --update
+        run: conan install ./FallingSandSurvival/conanfile.txt -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.toolset=v142 -s compiler.version=15 -s compiler.runtime=MDd  --build=missing --update
         shell: bash
 #        
 #      - name: Build Binary
