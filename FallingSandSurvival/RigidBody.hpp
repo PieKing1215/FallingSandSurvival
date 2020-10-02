@@ -12,7 +12,7 @@
 #include <memory>
 #include <SDL2/SDL.h>
 #include <SDL_gpu.h>
-#include "MaterialInstance.h"
+#include "MaterialInstance.hpp"
 
 #include "lib/polypartition-master/src/polypartition.h"
 

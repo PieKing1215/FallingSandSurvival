@@ -1,9 +1,9 @@
 
-#include "Structures.h"
+#include "Structures.hpp"
 #include <algorithm>
 
 #ifndef INC_Textures
-#include "Textures.h"
+#include "Textures.hpp"
 #endif
 
 #undef min

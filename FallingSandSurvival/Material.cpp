@@ -1,5 +1,5 @@
 
-#include "Material.h"
+#include "Material.hpp"
 
 Material::Material(int id, std::string name, int physicsType, Uint8 alpha, float density, int iterations, int emit, Uint32 emitColor, Uint32 color) {
     this->name = name;

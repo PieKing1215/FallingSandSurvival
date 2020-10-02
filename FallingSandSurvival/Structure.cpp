@@ -1,6 +1,6 @@
-#include "Structure.h"
+#include "Structure.hpp"
 
-#include "Macros.h"
+#include "Macros.hpp"
 
 Structure::Structure(int w, int h, MaterialInstance* tiles) {
     this->w = w;

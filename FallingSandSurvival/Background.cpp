@@ -1,12 +1,12 @@
 
-#include "Background.h"
-#include "Textures.h"
+#include "Background.hpp"
+#include "Textures.hpp"
 #include <algorithm>
 
 #define BUILD_WITH_EASY_PROFILER
 #include <easy/profiler.h>
 
-#include "ProfilerConfig.h"
+#include "ProfilerConfig.hpp"
 
 BackgroundLayer::BackgroundLayer(SDL_Surface* texture, float parallaxX, float parallaxY, float moveX, float moveY) {
     this->surface ={Textures::scaleTexture(texture, 1, 1), Textures::scaleTexture(texture, 2, 2), Textures::scaleTexture(texture, 3, 3)};

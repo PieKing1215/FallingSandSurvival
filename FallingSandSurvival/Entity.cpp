@@ -1,6 +1,6 @@
 
 #ifndef INC_Entity
-#include "Entity.h"
+#include "Entity.hpp"
 #endif
 
 void Entity::render(GPU_Target* target, int ofsX, int ofsY) {

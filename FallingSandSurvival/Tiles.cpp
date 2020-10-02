@@ -1,8 +1,8 @@
 
-#include "Tiles.h"
-#include "Textures.h"
+#include "Tiles.hpp"
+#include "Textures.hpp"
 
-#include "Macros.h"
+#include "Macros.hpp"
 
 const MaterialInstance Tiles::NOTHING       = MaterialInstance(&Materials::GENERIC_AIR   , 0x000000);
 const MaterialInstance Tiles::TEST_SOLID    = MaterialInstance(&Materials::GENERIC_SOLID , 0xff0000);

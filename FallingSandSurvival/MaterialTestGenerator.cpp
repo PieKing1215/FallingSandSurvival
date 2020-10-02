@@ -1,10 +1,10 @@
 
 #ifndef INC_WorldGenerator
-#include "WorldGenerator.h"
+#include "WorldGenerator.hpp"
 #endif
 
 #ifndef INC_Textures
-#include "Textures.h"
+#include "Textures.hpp"
 #endif
 
 class MaterialTestGenerator : public WorldGenerator {

@@ -1,6 +1,6 @@
 
 #ifndef INC_Structure
-#include "Structure.h"
+#include "Structure.hpp"
 #endif // !INC_Structure
 
 

@@ -3,7 +3,7 @@
 //#define b2_maxTranslation 10.0f
 //#define b2_maxTranslationSquared (b2_maxTranslation * b2_maxTranslation)
 
-#include "Macros.h"
+#include "Macros.hpp"
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -13,26 +13,26 @@
 #include <algorithm> 
 #include <unordered_map>
 
-#include "Networking.h"
+#include "Networking.hpp"
 
 #include "lib/sparsehash/sparse_hash_map.h"
 #ifndef INC_World
-#include "world.h"
+#include "world.hpp"
 #endif
-#include "UTime.h"
-#include "Textures.h"
-#include "Background.h"
+#include "UTime.hpp"
+#include "Textures.hpp"
+#include "Background.hpp"
 #include <box2d/b2_distance_joint.h>
-#include "Settings.h"
-#include "UI.h"
-#include "Controls.h"
+#include "Settings.hpp"
+#include "UI.hpp"
+#include "Controls.hpp"
 #include <chrono>
 #include <thread>
 #include <io.h>
 #include <fcntl.h>
 #include <codecvt>
-#include "Drawing.h"
-#include "Shaders.h"
+#include "Drawing.hpp"
+#include "Shaders.hpp"
 
 #if BUILD_WITH_STEAM
 #include "steam_api.h"
@@ -42,7 +42,7 @@
 #include "discord.h"
 #endif
 
-#include "ProfilerConfig.h"
+#include "ProfilerConfig.hpp"
 
 enum GameState {
     MAIN_MENU,

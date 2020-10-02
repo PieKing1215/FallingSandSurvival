@@ -1,6 +1,6 @@
 
-#include "Player.h"
-#include "UTime.h"
+#include "Player.hpp"
+#include "UTime.hpp"
 
 void Player::render(GPU_Target* target, int ofsX, int ofsY) {
     Entity::render(target, ofsX, ofsY);

@@ -1,5 +1,5 @@
 
-#include "Textures.h"
+#include "Textures.hpp"
 
 SDL_Surface* Textures::testTexture = Textures::loadTexture("assets/textures/test.png");
 SDL_Surface* Textures::dirt1Texture = Textures::loadTexture("assets/textures/testDirt.png");

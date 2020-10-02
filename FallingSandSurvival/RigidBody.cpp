@@ -1,5 +1,5 @@
 
-#include "RigidBody.h"
+#include "RigidBody.hpp"
 #include <iostream>
 
 RigidBody::RigidBody(b2Body* body) {

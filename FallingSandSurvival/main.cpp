@@ -1,5 +1,5 @@
 
-#include "Game.h"
+#include "Game.hpp"
 
 #undef main
 

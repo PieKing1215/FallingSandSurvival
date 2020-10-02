@@ -6,14 +6,14 @@
 #include <string>
 #include <functional>
 #ifndef INC_RigidBody
-#include "RigidBody.h"
+#include "RigidBody.hpp"
 #endif
 
 #ifndef INC_World
-#include "world.h"
+#include "world.hpp"
 #endif
 
-#include "Drawing.h"
+#include "Drawing.hpp"
 
 #define ALIGN_LEFT 0
 #define ALIGN_CENTER 1

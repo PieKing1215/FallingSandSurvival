@@ -1,6 +1,6 @@
 
 #ifndef INC_MaterialInstance
-#include "MaterialInstance.h"
+#include "MaterialInstance.hpp"
 #endif // !INC_MaterialInstance
 
 #include <iostream>

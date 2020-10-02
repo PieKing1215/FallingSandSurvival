@@ -1,10 +1,10 @@
 
-#include "UI.h"
-#include "Settings.h"
+#include "UI.hpp"
+#include "Settings.hpp"
 
-#include "Macros.h"
-#include "UTime.h"
-#include "ProfilerConfig.h"
+#include "Macros.hpp"
+#include "UTime.hpp"
+#include "ProfilerConfig.hpp"
 
 #define BUILD_WITH_EASY_PROFILER
 #include <easy/profiler.h>

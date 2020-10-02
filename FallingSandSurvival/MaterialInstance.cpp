@@ -1,5 +1,5 @@
 
-#include "MaterialInstance.h"
+#include "MaterialInstance.hpp"
 
 int MaterialInstance::_curID = 1;
 

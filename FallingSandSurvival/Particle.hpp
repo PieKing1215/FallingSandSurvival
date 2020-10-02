@@ -3,7 +3,7 @@
 
 #include <SDL2/SDL.h>
 #ifndef INC_Tiles
-#include "Tiles.h"
+#include "Tiles.hpp"
 #endif // !INC_Tiles
 
 #include <functional>

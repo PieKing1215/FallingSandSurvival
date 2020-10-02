@@ -2,12 +2,12 @@
 #define INC_Player
 
 #ifndef INC_Entity
-#include "Entity.h"
+#include "Entity.hpp"
 #endif
-#include "Item.h"
+#include "Item.hpp"
 
 #ifndef INC_World
-#include "world.h"
+#include "world.hpp"
 #endif
 
 class World;

@@ -1,5 +1,5 @@
 
-#include "Particle.h"
+#include "Particle.hpp"
 #include <iostream>
 
 Particle::Particle(MaterialInstance tile, float x, float y, float vx, float vy, float ax, float ay) {

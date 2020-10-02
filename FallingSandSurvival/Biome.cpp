@@ -1,5 +1,5 @@
 
-#include "Biome.h"
+#include "Biome.hpp"
 
 Biome::Biome(int id) {
     this->id = id;

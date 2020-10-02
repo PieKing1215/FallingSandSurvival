@@ -1,5 +1,5 @@
 
-#include "Settings.h"
+#include "Settings.hpp"
 
 bool Settings::draw_frame_graph     = true;
 bool Settings::draw_background      = true;

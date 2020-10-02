@@ -2,14 +2,14 @@
 
 
 #ifndef INC_RigidBody
-#include "RigidBody.h"
+#include "RigidBody.hpp"
 #endif
 
 #ifndef INC_MaterialInstance
-#include "MaterialInstance.h"
+#include "MaterialInstance.hpp"
 #endif
 
-#include "Particle.h"
+#include "Particle.hpp"
 
 class ItemFlags {
 public:

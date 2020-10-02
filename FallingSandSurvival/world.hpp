@@ -1,30 +1,30 @@
 #pragma once
 
 
-#include "Chunk.h"
+#include "Chunk.hpp"
 
 #define INC_World
 
-#include "Macros.h"
+#include "Macros.hpp"
 
-#include "Networking.h"
+#include "Networking.hpp"
 #include <vector>
 #include <deque>
-#include "Particle.h"
+#include "Particle.hpp"
 #include <box2d/b2_math.h>
 #include <box2d/b2_world.h>
 #ifndef INC_RigidBody
-#include "RigidBody.h"
+#include "RigidBody.hpp"
 #endif
-#include "PlacedStructure.h"
-#include "ChunkReadyToMerge.h"
+#include "PlacedStructure.hpp"
+#include "ChunkReadyToMerge.hpp"
 #include <future>
 #include <unordered_map>
 #include "lib/FastNoiseSIMD/FastNoiseSIMD.h"
 #include "lib/FastNoise/FastNoise.h"
 #include "lib/sparsehash/dense_hash_map.h"
 #ifndef INC_Player
-#include "Player.h"
+#include "Player.hpp"
 #endif
 #include "lib/AudioAdventure/include/AudioEngine.h"
 
@@ -33,15 +33,15 @@
 #include <SDL_gpu.h>
 
 #ifndef INC_Biome
-#include "Biome.h"
+#include "Biome.hpp"
 #endif // !INC_Biome
 
 
 #ifndef INC_WorldGenerator
-#include "WorldGenerator.h"
+#include "WorldGenerator.hpp"
 #endif
 
-#include "ProfilerConfig.h"
+#include "ProfilerConfig.hpp"
 
 class Populator;
 class WorldGenerator;

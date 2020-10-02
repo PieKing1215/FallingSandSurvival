@@ -1,9 +1,9 @@
 
 #ifndef INC_Item
-#include "Item.h"
+#include "Item.hpp"
 #endif // !INC_Item
 
-#include "Macros.h"
+#include "Macros.hpp"
 
 Item::Item() {}
 

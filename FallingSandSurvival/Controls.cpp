@@ -1,5 +1,5 @@
 
-#include "Controls.h"
+#include "Controls.hpp"
 
 std::vector<KeyControl*> Controls::keyControls = {};
 //KeyControl** Controls::keyControls = new KeyControl*[NUM_CONTROLS];

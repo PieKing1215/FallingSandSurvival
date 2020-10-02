@@ -1,5 +1,5 @@
 
-#include "Networking.h"
+#include "Networking.hpp"
 
 bool Networking::init() {
     if(enet_initialize() != 0) {

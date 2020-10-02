@@ -1,7 +1,7 @@
 
 
 #ifndef INC_Material
-#include "Material.h"
+#include "Material.hpp"
 #endif // !INC_Material
 
 #include <vector>

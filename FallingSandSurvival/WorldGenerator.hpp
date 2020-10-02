@@ -3,7 +3,7 @@
 #define INC_WorldGenerator
 
 #ifndef INC_World
-#include "world.h"
+#include "world.hpp"
 #endif
 
 class World;

@@ -1,5 +1,5 @@
 
-#include "Materials.h"
+#include "Materials.hpp"
 
 int Materials::nMaterials = 0;
 Material Materials::GENERIC_AIR        = Material(nMaterials++, "_AIR", PhysicsType::AIR, 255, 0, 0, 16, 0xffffff);

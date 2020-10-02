@@ -3,7 +3,7 @@
 #include <SDL2/SDL.h>
 
 #ifndef INC_Materials
-#include "Materials.h"
+#include "Materials.hpp"
 #endif // !INC_Materials
 
 

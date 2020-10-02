@@ -1,6 +1,6 @@
 
 #ifndef INC_World
-#include "world.h"
+#include "world.hpp"
 #endif
 #include <iostream>
 #include <algorithm>
@@ -10,11 +10,11 @@
 #include <box2d/b2_polygon_shape.h>
 #include <box2d/b2_fixture.h>
 #include <box2d/b2_weld_joint.h>
-#include "Textures.h"
+#include "Textures.hpp"
 #include "lib/douglas-peucker/polygon-simplify.hh"
 #include "lib/cpp-marching-squares-master/MarchingSquares.h"
 #include "lib/polypartition-master/src/polypartition.h"
-#include "UTime.h"
+#include "UTime.hpp"
 #include <thread>
 #include "Populators.cpp"
 #include "DefaultGenerator.cpp"

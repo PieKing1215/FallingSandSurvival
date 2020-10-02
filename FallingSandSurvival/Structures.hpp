@@ -1,10 +1,10 @@
 
 #ifndef INC_Structure
-#include "Structure.h"
+#include "Structure.hpp"
 #endif
 
 #ifndef INC_World
-#include "world.h"
+#include "world.hpp"
 #endif
 
 class Structures {

@@ -99,6 +99,7 @@
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
       <CompileAs>CompileAsCpp</CompileAs>
       <WholeProgramOptimization>false</WholeProgramOptimization>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(ProjectDir)lib\FMOD\lib\x86;$(ProjectDir)lib\FMOD_studio\lib\x86;$(ProjectDir)lib\steam\redistributable_bin;$(ProjectDir)lib\discord_game_sdk\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -128,6 +129,7 @@ exit 0</Command>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4244;4101;4018;4305</DisableSpecificWarnings>
       <EnablePREfast>true</EnablePREfast>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(ProjectDir)lib\FMOD\lib\x64;$(ProjectDir)lib\FMOD_studio\lib\x64;$(ProjectDir)lib\steam\redistributable_bin\win64;$(ProjectDir)lib\discord_game_sdk\lib\x86_64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -158,6 +160,7 @@ exit 0</Command>
       <EnablePREfast>true</EnablePREfast>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4244;4101;4018;4305</DisableSpecificWarnings>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -202,6 +205,7 @@ exit 0</Command>
       <EnablePREfast>true</EnablePREfast>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4244;4101;4018;4305</DisableSpecificWarnings>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -307,14 +311,14 @@ exit 0</Command>
     <ClCompile Include="DefaultGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Background.h" />
-    <ClInclude Include="Biome.h" />
-    <ClInclude Include="Chunk.h" />
-    <ClInclude Include="ChunkReadyToMerge.h" />
-    <ClInclude Include="Controls.h" />
+    <ClInclude Include="Background.hpp" />
+    <ClInclude Include="Biome.hpp" />
+    <ClInclude Include="Chunk.hpp" />
+    <ClInclude Include="ChunkReadyToMerge.hpp" />
+    <ClInclude Include="Controls.hpp" />
     <ClInclude Include="Drawing.h" />
     <ClInclude Include="Entity.h" />
-    <ClInclude Include="Game.h" />
+    <ClInclude Include="Game.hpp" />
     <ClInclude Include="Item.h" />
     <ClInclude Include="lib\AudioAdventure\include\AudioEngine.h" />
     <ClInclude Include="lib\cpp-marching-squares-master\Direction.h" />
@@ -383,29 +387,29 @@ exit 0</Command>
     <ClInclude Include="lib\sparsehash\internal\libc_allocator_with_realloc.h" />
     <ClInclude Include="lib\sparsehash\internal\sparsehashtable.h" />
     <ClInclude Include="lib\sparsehash\sparse_hash_map.h" />
-    <ClInclude Include="Macros.h" />
-    <ClInclude Include="Materials.h" />
+    <ClInclude Include="Macros.hpp" />
+    <ClInclude Include="Material.hpp" />
+    <ClInclude Include="MaterialInstance.hpp" />
+    <ClInclude Include="Materials.hpp" />
     <ClInclude Include="Networking.h" />
     <ClInclude Include="Particle.h" />
-    <ClInclude Include="PhysicsType.h" />
-    <ClInclude Include="PlacedStructure.h" />
+    <ClInclude Include="PhysicsType.hpp" />
+    <ClInclude Include="PlacedStructure.hpp" />
     <ClInclude Include="Player.h" />
-    <ClInclude Include="Populator.h" />
-    <ClInclude Include="ProfilerConfig.h" />
+    <ClInclude Include="Populator.hpp" />
+    <ClInclude Include="ProfilerConfig.hpp" />
     <ClInclude Include="RigidBody.h" />
-    <ClInclude Include="Settings.h" />
+    <ClInclude Include="Settings.hpp" />
     <ClInclude Include="Shaders.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="Structure.h" />
-    <ClInclude Include="Structures.h" />
+    <ClInclude Include="Structure.hpp" />
+    <ClInclude Include="Structures.hpp" />
     <ClInclude Include="Textures.h" />
-    <ClInclude Include="MaterialInstance.h" />
-    <ClInclude Include="Tiles.h" />
-    <ClInclude Include="Material.h" />
+    <ClInclude Include="Tiles.hpp" />
     <ClInclude Include="UTime.h" />
     <ClInclude Include="UI.h" />
-    <ClInclude Include="world.h" />
-    <ClInclude Include="WorldGenerator.h" />
+    <ClInclude Include="world.hpp" />
+    <ClInclude Include="WorldGenerator.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconfig" />

@@ -252,26 +252,8 @@
     <ClInclude Include="lib\AudioAdventure\include\AudioEngine.h">
       <Filter>Source Files\libraries\audioAdventure</Filter>
     </ClInclude>
-    <ClInclude Include="Settings.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Controls.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="lib\CTPL-ctpl_v.0.0.2\ctpl_stl.h">
       <Filter>Source Files\libraries\ctpl-threadpool</Filter>
-    </ClInclude>
-    <ClInclude Include="Macros.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Game.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ProfilerConfig.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="stdafx.h">
-      <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="lib\douglas-peucker\polygon-simplify.hh">
       <Filter>Source Files\libraries\douglas-peucker</Filter>
@@ -345,42 +327,6 @@
     <ClInclude Include="lib\discord_game_sdk\cpp\voice_manager.h">
       <Filter>Source Files\libraries\discord-game-sdk</Filter>
     </ClInclude>
-    <ClInclude Include="Background.h">
-      <Filter>Source Files\world</Filter>
-    </ClInclude>
-    <ClInclude Include="Biome.h">
-      <Filter>Source Files\world</Filter>
-    </ClInclude>
-    <ClInclude Include="Chunk.h">
-      <Filter>Source Files\world</Filter>
-    </ClInclude>
-    <ClInclude Include="ChunkReadyToMerge.h">
-      <Filter>Source Files\world</Filter>
-    </ClInclude>
-    <ClInclude Include="world.h">
-      <Filter>Source Files\world</Filter>
-    </ClInclude>
-    <ClInclude Include="Populator.h">
-      <Filter>Source Files\world\generation</Filter>
-    </ClInclude>
-    <ClInclude Include="WorldGenerator.h">
-      <Filter>Source Files\world\generation</Filter>
-    </ClInclude>
-    <ClInclude Include="Material.h">
-      <Filter>Source Files\world\materials</Filter>
-    </ClInclude>
-    <ClInclude Include="MaterialInstance.h">
-      <Filter>Source Files\world\materials</Filter>
-    </ClInclude>
-    <ClInclude Include="Materials.h">
-      <Filter>Source Files\world\materials</Filter>
-    </ClInclude>
-    <ClInclude Include="PhysicsType.h">
-      <Filter>Source Files\world\materials</Filter>
-    </ClInclude>
-    <ClInclude Include="Tiles.h">
-      <Filter>Source Files\world\materials</Filter>
-    </ClInclude>
     <ClInclude Include="UTime.h">
       <Filter>Source Files\util</Filter>
     </ClInclude>
@@ -411,17 +357,71 @@
     <ClInclude Include="UI.h">
       <Filter>Source Files\vfx</Filter>
     </ClInclude>
-    <ClInclude Include="PlacedStructure.h">
-      <Filter>Source Files\world\structures</Filter>
-    </ClInclude>
-    <ClInclude Include="Structure.h">
-      <Filter>Source Files\world\structures</Filter>
-    </ClInclude>
-    <ClInclude Include="Structures.h">
-      <Filter>Source Files\world\structures</Filter>
-    </ClInclude>
     <ClInclude Include="Networking.h">
       <Filter>Source Files\net</Filter>
+    </ClInclude>
+    <ClInclude Include="Populator.hpp">
+      <Filter>Source Files\world\generation</Filter>
+    </ClInclude>
+    <ClInclude Include="WorldGenerator.hpp">
+      <Filter>Source Files\world\generation</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.hpp">
+      <Filter>Source Files\world\materials</Filter>
+    </ClInclude>
+    <ClInclude Include="MaterialInstance.hpp">
+      <Filter>Source Files\world\materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Materials.hpp">
+      <Filter>Source Files\world\materials</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsType.hpp">
+      <Filter>Source Files\world\materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Tiles.hpp">
+      <Filter>Source Files\world\materials</Filter>
+    </ClInclude>
+    <ClInclude Include="PlacedStructure.hpp">
+      <Filter>Source Files\world\structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structure.hpp">
+      <Filter>Source Files\world\structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Structures.hpp">
+      <Filter>Source Files\world\structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Background.hpp">
+      <Filter>Source Files\world</Filter>
+    </ClInclude>
+    <ClInclude Include="Biome.hpp">
+      <Filter>Source Files\world</Filter>
+    </ClInclude>
+    <ClInclude Include="Chunk.hpp">
+      <Filter>Source Files\world</Filter>
+    </ClInclude>
+    <ClInclude Include="ChunkReadyToMerge.hpp">
+      <Filter>Source Files\world</Filter>
+    </ClInclude>
+    <ClInclude Include="world.hpp">
+      <Filter>Source Files\world</Filter>
+    </ClInclude>
+    <ClInclude Include="Controls.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Game.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Macros.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ProfilerConfig.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

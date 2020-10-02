@@ -3,11 +3,11 @@
 
 
 #ifndef INC_Tiles
-#include "Tiles.h"
+#include "Tiles.hpp"
 #endif // !INC_Tiles
 
 #ifndef INC_MaterialInstance
-#include "MaterialInstance.h"
+#include "MaterialInstance.hpp"
 #endif // !INC_MaterialInstance
 
 #include <iostream>
@@ -19,10 +19,10 @@
 #define CHUNK_H 128
 
 #ifndef INC_Biome
-#include "Biome.h"
+#include "Biome.hpp"
 #endif // !INC_Biome
 
-#include "RigidBody.h"
+#include "RigidBody.hpp"
 
 typedef struct {
     Uint32 index;

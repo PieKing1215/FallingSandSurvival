@@ -1,13 +1,13 @@
 
-#include "Chunk.h"
+#include "Chunk.hpp"
 #include <string>
 #include <vector>
 #include <sstream>
-#include "UTime.h"
+#include "UTime.hpp"
 
 #define BUILD_WITH_EASY_PROFILER
 #include <easy/profiler.h>
-#include "ProfilerConfig.h"
+#include "ProfilerConfig.hpp"
 
 using namespace std;
 

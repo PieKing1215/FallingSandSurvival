@@ -7,7 +7,7 @@
 #include <box2d/b2_distance_joint.h>
 #include <unordered_map>
 
-#include "ProfilerConfig.h"
+#include "ProfilerConfig.hpp"
 
 struct DrawTextParams {
     GPU_Image* t1 = nullptr;

@@ -2,7 +2,7 @@
 
 
 #ifndef INC_RigidBody
-#include "RigidBody.h"
+#include "RigidBody.hpp"
 #endif
 #include <SDL_gpu.h>
 

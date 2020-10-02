@@ -1,9 +1,9 @@
 
-#include "Populator.h"
-#include "Structures.h"
+#include "Populator.hpp"
+#include "Structures.hpp"
 
 #ifndef INC_Textures
-#include "Textures.h"
+#include "Textures.hpp"
 #endif // !INC_Textures
 
 

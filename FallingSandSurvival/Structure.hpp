@@ -1,6 +1,6 @@
 
 #ifndef INC_Tiles
-#include "Tiles.h"
+#include "Tiles.hpp"
 #endif // !INC_Tiles
 
 #define INC_Structure

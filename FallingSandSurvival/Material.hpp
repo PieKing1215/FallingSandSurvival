@@ -1,7 +1,7 @@
 
 #include <SDL2/SDL.h>
 #ifndef INC_PhysicsType
-#include "PhysicsType.h"
+#include "PhysicsType.hpp"
 #endif // !INC_PhysicsType
 
 #include <unordered_map>
