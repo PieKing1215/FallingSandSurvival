@@ -49,26 +49,33 @@ jobs:
         run: Compress-Archive -Path '.\Build' -DestinationPath '.\FallingSandSurvival_x64.zip'
         shell: powershell
         
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v2.2.0
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: |
-            Automated Release by GitHub Action CI
-          draft: true
-          prerelease: true      
-          
-      - name: Upload Release Asset (x64)
-        id: upload-release-asset-x64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./FallingSandSurvival_x64.ZIP
-          asset_name: FallingSandSurvival_x64.ZIP
-          asset_content_type: application/zip
+          name: FallingSandSurvival_x64
+          path: ./FallingSandSurvival_x64.zip
+        
+#      - name: Create Release
+#        id: create_release
+#        uses: actions/create-release@latest
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          tag_name: ${{ github.ref }}
+#          release_name: Release ${{ github.ref }}
+#          body: |
+#            Automated Release by GitHub Action CI
+#          draft: true
+#          prerelease: true      
+#          
+#      - name: Upload Release Asset (x64)
+#        id: upload-release-asset-x64
+#        uses: actions/upload-release-asset@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          upload_url: ${{ steps.create_release.outputs.upload_url }}
+#          asset_path: ./FallingSandSurvival_x64.ZIP
+#          asset_name: FallingSandSurvival_x64.ZIP
+#          asset_content_type: application/zip
+#
