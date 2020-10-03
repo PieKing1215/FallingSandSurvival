@@ -20,56 +20,60 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-
-      - name: Install Conan
-        run: pip install conan
-        shell: bash
-
-      - name: Run setup.sh
-        run: yes n | ./setup.sh || if [[ $? -eq 141 ]]; then true; else exit $?; fi
+      - name: Test msbuild
+        run: C:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild/15.0//MSBuild.exe --help
         shell: bash
         
-      - name: Run Conan install
-        run: conan install ./FallingSandSurvival/conanfile.txt -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.toolset=v141 -s compiler.version=15 -s compiler.runtime=MD  --build=missing --update
-        shell: bash
-        
-      - name: Build Binary
-        run: |
-          bash -c "'C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Enterprise\\MSBuild\\15.0\\MSBuild.exe' -p:Configuration=Release;Platform=x64"
-          mkdir Build
-          cp ./x64/Release/FallingSandSurvival.exe ./Build/FallingSandSurvival.exe
-          cp ./FallingSandSurvival/lib/bin/x64/fmodL.dll ./Build/fmodL.dll
-          cp ./FallingSandSurvival/lib/bin/x64/fmodstudioL.dll ./Build/fmodstudioL.dll
-          cp -r ./FallingSandSurvival/assets ./Build/assets
-          cp -r ./FallingSandSurvival/data ./Build/data
-          cp -r ./FallingSandSurvival/gamedir ./Build/gamedir
-        shell: bash
-        
-      - name: Collect Artifact
-        run: Compress-Archive -Path '.\Build' -DestinationPath '.\FallingSandSurvival_x64.zip'
-        shell: powershell
-        
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: |
-            Automated Release by GitHub Action CI
-          draft: true
-          prerelease: true      
-          
-      - name: Upload Release Asset (x64)
-        id: upload-release-asset-x64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./FallingSandSurvival_x64.ZIP
-          asset_name: FallingSandSurvival_x64.ZIP
-          asset_content_type: application/zip
-
+#      - name: Install Conan
+#        run: pip install conan
+#        shell: bash
+#
+#      - name: Run setup.sh
+#        run: yes n | ./setup.sh || if [[ $? -eq 141 ]]; then true; else exit $?; fi
+#        shell: bash
+#        
+#      - name: Run Conan install
+#        run: conan install ./FallingSandSurvival/conanfile.txt -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.toolset=v141 -s compiler.version=15 -s compiler.runtime=MD  --build=missing --update
+#        shell: bash
+#        
+#      - name: Build Binary
+#        run: |
+#          bash -c "'C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Enterprise\\MSBuild\\15.0\\MSBuild.exe' -p:Configuration=Release;Platform=x64"
+#          mkdir Build
+#          cp ./x64/Release/FallingSandSurvival.exe ./Build/FallingSandSurvival.exe
+#          cp ./FallingSandSurvival/lib/bin/x64/fmodL.dll ./Build/fmodL.dll
+#          cp ./FallingSandSurvival/lib/bin/x64/fmodstudioL.dll ./Build/fmodstudioL.dll
+#          cp -r ./FallingSandSurvival/assets ./Build/assets
+#          cp -r ./FallingSandSurvival/data ./Build/data
+#          cp -r ./FallingSandSurvival/gamedir ./Build/gamedir
+#        shell: bash
+#        
+#      - name: Collect Artifact
+#        run: Compress-Archive -Path '.\Build' -DestinationPath '.\FallingSandSurvival_x64.zip'
+#        shell: powershell
+#        
+#      - name: Create Release
+#        id: create_release
+#        uses: actions/create-release@latest
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          tag_name: ${{ github.ref }}
+#          release_name: Release ${{ github.ref }}
+#          body: |
+#            Automated Release by GitHub Action CI
+#          draft: true
+#          prerelease: true      
+#          
+#      - name: Upload Release Asset (x64)
+#        id: upload-release-asset-x64
+#        uses: actions/upload-release-asset@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          upload_url: ${{ steps.create_release.outputs.upload_url }}
+#          asset_path: ./FallingSandSurvival_x64.ZIP
+#          asset_name: FallingSandSurvival_x64.ZIP
+#          asset_content_type: application/zip
+#
+#
