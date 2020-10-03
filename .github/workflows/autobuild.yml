@@ -22,16 +22,7 @@ jobs:
       #- uses: actions/checkout@v2
       
       - name: Test msbuild
-        run: |
-          bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio'"
-          echo "==="
-          bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017'"
-          echo "==="
-          bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise'"
-          echo "==="
-          bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild'"
-          echo "==="
-          bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild/15.0'"
+        run: bash -c "'c:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild/15.0/Bin/MSBuild.exe' --help"
         shell: bash
         
 #      - name: Install Conan
