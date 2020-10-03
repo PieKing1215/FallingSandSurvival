@@ -20,12 +20,9 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-        
-      - name: setup-msbuild
-        uses: microsoft/setup-msbuild@v1.0.1
-        
+
       - name: Test msbuild
-        run: which msbuild
+        run: ls "C:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild/15.0/Bin"
         shell: bash
         
 #      - name: Install Conan
