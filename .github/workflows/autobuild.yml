@@ -24,9 +24,13 @@ jobs:
       - name: Test msbuild
         run: |
           bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio'"
+          echo "==="
           bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017'"
-          bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprisee'"
+          echo "==="
+          bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise'"
+          echo "==="
           bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild'"
+          echo "==="
           bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild/15.0'"
         shell: bash
         
