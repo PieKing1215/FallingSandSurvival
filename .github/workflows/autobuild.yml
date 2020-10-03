@@ -22,7 +22,12 @@ jobs:
       #- uses: actions/checkout@v2
       
       - name: Test msbuild
-        run: bash -c "'C:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild/15.0/MSBuild.exe' --help"
+        run: |
+          bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio'"
+          bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017'"
+          bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprisee'"
+          bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild'"
+          bash -c "ls 'c:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild/15.0'"
         shell: bash
         
 #      - name: Install Conan
