@@ -45,15 +45,15 @@ jobs:
           cp -r ./FallingSandSurvival/gamedir ./Build/gamedir
         shell: bash
         
-      - name: Collect Artifact
-        run: Compress-Archive -Path '.\Build' -DestinationPath '.\FallingSandSurvival_x64.zip'
-        shell: powershell
+#      - name: Collect Artifact
+#        run: Compress-Archive -Path '.\Build' -DestinationPath '.\FallingSandSurvival_x64.zip'
+#        shell: powershell
         
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.0
         with:
           name: FallingSandSurvival_x64
-          path: ./FallingSandSurvival_x64.zip
+          path: ./Build
         
 #      - name: Create Release
 #        id: create_release
