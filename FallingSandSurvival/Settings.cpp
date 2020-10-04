@@ -14,5 +14,5 @@ bool Settings::draw_light_map       = false;
 bool Settings::draw_temperature_map = false;
 bool Settings::draw_shaders		    = false;
 bool Settings::tick_world           = true;
-bool Settings::tick_box2d           = false;
+bool Settings::tick_box2d           = true;
 bool Settings::tick_temperature     = true;
