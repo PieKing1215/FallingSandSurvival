@@ -2551,7 +2551,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                     if(mat.mat->id == Materials::GENERIC_AIR.id) {
                         PIXEL(cur->surface, tx, ty) = 0x00000000;
                     } else {
-                        PIXEL(cur->surface, tx, ty) = (mat.mat->alpha << 24) + mat.color;
+                        PIXEL(cur->surface, tx, ty) = (mat.mat->alpha << 24) + (mat.color & 0x00ffffff);
                     }
                 }
             }

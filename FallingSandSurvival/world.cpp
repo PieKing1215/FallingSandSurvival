@@ -302,7 +302,7 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
             if(mat.mat->id == Materials::GENERIC_AIR.id) {
                 PIXEL(texture, x, y) = 0x00000000;
             } else {
-                PIXEL(texture, x, y) = (mat.mat->alpha << 24) + mat.color;
+                PIXEL(texture, x, y) = (mat.mat->alpha << 24) + (mat.color & 0x00ffffff);
             }
         }
     }
