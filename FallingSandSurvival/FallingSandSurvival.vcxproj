@@ -398,6 +398,7 @@ exit 0</Command>
     <ClInclude Include="Player.h" />
     <ClInclude Include="Populator.hpp" />
     <ClInclude Include="ProfilerConfig.hpp" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="RigidBody.h" />
     <ClInclude Include="Settings.hpp" />
     <ClInclude Include="Shaders.h" />
@@ -418,6 +419,12 @@ exit 0</Command>
     <None Include="lib\sparsehash\sparsetable" />
     <None Include="lib\sparsehash\sparse_hash_set" />
     <None Include="lib\sparsehash\traits" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="FallingSandSurvival.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon1.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
