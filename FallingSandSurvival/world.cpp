@@ -325,6 +325,7 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     maxY++;
     SDL_Surface* sf = SDL_CreateRGBSurfaceWithFormat(texture->flags, maxX - minX, maxY - minY, texture->format->BitsPerPixel, texture->format->format);
     SDL_Rect src = {minX, minY, maxX - minX, maxY - minY};
+    SDL_SetSurfaceBlendMode(texture, SDL_BlendMode::SDL_BLENDMODE_NONE);
     SDL_BlitSurface(texture, &src, sf, NULL);
 
     SDL_FreeSurface(texture);
