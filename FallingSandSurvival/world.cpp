@@ -51,6 +51,11 @@ void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CA
     tickPool = new ctpl::thread_pool(6);
     EASY_END_BLOCK;
 
+    
+    EASY_BLOCK("make updateRigidBodyHitboxPool");
+    updateRigidBodyHitboxPool = new ctpl::thread_pool(8);
+    EASY_END_BLOCK;
+
     if(netMode != NetworkMode::SERVER) {
         EASY_BLOCK("audio load Explode event");
         this->audioEngine = audioEngine;
@@ -294,6 +299,7 @@ RigidBody* World::makeRigidBodyMulti(b2BodyType type, float x, float y, float an
 void World::updateRigidBodyHitbox(RigidBody* rb) {
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
 
+    EASY_BLOCK("init");
     SDL_Surface* texture = rb->surface;
 
     for(int x = 0; x < texture->w; x++) {
@@ -351,12 +357,10 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     float ynew = minX * s + minY * c;
 
     // translate point back:
-    //return b2Vec2(xnew + 0, ynew + 0);
-
     rb->body->SetTransform(b2Vec2(rb->body->GetPosition().x + xnew, rb->body->GetPosition().y + ynew), rb->body->GetAngle());
+    EASY_END_BLOCK;
 
-    //
-
+    EASY_BLOCK("foundAnything");
     bool foundAnything = false;
     for(int x = 0; x < texture->w; x++) {
         for(int y = 0; y < texture->h; y++) {
@@ -364,20 +368,28 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
             foundAnything = foundAnything || f;
         }
     }
+    EASY_END_BLOCK;
 
     if(!foundAnything) {
         return;
     }
 
+    EASY_BLOCK("alloc data");
     unsigned char* data = new unsigned char[texture->w * texture->h];
+    EASY_END_BLOCK;
 
+    EASY_BLOCK("alloc edgeSeen");
     bool* edgeSeen = new bool[texture->w * texture->h];
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("init data and edgeSeen");
     for(int y = 0; y < texture->h; y++) {
         for(int x = 0; x < texture->w; x++) {
             data[x + y * texture->w] = ((PIXEL(texture, x, y) >> 24) & 0xff) == 0x00 ? 0 : 1;
             edgeSeen[x + y * texture->w] = false;
         }
     }
+    EASY_END_BLOCK;
 
     std::vector<std::vector<b2Vec2>> meshes = {};
 
@@ -385,6 +397,7 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     std::list<MarchingSquares::Result> results;
     int inn = 0;
     int lookIndex = 0;
+    EASY_BLOCK("loop");
     while(true) {
         inn++;
 
@@ -496,16 +509,21 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
 
         if(poly.GetNumPoints() > 2) shapes.push_back(poly);
     }
-
+    EASY_END_BLOCK;
     delete[] edgeSeen;
     std::list<TPPLPoly> result2;
 
     TPPLPartition part;
     TPPLPartition part2;
+    EASY_BLOCK("RemoveHoles");
     part.RemoveHoles(&shapes, &result2);
+    EASY_END_BLOCK;
+    std::vector<std::vector<b2PolygonShape>> polys2s = {};
     for(auto it = result2.begin(); it != result2.end(); it++) {
         std::list<TPPLPoly> result;
+        EASY_BLOCK("Triangulate_EC");
         part2.Triangulate_EC(&(std::list<TPPLPoly>{ *it }), &result);
+        EASY_END_BLOCK;
 
         /*bool* solid = new bool[10 * 10];
         for (int x = 0; x < 10; x++) {
@@ -519,7 +537,8 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
         //Ps::MarchingSquares ms = Ps::MarchingSquares(texture);
         //worldMesh = ms.extract_simple(2);
 
-        b2PolygonShape** polys3 = new b2PolygonShape*[result.size()];
+        EASY_BLOCK("TPPLPolyList -> vec<b2PolygonShape>");
+        b2PolygonShape** polys3 = new b2PolygonShape * [result.size()];
         std::vector<b2PolygonShape> polys2;
 
         int n = 0;
@@ -537,53 +556,122 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
             polys2.push_back(sh);
             n++;
         });
+        EASY_END_BLOCK;
+
+        polys2s.push_back(polys2);
+
+    }
+
+    EASY_BLOCK("calculate nearest");
+    uint16* nearestBody = new uint16[texture->w * texture->h];
+    std::vector<std::future<void>> poolResults = {};
+
+    if(texture->w > 10) {
+        int nThreads = updateRigidBodyHitboxPool->n_idle();
+        int div = texture->w / nThreads;
+        int rem = texture->w % nThreads;
+
+        for(int thr = 0; thr < nThreads; thr++) {
+            poolResults.push_back(updateRigidBodyHitboxPool->push([&, thr](int id) {
+                EASY_THREAD("Update RigidBody Thread");
+                int stx = thr * div;
+                int enx = stx + div + (thr == nThreads - 1 ? rem : 0);
+
+                for(int x = stx; x < enx; x++) {
+                    for(int y = 0; y < texture->h; y++) {
+                        if(((PIXEL(texture, x, y) >> 24) & 0xff) == 0x00) continue;
+
+                        nearestBody[x + y * texture->w] = 0;
+
+                        int nearestDist = 100000;
+                        EASY_BLOCK("search");
+                        // for each body
+                        for(int b = 0; b < polys2s.size(); b++) {
+                            // for each triangle in the mesh
+                            for(int i = 0; i < polys2s[b].size(); i++) {
+                                int dst = abs(x - polys2s[b][i].m_centroid.x) + abs(y - polys2s[b][i].m_centroid.y);
+                                if(dst < nearestDist) {
+                                    nearestDist = dst;
+                                    nearestBody[x + y * texture->w] = b;
+                                }
+                            }
+                        }
+                        EASY_END_BLOCK;
+                    }
+                }
+            }));
+        }
+
+    } else {
+        for(int x = 0; x < texture->w; x++) {
+            for(int y = 0; y < texture->h; y++) {
+                if(((PIXEL(texture, x, y) >> 24) & 0xff) == 0x00) continue;
+
+                nearestBody[x + y * texture->w] = 0;
+
+                int nearestDist = 100000;
+                EASY_BLOCK("search");
+                // for each body
+                for(int b = 0; b < polys2s.size(); b++) {
+                    // for each triangle in the mesh
+                    for(int i = 0; i < polys2s[b].size(); i++) {
+                        int dst = abs(x - polys2s[b][i].m_centroid.x) + abs(y - polys2s[b][i].m_centroid.y);
+                        if(dst < nearestDist) {
+                            nearestDist = dst;
+                            nearestBody[x + y * texture->w] = b;
+                        }
+                    }
+                }
+                EASY_END_BLOCK;
+            }
+        }
+    }
+
+    EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
+    for(int i = 0; i < poolResults.size(); i++) {
+        EASY_BLOCK("get");
+        poolResults[i].get();
+        EASY_END_BLOCK;
+    }
+    EASY_END_BLOCK;
+    EASY_END_BLOCK;
+
+    for(int b = 0; b < polys2s.size(); b++) {
+        std::vector<b2PolygonShape> polys2 = polys2s[b];
 
         if(polys2.size() > 0) {
-            SDL_Surface* sfc = SDL_CreateRGBSurfaceWithFormat(texture->flags, texture->w, texture->h, texture->format->BitsPerPixel, texture->format->format);
 
+            EASY_BLOCK("SDL_CreateRGBSurfaceWithFormat", SDL_PROFILER_COLOR);
+            SDL_Surface* sfc = SDL_CreateRGBSurfaceWithFormat(texture->flags, texture->w, texture->h, texture->format->BitsPerPixel, texture->format->format);
+            EASY_END_BLOCK;
+
+            EASY_BLOCK("copy pixels");
             b2Transform tr;
             tr.SetIdentity();
             bool weld = false;
+            size_t n = polys2.size();
             for(int x = 0; x < sfc->w; x++) {
                 for(int y = 0; y < sfc->h; y++) {
+                    EASY_BLOCK("bef");
                     PIXEL(sfc, x, y) = 0xffffff;
                     Uint32 pixel = PIXEL(texture, x, y);
+                    EASY_END_BLOCK;
                     if(((pixel >> 24) & 0xff) == 0x00) continue;
 
-                    for(int i = 0; i < n; i++) {
-                        for(int32 j = 0; j < polys2[i].m_count; ++j) {
-                            if(polys2[i].m_normals[j].x * (x - polys2[i].m_vertices[j].x) + polys2[i].m_normals[j].y * (y - polys2[i].m_vertices[j].y) > 0.0f) {
-                                for(int32 k = 0; k < polys2[i].m_count; ++k) {
-                                    if(polys2[i].m_normals[k].x * ((x + 0.5) - polys2[i].m_vertices[k].x) + polys2[i].m_normals[k].y * ((y + 0.5) - polys2[i].m_vertices[k].y) > 0.0f) {
-                                        goto nextPoly;
-                                    }
-                                }
-                                goto success;
-                            }
-                        }
+                    if(nearestBody[x + y * texture->w] == b) {
+                        PIXEL(sfc, x, y) = pixel;
 
-success: {}
-
-                        //if (TestPointOpt(polys3[i], (float)x, (float)y) || TestPointOpt(polys3[i], (float)(x+0.5), (float)(y+0.5))) {
-{
-    PIXEL(sfc, x, y) = pixel;
-
-    if(x == rb->weldX && y == rb->weldY) weld = true;
-
-    goto nextPixel;
-}
-//}
-nextPoly: {}
+                        if(x == rb->weldX && y == rb->weldY) weld = true;
                     }
-nextPixel: {}
                 }
             }
+            EASY_END_BLOCK;
 
+            EASY_BLOCK("make new rigidbody");
             RigidBody* rbn = makeRigidBodyMulti(b2_dynamicBody, 0, 0, rb->body->GetAngle(), polys2, rb->body->GetFixtureList()[0].GetDensity(), rb->body->GetFixtureList()[0].GetFriction(), sfc);
             rbn->body->SetTransform(b2Vec2(rb->body->GetPosition().x, rb->body->GetPosition().y), rb->body->GetAngle());
             rbn->body->SetLinearVelocity(rb->body->GetLinearVelocity());
             rbn->body->SetAngularVelocity(rb->body->GetAngularVelocity());
-            std::list<TPPLPoly> l = std::list<TPPLPoly> {*it};
             rbn->outline = shapes;
             rbn->texNeedsUpdate = true;
 
@@ -630,11 +718,16 @@ nextPixel: {}
                     updateRigidBodyHitbox(rbn);
                 }
             }
+            EASY_END_BLOCK;
         }
     }
 
+    EASY_BLOCK("DestroyBody");
     b2world->DestroyBody(rb->body);
+    EASY_END_BLOCK;
+    EASY_BLOCK("erase old rigidbody");
     rigidBodies.erase(std::remove(rigidBodies.begin(), rigidBodies.end(), rb), rigidBodies.end());
+    EASY_END_BLOCK;
     delete rb;
 
 }
@@ -3584,6 +3677,9 @@ World::~World() {
 
     tickPool->stop(false);
     delete tickPool;
+
+    updateRigidBodyHitboxPool->stop(false);
+    delete updateRigidBodyHitboxPool;
 
     delete newTemps;
 
