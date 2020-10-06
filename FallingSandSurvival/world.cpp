@@ -519,6 +519,8 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     part.RemoveHoles(&shapes, &result2);
     EASY_END_BLOCK;
     std::vector<std::vector<b2PolygonShape>> polys2s = {};
+    std::vector<SDL_Surface*> polys2sSfcs = {};
+    std::vector<bool> polys2sWeld = {};
     for(auto it = result2.begin(); it != result2.end(); it++) {
         std::list<TPPLPoly> result;
         EASY_BLOCK("Triangulate_EC");
@@ -558,114 +560,103 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
         });
         EASY_END_BLOCK;
 
-        polys2s.push_back(polys2);
+        if(polys2.size() > 0) {
+            polys2s.push_back(polys2);
+            EASY_BLOCK("SDL_CreateRGBSurfaceWithFormat", SDL_PROFILER_COLOR);
+            polys2sSfcs.push_back(SDL_CreateRGBSurfaceWithFormat(texture->flags, texture->w, texture->h, texture->format->BitsPerPixel, texture->format->format));
+            EASY_END_BLOCK;
+            polys2sWeld.push_back(false);
+        }
 
     }
 
-    EASY_BLOCK("calculate nearest");
-    uint16* nearestBody = new uint16[texture->w * texture->h];
-    std::vector<std::future<void>> poolResults = {};
+    if(polys2s.size() > 0) {
 
-    if(texture->w > 10) {
-        int nThreads = updateRigidBodyHitboxPool->n_idle();
-        int div = texture->w / nThreads;
-        int rem = texture->w % nThreads;
+        EASY_BLOCK("calculate nearest");
+        std::vector<std::future<void>> poolResults = {};
 
-        for(int thr = 0; thr < nThreads; thr++) {
-            poolResults.push_back(updateRigidBodyHitboxPool->push([&, thr](int id) {
-                EASY_THREAD("Update RigidBody Thread");
-                int stx = thr * div;
-                int enx = stx + div + (thr == nThreads - 1 ? rem : 0);
+        if(texture->w > 10) {
+            int nThreads = updateRigidBodyHitboxPool->n_idle();
+            int div = texture->w / nThreads;
+            int rem = texture->w % nThreads;
 
-                for(int x = stx; x < enx; x++) {
-                    for(int y = 0; y < texture->h; y++) {
-                        if(((PIXEL(texture, x, y) >> 24) & 0xff) == 0x00) continue;
+            for(int thr = 0; thr < nThreads; thr++) {
+                poolResults.push_back(updateRigidBodyHitboxPool->push([&, thr](int id) {
+                    EASY_THREAD("Update RigidBody Thread");
+                    int stx = thr * div;
+                    int enx = stx + div + (thr == nThreads - 1 ? rem : 0);
 
-                        nearestBody[x + y * texture->w] = 0;
+                    for(int x = stx; x < enx; x++) {
+                        for(int y = 0; y < texture->h; y++) {
+                            if(((PIXEL(texture, x, y) >> 24) & 0xff) == 0x00) continue;
 
-                        int nearestDist = 100000;
-                        EASY_BLOCK("search");
-                        // for each body
-                        for(int b = 0; b < polys2s.size(); b++) {
-                            // for each triangle in the mesh
-                            for(int i = 0; i < polys2s[b].size(); i++) {
-                                int dst = abs(x - polys2s[b][i].m_centroid.x) + abs(y - polys2s[b][i].m_centroid.y);
-                                if(dst < nearestDist) {
-                                    nearestDist = dst;
-                                    nearestBody[x + y * texture->w] = b;
+                            int nb = 0;
+
+                            int nearestDist = 100000;
+                            EASY_BLOCK("search");
+                            // for each body
+                            for(int b = 0; b < polys2s.size(); b++) {
+                                // for each triangle in the mesh
+                                for(int i = 0; i < polys2s[b].size(); i++) {
+                                    int dst = abs(x - polys2s[b][i].m_centroid.x) + abs(y - polys2s[b][i].m_centroid.y);
+                                    if(dst < nearestDist) {
+                                        nearestDist = dst;
+                                        nb = b;
+                                    }
                                 }
                             }
-                        }
-                        EASY_END_BLOCK;
-                    }
-                }
-            }));
-        }
-
-    } else {
-        for(int x = 0; x < texture->w; x++) {
-            for(int y = 0; y < texture->h; y++) {
-                if(((PIXEL(texture, x, y) >> 24) & 0xff) == 0x00) continue;
-
-                nearestBody[x + y * texture->w] = 0;
-
-                int nearestDist = 100000;
-                EASY_BLOCK("search");
-                // for each body
-                for(int b = 0; b < polys2s.size(); b++) {
-                    // for each triangle in the mesh
-                    for(int i = 0; i < polys2s[b].size(); i++) {
-                        int dst = abs(x - polys2s[b][i].m_centroid.x) + abs(y - polys2s[b][i].m_centroid.y);
-                        if(dst < nearestDist) {
-                            nearestDist = dst;
-                            nearestBody[x + y * texture->w] = b;
+                            EASY_END_BLOCK;
+                            EASY_BLOCK("copy pixels");
+                            PIXEL(polys2sSfcs[nb], x, y) = PIXEL(texture, x, y);
+                            if(x == rb->weldX && y == rb->weldY) polys2sWeld[nb] = true;
+                            EASY_END_BLOCK;
                         }
                     }
-                }
-                EASY_END_BLOCK;
+                }));
             }
-        }
-    }
 
-    EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
-    for(int i = 0; i < poolResults.size(); i++) {
-        EASY_BLOCK("get");
-        poolResults[i].get();
-        EASY_END_BLOCK;
-    }
-    EASY_END_BLOCK;
-    EASY_END_BLOCK;
+        } else {
+            for(int x = 0; x < texture->w; x++) {
+                for(int y = 0; y < texture->h; y++) {
+                    if(((PIXEL(texture, x, y) >> 24) & 0xff) == 0x00) continue;
 
-    for(int b = 0; b < polys2s.size(); b++) {
-        std::vector<b2PolygonShape> polys2 = polys2s[b];
+                    int nb = 0;
 
-        if(polys2.size() > 0) {
-
-            EASY_BLOCK("SDL_CreateRGBSurfaceWithFormat", SDL_PROFILER_COLOR);
-            SDL_Surface* sfc = SDL_CreateRGBSurfaceWithFormat(texture->flags, texture->w, texture->h, texture->format->BitsPerPixel, texture->format->format);
-            EASY_END_BLOCK;
-
-            EASY_BLOCK("copy pixels");
-            b2Transform tr;
-            tr.SetIdentity();
-            bool weld = false;
-            size_t n = polys2.size();
-            for(int x = 0; x < sfc->w; x++) {
-                for(int y = 0; y < sfc->h; y++) {
-                    EASY_BLOCK("bef");
-                    PIXEL(sfc, x, y) = 0xffffff;
-                    Uint32 pixel = PIXEL(texture, x, y);
+                    int nearestDist = 100000;
+                    EASY_BLOCK("search");
+                    // for each body
+                    for(int b = 0; b < polys2s.size(); b++) {
+                        // for each triangle in the mesh
+                        for(int i = 0; i < polys2s[b].size(); i++) {
+                            int dst = abs(x - polys2s[b][i].m_centroid.x) + abs(y - polys2s[b][i].m_centroid.y);
+                            if(dst < nearestDist) {
+                                nearestDist = dst;
+                                nb = b;
+                            }
+                        }
+                    }
                     EASY_END_BLOCK;
-                    if(((pixel >> 24) & 0xff) == 0x00) continue;
-
-                    if(nearestBody[x + y * texture->w] == b) {
-                        PIXEL(sfc, x, y) = pixel;
-
-                        if(x == rb->weldX && y == rb->weldY) weld = true;
-                    }
+                    EASY_BLOCK("copy pixels");
+                    PIXEL(polys2sSfcs[nb], x, y) = PIXEL(texture, x, y);
+                    if(x == rb->weldX && y == rb->weldY) polys2sWeld[nb] = true;
+                    EASY_END_BLOCK;
                 }
             }
+        }
+
+        EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
+        for(int i = 0; i < poolResults.size(); i++) {
+            EASY_BLOCK("get");
+            poolResults[i].get();
             EASY_END_BLOCK;
+        }
+        EASY_END_BLOCK;
+        EASY_END_BLOCK;
+
+        for(int b = 0; b < polys2s.size(); b++) {
+            std::vector<b2PolygonShape> polys2 = polys2s[b];
+
+            SDL_Surface* sfc = polys2sSfcs[b];
 
             EASY_BLOCK("make new rigidbody");
             RigidBody* rbn = makeRigidBodyMulti(b2_dynamicBody, 0, 0, rb->body->GetAngle(), polys2, rb->body->GetFixtureList()[0].GetDensity(), rb->body->GetFixtureList()[0].GetFriction(), sfc);
@@ -675,14 +666,7 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
             rbn->outline = shapes;
             rbn->texNeedsUpdate = true;
 
-            //rbn->texture = rb->texture;
-            /*rbn->surface = sfc;
-            SDL_Surface* sss = SDL_CreateRGBSurfaceWithFormat(0, 64, 64, 32, SDL_PIXELFORMAT_ARGB8888);
-            SDL_FillRect(sss, NULL, 0xff00ffff);
-
-            rbn->texture = GPU_CopyImageFromSurface(sss);
-            SDL_FreeSurface(sss);*/
-
+            bool weld = polys2sWeld[b];
             rbn->back = weld;
             if(weld) {
                 b2WeldJointDef weldJ;
