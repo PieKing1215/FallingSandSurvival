@@ -8,6 +8,10 @@ void Player::render(GPU_Target* target, int ofsX, int ofsY) {
     if(heldItem != NULL) {
         GPU_Rect* ir = new GPU_Rect {(float)(ofsX + x + hw / 2.0 - heldItem->surface->w), (float)(ofsY + y + hh / 2.0 - heldItem->surface->h / 2), (float)heldItem->surface->w, (float)heldItem->surface->h};
         SDL_FPoint* fp = new SDL_FPoint {(float)(-ir->x + ofsX + x + hw / 2.0), (float)(-ir->y + ofsY + y + hh / 2.0)};
+        fp->x -= heldItem->pivotX;
+        ir->x += heldItem->pivotX;
+        ir->y += heldItem->pivotY;
+        fp->y -= heldItem->pivotY;
         GPU_SetShapeBlendMode(GPU_BlendPresetEnum::GPU_BLEND_ADD);
         //GPU_BlitTransformX(heldItem->texture, NULL, target, ir->x, ir->y, fp->x, fp->y, holdAngle, 1, 1);
         //SDL_RenderCopyExF(renderer, heldItem->texture, NULL, ir, holdAngle, fp, abs(holdAngle) > 90 ? SDL_FLIP_VERTICAL : SDL_FLIP_NONE);

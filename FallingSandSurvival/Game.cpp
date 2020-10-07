@@ -1712,9 +1712,10 @@ void Game::updateFrameEarly() {
             Item* i3 = new Item();
             i3->setFlag(ItemFlags::VACUUM);
             i3->vacuumParticles = {};
-            i3->surface = Textures::loadTexture("assets/objects/chisel.png");
+            i3->surface = Textures::loadTexture("assets/objects/testVacuum.png");
             i3->texture = GPU_CopyImageFromSurface(i3->surface);
             GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
+            i3->pivotX = 6;
             e->setItemInHand(i3, world);
 
             b2Filter bf = {};
@@ -2355,9 +2356,14 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                             };
 
                             int rad = 5;
+                            int clipRadSq = rad * rad;
+                            clipRadSq += rand() % clipRadSq / 4;
                             for(int xx = -rad; xx <= rad; xx++) {
                                 for(int yy = -rad; yy <= rad; yy++) {
-                                    if((yy == -rad || yy == rad) && (xx == -rad || x == rad)) continue;
+                                    if(xx*xx + yy*yy > clipRadSq) continue;
+                                    if((yy == -rad || yy == rad) && (xx == -rad || xx == rad)) {
+                                        continue;
+                                    }
 
                                     MaterialInstance tile = world->tiles[(x + xx) + (y + yy) * world->width];
                                     if(tile.mat->physicsType == PhysicsType::SOLID || tile.mat->physicsType == PhysicsType::SAND || tile.mat->physicsType == PhysicsType::SOUP) {

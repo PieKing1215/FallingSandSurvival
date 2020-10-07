@@ -40,6 +40,8 @@ public:
 
     SDL_Surface* surface = nullptr;
     GPU_Image* texture = nullptr;
+    int pivotX = 0;
+    int pivotY = 0;
     float breakSize = 16;
     std::vector<MaterialInstance> carry;
     std::vector<UInt16Point> fill;
