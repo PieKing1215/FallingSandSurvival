@@ -511,6 +511,7 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     }
     EASY_END_BLOCK;
     delete[] edgeSeen;
+    delete[] data;
     std::list<TPPLPoly> result2;
 
     TPPLPartition part;
@@ -540,14 +541,13 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
         //worldMesh = ms.extract_simple(2);
 
         EASY_BLOCK("TPPLPolyList -> vec<b2PolygonShape>");
-        b2PolygonShape** polys3 = new b2PolygonShape * [result.size()];
         std::vector<b2PolygonShape> polys2;
 
         int n = 0;
         std::for_each(result.begin(), result.end(), [&](TPPLPoly cur) {
             if((cur[0].x == cur[1].x && cur[1].x == cur[2].x) || (cur[0].y == cur[1].y && cur[1].y == cur[2].y)) return;
 
-            b2Vec2* vec = new b2Vec2[3] {
+            b2Vec2 vec[3] = {
                 {(float)cur[0].x, (float)cur[0].y},
                 {(float)cur[1].x, (float)cur[1].y},
                 {(float)cur[2].x, (float)cur[2].y}
@@ -712,6 +712,7 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     EASY_BLOCK("erase old rigidbody");
     rigidBodies.erase(std::remove(rigidBodies.begin(), rigidBodies.end(), rb), rigidBodies.end());
     EASY_END_BLOCK;
+    delete[] rb->tiles;
     delete rb;
 
 }
@@ -920,6 +921,7 @@ found: {};
     EASY_END_BLOCK;
 
     delete[] edgeSeen;
+    delete[] data;
     std::list<TPPLPoly> result;
     std::list<TPPLPoly> result2;
 
@@ -975,6 +977,10 @@ found: {};
     SDL_Surface* texture = Textures::loadTexture("assets/objects/testObject3.png");
     EASY_END_BLOCK;
 
+    if(chunk->rb) {
+        delete[] chunk->rb->tiles;
+        delete chunk->rb;
+    }
     chunk->rb = makeRigidBodyMulti(b2_staticBody, chunk->x * CHUNK_W + loadZone.x, chunk->y * CHUNK_H + loadZone.y, 0, chunk->polys, 1, 0.3, texture);
 
     EASY_BLOCK("set filters");
