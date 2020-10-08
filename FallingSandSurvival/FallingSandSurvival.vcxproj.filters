@@ -327,39 +327,6 @@
     <ClInclude Include="lib\discord_game_sdk\cpp\voice_manager.h">
       <Filter>Source Files\libraries\discord-game-sdk</Filter>
     </ClInclude>
-    <ClInclude Include="UTime.h">
-      <Filter>Source Files\util</Filter>
-    </ClInclude>
-    <ClInclude Include="Entity.h">
-      <Filter>Source Files\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="Item.h">
-      <Filter>Source Files\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="Particle.h">
-      <Filter>Source Files\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="Player.h">
-      <Filter>Source Files\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="RigidBody.h">
-      <Filter>Source Files\objects</Filter>
-    </ClInclude>
-    <ClInclude Include="Drawing.h">
-      <Filter>Source Files\vfx</Filter>
-    </ClInclude>
-    <ClInclude Include="Shaders.h">
-      <Filter>Source Files\vfx</Filter>
-    </ClInclude>
-    <ClInclude Include="Textures.h">
-      <Filter>Source Files\vfx</Filter>
-    </ClInclude>
-    <ClInclude Include="UI.h">
-      <Filter>Source Files\vfx</Filter>
-    </ClInclude>
-    <ClInclude Include="Networking.h">
-      <Filter>Source Files\net</Filter>
-    </ClInclude>
     <ClInclude Include="Populator.hpp">
       <Filter>Source Files\world\generation</Filter>
     </ClInclude>
@@ -424,6 +391,39 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="resource.h" />
+    <ClInclude Include="Drawing.hpp">
+      <Filter>Source Files\vfx</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders.hpp">
+      <Filter>Source Files\vfx</Filter>
+    </ClInclude>
+    <ClInclude Include="Textures.hpp">
+      <Filter>Source Files\vfx</Filter>
+    </ClInclude>
+    <ClInclude Include="UI.hpp">
+      <Filter>Source Files\vfx</Filter>
+    </ClInclude>
+    <ClInclude Include="UTime.hpp">
+      <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Entity.hpp">
+      <Filter>Source Files\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Item.hpp">
+      <Filter>Source Files\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Particle.hpp">
+      <Filter>Source Files\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.hpp">
+      <Filter>Source Files\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="RigidBody.hpp">
+      <Filter>Source Files\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="Networking.hpp">
+      <Filter>Source Files\net</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
