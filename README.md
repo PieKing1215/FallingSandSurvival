@@ -21,7 +21,7 @@ It’s vaguely like Terraria in that it’s a 2d side view survival.<br>
 It’s more like Noita with its simulated physics, but less “chaotic”, since dying is somewhat more impactful.<br><br>
 One of the main things is that I don’t want it to get stale like other survival games where there’s a fixed progression and repetitive world generation and items you have to craft to progress. I want it to be very procedurally generated.<br>
 <br>
-[Automatic Development Builds can be found here (Windows only).](https://github.com/PieKing1215/FallingSandSurvival/actions?query=workflow%3A%22AutoBuild+-+dev%22+branch%3Adev) <br>
+[Automatic Development Builds can be found here (Windows only).](https://github.com/PieKing1215/FallingSandSurvival/actions?query=workflow%3A%22AutoBuild+-+dev%22+branch%3Adev+is%3Asuccess) <br>
 
 ## Main ideas:
 *(note: anything is subject to change)*
