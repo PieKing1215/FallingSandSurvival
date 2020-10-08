@@ -15,6 +15,9 @@ jobs:
     # The type of runner that the job will run on
     # Want VS2017 so we use an old version
     runs-on: windows-2016
+    
+    # Don't build for commits with "[nobuild]"
+    if: "! contains(github.event.head_commit.message, '[nobuild]')"
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
