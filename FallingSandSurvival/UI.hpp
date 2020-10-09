@@ -196,3 +196,19 @@ public:
         }
     }
 };
+
+class ImageButtonNode : public UINode {
+public:
+    SDL_Surface* surface;
+    GPU_Image* texture = NULL;
+    std::function<void()> selectCallback = [](){};
+    std::function<void()> hoverCallback  = [](){};
+
+    void draw(GPU_Target* t, int transformX, int transformY);
+
+    bool onEvent(SDL_Event ev, GPU_Target* t, World* world, int transformX, int transformY);
+
+    ImageButtonNode(SDL_Rect* bounds, SDL_Surface* surface) : UINode(bounds) {
+        this->surface = surface;
+    }
+};

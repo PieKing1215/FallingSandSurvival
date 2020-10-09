@@ -632,6 +632,112 @@ int Game::init(int argc, char *argv[]) {
         EASY_END_BLOCK;
         #pragma endregion
 
+        // set up debug item ui
+        #pragma region
+        debugItemUI = new UI(new SDL_Rect {15, debugDrawUI->bounds->y + debugDrawUI->bounds->h + 5, 200, 0});
+        debugItemUI->background = new SolidBackground(0x80000000);
+        debugItemUI->drawBorder = true;
+
+        titleLabel = new UILabel(new SDL_Rect {100, 10, 1, 30}, "Items", labelFont, 0xffffff, ALIGN_CENTER);
+        debugItemUI->children.push_back(titleLabel);
+
+        UILabel* hoverItemLabel = new UILabel(new SDL_Rect {15, 40, 1, 30}, "None", uiFont, 0xffffff, ALIGN_LEFT);
+        debugItemUI->children.push_back(hoverItemLabel);
+
+        int itemIndex = 0;
+
+        ImageButtonNode* itemNode = new ImageButtonNode(new SDL_Rect {16 + (48 + 12) * (int)(itemIndex % 3), 60 + (48 + 12) * (int)(itemIndex / 3), 16, 16}, Textures::loadTexture("assets/objects/chisel.png"));
+        itemNode->bounds->w = 48;
+        itemNode->bounds->h = 48;
+        itemNode->drawBorder = false;
+        itemNode->hoverCallback = [&]() {
+            hoverItemLabel->text = "Chisel";
+            hoverItemLabel->updateTexture();
+        };
+        itemNode->selectCallback = [&]() {
+            Item* i3 = new Item();
+            i3->setFlag(ItemFlags::CHISEL);
+            i3->surface = Textures::loadTexture("assets/objects/chisel.png");
+            i3->texture = GPU_CopyImageFromSurface(i3->surface);
+            GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
+            i3->pivotX = 2;
+            world->player->setItemInHand(i3, world);
+        };
+        debugItemUI->children.push_back(itemNode);
+
+        itemIndex++;
+        itemNode = new ImageButtonNode(new SDL_Rect {16 + (48 + 12) * (int)(itemIndex % 3), 60 + (48 + 12) * (int)(itemIndex / 3), 16, 16}, Textures::loadTexture("assets/objects/testHammer.png"));
+        itemNode->bounds->w = 48;
+        itemNode->bounds->h = 48;
+        itemNode->drawBorder = false;
+        itemNode->hoverCallback = [&]() {
+            hoverItemLabel->text = "Hammer";
+            hoverItemLabel->updateTexture();
+        };
+        itemNode->selectCallback = [&]() {
+            Item* i3 = new Item();
+            i3->setFlag(ItemFlags::HAMMER);
+            i3->surface = Textures::loadTexture("assets/objects/testHammer.png");
+            i3->texture = GPU_CopyImageFromSurface(i3->surface);
+            GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
+            i3->pivotX = 2;
+            world->player->setItemInHand(i3, world);
+        };
+        debugItemUI->children.push_back(itemNode);
+
+        itemIndex++;
+        itemNode = new ImageButtonNode(new SDL_Rect {16 + (48 + 12) * (int)(itemIndex % 3), 60 + (48 + 12) * (int)(itemIndex / 3), 16, 16}, Textures::loadTexture("assets/objects/testVacuum.png"));
+        itemNode->bounds->w = 48;
+        itemNode->bounds->h = 48;
+        itemNode->drawBorder = false;
+        itemNode->hoverCallback = [&]() {
+            hoverItemLabel->text = "Vacuum";
+            hoverItemLabel->updateTexture();
+        };
+        itemNode->selectCallback = [&]() {
+            if(world->player == nullptr) return;
+
+            Item* i3 = new Item();
+            i3->setFlag(ItemFlags::VACUUM);
+            i3->surface = Textures::loadTexture("assets/objects/testVacuum.png");
+            i3->texture = GPU_CopyImageFromSurface(i3->surface);
+            GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
+            i3->pivotX = 6;
+            world->player->setItemInHand(i3, world);
+        };
+        debugItemUI->children.push_back(itemNode);
+
+        itemIndex++;
+        itemNode = new ImageButtonNode(new SDL_Rect {16 + (48 + 12) * (int)(itemIndex % 3), 60 + (48 + 12) * (int)(itemIndex / 3), 16, 16}, Textures::loadTexture("assets/objects/testBucket.png"));
+        itemNode->bounds->w = 48;
+        itemNode->bounds->h = 48;
+        itemNode->drawBorder = false;
+        itemNode->hoverCallback = [&]() {
+            hoverItemLabel->text = "Container";
+            hoverItemLabel->updateTexture();
+        };
+        itemNode->selectCallback = [&]() {
+            if(world->player == nullptr) return;
+
+            Item* i3 = new Item();
+            i3->setFlag(ItemFlags::FLUID_CONTAINER);
+            i3->surface = Textures::loadTexture("assets/objects/testBucket.png");
+            i3->capacity = 100;
+            i3->loadFillTexture(Textures::loadTexture("assets/objects/testBucket_fill.png"));
+            i3->texture = GPU_CopyImageFromSurface(i3->surface);
+            GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
+            i3->pivotX = 0;
+            world->player->setItemInHand(i3, world);
+        };
+
+        itemIndex++;
+        debugItemUI->bounds->h = 60 + (48 + 12) * ((itemIndex + 2) / 3) + 10;
+
+        debugItemUI->children.push_back(itemNode);
+
+        uis.push_back(debugItemUI);
+        #pragma endregion
+
         // create textures
         #pragma region
         EASY_BLOCK("create textures");
@@ -1564,6 +1670,7 @@ void Game::updateFrameEarly() {
     if(Controls::DEBUG_UI->get()) {
         debugUI->visible = !debugUI->visible;
         debugDrawUI->visible = !debugDrawUI->visible;
+        debugItemUI->visible = !debugItemUI->visible;
     }
 
     if(Controls::DEBUG_REFRESH->get()) {
@@ -3502,6 +3609,10 @@ void Game::renderLate() {
         EASY_BLOCK("draw debugDrawUI", RENDER_PROFILER_COLOR);
         debugDrawUI->draw(target, 0, 0);
         EASY_END_BLOCK; // draw debugDrawUI
+
+        EASY_BLOCK("draw debugItemUI", RENDER_PROFILER_COLOR);
+        debugItemUI->draw(target, 0, 0);
+        EASY_END_BLOCK; // draw debugItemUI
 
         EASY_BLOCK("draw chiselUI", RENDER_PROFILER_COLOR);
         if(chiselUI != NULL) {

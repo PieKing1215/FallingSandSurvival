@@ -154,6 +154,7 @@ public:
     vector<UI*> uis;
     UI* debugUI = nullptr;
     UI* debugDrawUI = nullptr;
+    UI* debugItemUI = nullptr;
     int brushSize = 5;
     UILabel* brushSizeLabel = nullptr;
     UI* mainMenuUI = nullptr;

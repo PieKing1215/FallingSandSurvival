@@ -489,3 +489,28 @@ bool MaterialNode::onEvent(SDL_Event ev, GPU_Target* t, World * world, int trans
     return false;
 }
 
+void ImageButtonNode::draw(GPU_Target* t, int transformX, int transformY) {
+    EASY_FUNCTION(UI_PROFILER_COLOR);
+    if(texture == NULL) {
+        texture = GPU_CopyImageFromSurface(surface);
+        GPU_SetImageFilter(texture, GPU_FILTER_NEAREST);
+    }
+
+    EASY_BLOCK("GPU_BlitScale", GPU_PROFILER_COLOR);
+    GPU_BlitScale(texture, NULL, t, bounds->x + transformX + bounds->w / 2, bounds->y + transformY + bounds->h / 2, bounds->w / texture->w, bounds->h / texture->h);
+    EASY_END_BLOCK;
+
+    UINode::draw(t, transformX, transformY);
+}
+
+bool ImageButtonNode::onEvent(SDL_Event ev, GPU_Target* t, World* world, int transformX, int transformY) {
+    EASY_FUNCTION(UI_PROFILER_COLOR);
+    if(ev.type == SDL_MOUSEBUTTONDOWN) {
+        selectCallback();
+        return true;
+    } else if(ev.type == SDL_MOUSEMOTION) {
+        hoverCallback();
+        return true;
+    }
+    return false;
+}
