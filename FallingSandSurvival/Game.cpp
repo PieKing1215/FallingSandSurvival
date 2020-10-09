@@ -1044,7 +1044,7 @@ int Game::run(int argc, char *argv[]) {
     while(true) {
         EASY_BLOCK("frame");
         now = Time::millis();
-        long long deltaTime = now - lastTime;
+        deltaTime = now - lastTime;
 
         if(networkMode != NetworkMode::SERVER) {
             #if BUILD_WITH_DISCORD
@@ -1917,6 +1917,7 @@ void Game::updateFrameEarly() {
         int y = (int)((my - ofsY - camY) / scale);
 
         bool swapped = false;
+        float hoverDelta = 10.0 * deltaTime / 1000.0;
 
         // this copies the vector
         vector<RigidBody*> rbs = world->rigidBodies;
@@ -1924,7 +1925,7 @@ void Game::updateFrameEarly() {
             RigidBody* cur = rbs[i];
 
             if(swapped) {
-                cur->hover = (float)std::fmax(0, cur->hover - 0.06);
+                cur->hover = (float)std::fmax(0, cur->hover - hoverDelta);
                 continue;
             }
 
@@ -1955,9 +1956,9 @@ void Game::updateFrameEarly() {
 
             if(connect) {
                 swapped = true;
-                cur->hover = (float)std::fmin(1, cur->hover + 0.06);
+                cur->hover = (float)std::fmin(1, cur->hover + hoverDelta);
             } else {
-                cur->hover = (float)std::fmax(0, cur->hover - 0.06);
+                cur->hover = (float)std::fmax(0, cur->hover - hoverDelta);
             }
         }
         #pragma endregion
@@ -2223,7 +2224,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
             Uint8 outlineAlpha = (Uint8)(cur->hover * 255);
             if(outlineAlpha > 0) {
                 SDL_Color col = {0xff, 0xff, 0x80, outlineAlpha};
-                GPU_SetShapeBlendMode(GPU_BLEND_NORMAL); // SDL_BLENDMODE_BLEND
+                GPU_SetShapeBlendMode(GPU_BLEND_NORMAL_FACTOR_ALPHA); // SDL_BLENDMODE_BLEND
                 for(auto& l : cur->outline) {
                     b2Vec2* vec = new b2Vec2[l.GetNumPoints()];
                     for(int j = 0; j < l.GetNumPoints(); j++) {

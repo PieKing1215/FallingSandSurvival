@@ -194,6 +194,7 @@ public:
     long long lastLoadingTick = 0;
     long long now = 0;
     long long startTime = 0;
+    long long deltaTime;
     long mspt = 0;
     uint32 loadingOnColor = 0;
     uint32 loadingOffColor = 0;

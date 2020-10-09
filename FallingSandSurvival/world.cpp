@@ -665,6 +665,7 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
             rbn->body->SetAngularVelocity(rb->body->GetAngularVelocity());
             rbn->outline = shapes;
             rbn->texNeedsUpdate = true;
+            rbn->hover = rb->hover;
 
             bool weld = polys2sWeld[b];
             rbn->back = weld;
