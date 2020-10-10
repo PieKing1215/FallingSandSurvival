@@ -38,7 +38,7 @@ jobs:
         env:
           cache-name: cache-conan-modules
         with:
-          path: "./x64/Release/.conan"
+          path: "C:/Users/runneradmin/.conan"
           key: ${{ runner.os }}-builder-${{ env.cache-name }}-${{ hashFiles('conanfile.py') }}
           restore-keys: ${{ runner.os }}-builder-${{ env.cache-name }}-
 
