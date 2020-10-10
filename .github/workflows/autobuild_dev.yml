@@ -42,7 +42,7 @@ jobs:
         env:
           cache-name: cache-conan-modules
         with:
-          path: C:/Users/runneradmin/.conan
+          path: /Users/runneradmin/.conan
           key: ${{ runner.os }}-builder-${{ env.cache-name }}-${{ hashFiles('./FallingSandSurvival/conanfile.txt') }}-b
           restore-keys: ${{ runner.os }}-builder-${{ env.cache-name }}-
 
