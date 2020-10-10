@@ -32,7 +32,7 @@ jobs:
         id: cache-conan
         uses: actions/cache@v2.1.2
         env:
-          CONAN_USER_HOME: "C:\\Users\\runneradmin\\.conan"
+          CONAN_USER_HOME: "C:/Users/runneradmin/.conan"
           cache-name: cache-conan-modules
         with:
           path: ${{ env.CONAN_USER_HOME }}
