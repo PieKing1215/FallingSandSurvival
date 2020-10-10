@@ -28,6 +28,16 @@ jobs:
         run: pip install conan
         shell: bash
 
+      - name: Cache for .conan
+        id: cache-conan
+        uses: actions/cache@v2.1.2
+        env:
+          cache-name: cache-conan-modules
+        with:
+          path: ${{ env.CONAN_USER_HOME }}
+          key: ${{ runner.os }}-builder-${{ env.cache-name }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: ${{ runner.os }}-builder-${{ env.cache-name }}-
+
       - name: Run setup.sh
         run: yes n | ./setup.sh || if [[ $? -eq 141 ]]; then true; else exit $?; fi
         shell: bash
