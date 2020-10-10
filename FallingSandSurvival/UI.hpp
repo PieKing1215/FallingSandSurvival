@@ -37,6 +37,7 @@ public:
 class UINode {
 public:
     bool visible = true;
+    std::function<void(bool, bool)> setVisibleCallback = [](bool wasVis, bool nowVis) {};
 
     SDL_Rect* bounds;
     bool drawBorder = false;
@@ -51,6 +52,12 @@ public:
     virtual bool onEvent(SDL_Event ev, GPU_Target* t, World* world, int transformX, int transformY) {
         return false;
     };
+
+    void setVisible(bool visible) {
+        bool wasVis = this->visible;
+        this->visible = visible;
+        setVisibleCallback(wasVis, visible);
+    }
 
     UINode(SDL_Rect* bounds) {
         this->bounds = bounds;

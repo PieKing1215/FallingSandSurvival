@@ -84,6 +84,7 @@ public:
     std::vector<Particle *> particles;
     uint16_t width = 0;
     uint16_t height = 0;
+    void init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* renderer, CAudioEngine* audioEngine, int netMode, WorldGenerator* generator);
     void init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* renderer, CAudioEngine* audioEngine, int netMode);
     MaterialInstance getTile(int x, int y);
     void setTile(int x, int y, MaterialInstance type);

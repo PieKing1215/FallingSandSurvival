@@ -158,6 +158,7 @@ public:
     int brushSize = 5;
     UILabel* brushSizeLabel = nullptr;
     UI* mainMenuUI = nullptr;
+    UI* createWorldUI = nullptr;
 
     UI* chiselUI = nullptr;
 

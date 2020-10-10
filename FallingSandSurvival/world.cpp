@@ -36,6 +36,10 @@
 bool TestPointOpt(b2PolygonShape* sh, float x, float y);
 
 void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode) {
+    init(worldPath, w, h, target, audioEngine, netMode, new MaterialTestGenerator());
+}
+
+void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode, WorldGenerator* generator) {
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
     this->worldName = worldPath;
     EASY_BLOCK("makedir");
@@ -68,13 +72,13 @@ void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CA
     light = new float[width * height];
     EASY_END_BLOCK;
 
+
+    EASY_BLOCK("init generator");
+    gen = generator;
+    EASY_END_BLOCK;
+
     EASY_BLOCK("init populators");
-    populators = {
-        /*new CavePopulator(),
-        new OrePopulator(),
-        new CobblePopulator(),
-        new TreePopulator()*/
-    };
+    populators = gen->getPopulators();
     EASY_END_BLOCK;
 
     EASY_BLOCK("init hasPopulator");
@@ -154,11 +158,6 @@ tooClose: {}
             //particles.push_back(new Particle(x, y, 0, 0, 0, 0.1, 0xffff00));
         }
     }
-    EASY_END_BLOCK;
-
-    EASY_BLOCK("init generator");
-    //gen = new DefaultGenerator();
-    gen = new MaterialTestGenerator();
     EASY_END_BLOCK;
 
     EASY_BLOCK("init box2d");

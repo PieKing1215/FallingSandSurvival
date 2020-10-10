@@ -2,7 +2,10 @@
 #include "Game.hpp"
 #include <iterator>
 #include <filesystem>
-#include <regex> 
+#include <regex>
+
+#include "DefaultGenerator.cpp"
+#include "MaterialTestGenerator.cpp"
 
 #define BUILD_WITH_EASY_PROFILER
 #include <easy/profiler.h>
@@ -417,35 +420,14 @@ int Game::init(int argc, char *argv[]) {
         mainMenuUI->children.push_back(connectButton);
 
 
-        UIButton* mainMenuNewButton = new UIButton(new SDL_Rect {200 - mainMenuButtonsWidth / 2, 60 + mainMenuButtonsYOffset, mainMenuButtonsWidth, 40}, "New", labelFont, 0xffffff, ALIGN_CENTER);
+        int mainMenuNewButtonWidth = 150;
+        UIButton* mainMenuNewButton = new UIButton(new SDL_Rect {200 - mainMenuNewButtonWidth / 2, 50 + mainMenuButtonsYOffset, mainMenuNewButtonWidth, 36}, "New World", labelFont, 0xffffff, ALIGN_CENTER);
         mainMenuNewButton->drawBorder = true;
         mainMenuUI->children.push_back(mainMenuNewButton);
 
         mainMenuNewButton->selectCallback = [&]() {
-            char* wn = (char*)"newWorld";
-            logInfo("Selected world: {}", wn);
             mainMenuUI->visible = false;
-            state = LOADING;
-            stateAfterLoad = INGAME;
-
-            EASY_BLOCK("Close world");
-            delete world;
-            world = nullptr;
-            EASY_END_BLOCK;
-
-            EASY_BLOCK("Load world");
-            world = new World();
-            world->init((char*)getWorldDir(wn).c_str(), (int)ceil(WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode);
-
-            EASY_BLOCK("Queue chunk loading");
-            logInfo("Queueing chunk loading...");
-            for(int x = -CHUNK_W * 4; x < world->width + CHUNK_W * 4; x += CHUNK_W) {
-                for(int y = -CHUNK_H * 3; y < world->height + CHUNK_H * 8; y += CHUNK_H) {
-                    world->queueLoadChunk(x / CHUNK_W, y / CHUNK_H, true, true);
-                }
-            }
-            EASY_END_BLOCK;
-            EASY_END_BLOCK;
+            createWorldUI->setVisible(true);
         };
 
         int nMainMenuButtons = 1;
@@ -479,6 +461,7 @@ int Game::init(int argc, char *argv[]) {
             worldButton->selectCallback = [&, worldName]() {
                 logInfo("Selected world: {}", worldName.c_str());
                 mainMenuUI->visible = false;
+                createWorldUI->setVisible(false);
 
                 fadeOutStart = now;
                 fadeOutLength = 250;
@@ -519,6 +502,170 @@ int Game::init(int argc, char *argv[]) {
 
         uis.push_back(mainMenuUI);
         EASY_END_BLOCK;
+        #pragma endregion
+
+        // set up create world ui
+        #pragma region
+        createWorldUI = new UI(new SDL_Rect {WIDTH / 2 - 200, HEIGHT / 2 - 250, 400, 350});
+        createWorldUI->background = new SolidBackground(0x80000000);
+        createWorldUI->drawBorder = true;
+        createWorldUI->visible = false;
+
+        UILabel* createWorldTitleLabel = new UILabel(new SDL_Rect {200, 10, 100, 30}, "Create World", labelFont, 0xffffff, ALIGN_CENTER);
+        createWorldUI->children.push_back(createWorldTitleLabel);
+
+        ImageButtonNode* createMaterialTestGen = new ImageButtonNode(new SDL_Rect {createWorldUI->bounds->w / 2 - 100 - 24, 170, 100, 100}, Textures::loadTexture("assets/ui/prev_materialtest.png"));
+        createMaterialTestGen->drawBorder = true;
+        createWorldUI->children.push_back(createMaterialTestGen);
+        UILabel* createMaterialTestLabel = new UILabel(new SDL_Rect {createMaterialTestGen->bounds->x + createMaterialTestGen->bounds->w / 2, createMaterialTestGen->bounds->y - 20, 0, 30}, "Material Test World", uiFont, 0xffffff, ALIGN_CENTER);
+        createWorldUI->children.push_back(createMaterialTestLabel);
+
+        ImageButtonNode* createDefaultGen = new ImageButtonNode(new SDL_Rect {createWorldUI->bounds->w / 2 + 24, 170, 100, 100}, Textures::loadTexture("assets/ui/prev_default.png"));
+        createDefaultGen->drawBorder = true;
+        createWorldUI->children.push_back(createDefaultGen);
+        UILabel* createDefaultLabel = new UILabel(new SDL_Rect {createDefaultGen->bounds->x + createDefaultGen->bounds->w / 2, createDefaultGen->bounds->y - 20, 0, 30}, "Default World (WIP)", uiFont, 0xffffff, ALIGN_CENTER);
+        createWorldUI->children.push_back(createDefaultLabel);
+
+        createMaterialTestGen->selectCallback = [&]() {
+            createMaterialTestGen->drawBorder = true;
+            createMaterialTestLabel->textColor = 0xffffff;
+            createMaterialTestLabel->updateTexture();
+            createDefaultGen->drawBorder = false;
+            createDefaultLabel->textColor = 0xcccccc;
+            createDefaultLabel->updateTexture();
+        };
+
+        createDefaultGen->selectCallback = [&]() {
+            createMaterialTestGen->drawBorder = false;
+            createMaterialTestLabel->textColor = 0xcccccc;
+            createMaterialTestLabel->updateTexture();
+            createDefaultGen->drawBorder = true;
+            createDefaultLabel->textColor = 0xffffff;
+            createDefaultLabel->updateTexture();
+        };
+
+        createMaterialTestGen->selectCallback();
+
+        int createWorldWidth = 350;
+        UIButton* createWorldButton;
+        UILabel* worldFolderLabel;
+        UITextArea* worldNameInput = new UITextArea(new SDL_Rect {200 - createWorldWidth / 2, 70, createWorldWidth, 35}, "New World", "New World", labelFont);
+        worldNameInput->maxLength = 24;
+        worldNameInput->callback = [&](std::string text) {
+            regex trimWhitespaceRegex("^ *(.+?) *$");
+            text = regex_replace(text, trimWhitespaceRegex, "$1");
+            if(text.length() == 0 || text == " ") {
+                worldFolderLabel->text = "Saved in: ";
+                worldFolderLabel->updateTexture();
+                createWorldButton->disabled = true;
+                return;
+            }
+
+            regex worldNameInputRegex("^[\\x20-\\x7E]+$");
+            createWorldButton->disabled = !regex_match(text, worldNameInputRegex);
+
+            regex worldFolderRegex("[\\/\\\\:*?\"<>|.]");
+
+            std::string worldFolderName = regex_replace(text, worldFolderRegex, "_");
+            std::string folder = getWorldDir(worldFolderName);
+            struct stat buffer;
+            bool exists = (stat(folder.c_str(), &buffer) == 0);
+
+            std::string newWorldFolderName = worldFolderName;
+            int i = 2;
+            while(exists) {
+                newWorldFolderName = worldFolderName + " (" + std::to_string(i) + ")";
+                folder = getWorldDir(newWorldFolderName);
+
+                exists = (stat(folder.c_str(), &buffer) == 0);
+
+                i++;
+            }
+            
+
+            worldFolderLabel->text = "Saved in: " + newWorldFolderName;
+            worldFolderLabel->updateTexture();
+        };
+        createWorldUI->children.push_back(worldNameInput);
+
+        createWorldUI->setVisibleCallback = [&](bool wasVis, bool nowVis) {
+            if(nowVis && !wasVis) {
+                createWorldUI->bounds->x = mainMenuUI->bounds->x;
+                createWorldUI->bounds->y = mainMenuUI->bounds->y;
+                worldNameInput->text = "New World";
+                worldNameInput->dirty = true;
+                worldNameInput->callback(worldNameInput->text);
+            }
+        };
+
+        UILabel* worldNameLabel = new UILabel(new SDL_Rect {worldNameInput->bounds->x, worldNameInput->bounds->y - 20, 100, 20}, "World Name", uiFont, 0xffffff, ALIGN_LEFT);
+        createWorldUI->children.push_back(worldNameLabel);
+
+        worldFolderLabel = new UILabel(new SDL_Rect {worldNameInput->bounds->x, worldNameInput->bounds->y + worldNameInput->bounds->h + 2, createWorldWidth, 20}, "Saved in: New World", uiFont, 0xcccccc, ALIGN_LEFT);
+        createWorldUI->children.push_back(worldFolderLabel);
+
+        UIButton* createWorldBackButton = new UIButton(new SDL_Rect {8, createWorldUI->bounds->h - 20 - 8, 60, 20}, "Back", uiFont, 0xffffff, ALIGN_CENTER);
+        createWorldBackButton->drawBorder = true;
+        createWorldBackButton->selectCallback = [&]() {
+            mainMenuUI->visible = true;
+            createWorldUI->setVisible(false);
+        };
+        createWorldUI->children.push_back(createWorldBackButton);
+
+        createWorldButton = new UIButton(new SDL_Rect {createWorldUI->bounds->w - 60 - 8, createWorldUI->bounds->h - 20 - 8, 60, 20}, "Create", uiFont, 0xffffff, ALIGN_CENTER);
+        createWorldButton->drawBorder = true;
+        createWorldButton->disabled = true;
+        createWorldButton->selectCallback = [&]() {
+            std::string pref = "Saved in: ";
+
+            std::string worldName = worldFolderLabel->text.substr(pref.length());
+            char* wn = (char*)worldName.c_str();
+
+            std::string worldTitle = worldNameInput->text;
+            regex trimWhitespaceRegex("^ *(.+?) *$");
+            worldTitle = regex_replace(worldTitle, trimWhitespaceRegex, "$1");
+
+            logInfo("Creating world named \"{}\" at \"{}\"", worldTitle, getWorldDir(wn));
+            mainMenuUI->visible = false;
+            createWorldUI->setVisible(false);
+            state = LOADING;
+            stateAfterLoad = INGAME;
+
+            EASY_BLOCK("Close world");
+            delete world;
+            world = nullptr;
+            EASY_END_BLOCK;
+
+            WorldGenerator* generator;
+
+            if(createMaterialTestGen->drawBorder && !createDefaultGen->drawBorder) {
+                generator = new MaterialTestGenerator();
+            }else if(!createMaterialTestGen->drawBorder && createDefaultGen->drawBorder) {
+                generator = new DefaultGenerator();
+            } else {
+                // create world UI is in invalid state
+                generator = new MaterialTestGenerator();
+            }
+
+            EASY_BLOCK("Load world");
+            world = new World();
+            world->init((char*)getWorldDir(wn).c_str(), (int)ceil(WIDTH / 3 / (double)CHUNK_W)* CHUNK_W + CHUNK_W * 3, (int)ceil(HEIGHT / 3 / (double)CHUNK_H)* CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode, generator);
+
+            EASY_BLOCK("Queue chunk loading");
+            logInfo("Queueing chunk loading...");
+            for(int x = -CHUNK_W * 4; x < world->width + CHUNK_W * 4; x += CHUNK_W) {
+                for(int y = -CHUNK_H * 3; y < world->height + CHUNK_H * 8; y += CHUNK_H) {
+                    world->queueLoadChunk(x / CHUNK_W, y / CHUNK_H, true, true);
+                }
+            }
+            EASY_END_BLOCK;
+            EASY_END_BLOCK;
+
+        };
+        createWorldUI->children.push_back(createWorldButton);
+
+        worldNameInput->callback(worldNameInput->text);
+        uis.push_back(createWorldUI);
         #pragma endregion
 
         // set up debug ui
@@ -3633,10 +3780,16 @@ void Game::renderLate() {
                 chiselUI->draw(target, 0, 0);
             }
         }
-        EASY_END_BLOCK; // draw mainMenuUI
+        EASY_END_BLOCK; // draw chiselUI
         EASY_BLOCK("draw mainMenuUI", RENDER_PROFILER_COLOR);
         //if (state == MAIN_MENU) { // handled by setting mainMenuUI->visible
         mainMenuUI->draw(target, 0, 0);
+        //}
+        EASY_END_BLOCK;
+
+        EASY_BLOCK("draw createWorldUI", RENDER_PROFILER_COLOR);
+        //if (state == MAIN_MENU) { // handled by setting createWorldUI->visible
+        createWorldUI->draw(target, 0, 0);
         //}
         EASY_END_BLOCK;
         EASY_END_BLOCK; // draw ui

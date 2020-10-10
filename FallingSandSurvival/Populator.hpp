@@ -1,3 +1,4 @@
+#pragma once
 
 #include <vector>
 #ifndef INC_World
@@ -6,6 +7,8 @@
 
 
 #define INC_Populator
+
+class World;
 
 class Populator {
 public:

@@ -99,7 +99,7 @@ bool UINode::checkEvent(SDL_Event ev, GPU_Target* t, World* world, int transform
 void UILabel::draw(GPU_Target* t, int transformX, int transformY) {
     EASY_FUNCTION(UI_PROFILER_COLOR);
     if(!visible) return;
-
+    if(surface == NULL) return;
     //drawText(r, text.c_str(), font, bounds->x + transformX, bounds->y + transformY, (textColor >> 16) & 0xff, (textColor >> 8) & 0xff, (textColor >> 0) & 0xff, 0, 0, 0, align);
 
     if(texture == NULL) {
@@ -141,7 +141,7 @@ bool UIButton::onEvent(SDL_Event ev, GPU_Target* t, World * world, int transform
         //printf("hovering = %s\n", hovering ? "true" : "false");
 
         //hoverCallback();
-        return hovered;
+        return false;
     }
     return false;
 }
@@ -164,20 +164,30 @@ void UIButton::draw(GPU_Target* t, int transformX, int transformY) {
     }
 
     if(textureDisabled == NULL) {
-        textureDisabled = GPU_CopyImageFromSurface(surfaceDisabled);
-        GPU_SetImageFilter(textureDisabled, GPU_FILTER_NEAREST);
+        if(surfaceDisabled == NULL) {
+            textureDisabled = NULL;
+        } else {
+            textureDisabled = GPU_CopyImageFromSurface(surfaceDisabled);
+            GPU_SetImageFilter(textureDisabled, GPU_FILTER_NEAREST);
+        }
     }
 
-    if(texture == NULL) {
-        texture = GPU_CopyImageFromSurface(surface);
-        GPU_SetImageFilter(texture, GPU_FILTER_NEAREST);
+    if(texture == NULL){
+        if(surface == NULL) {
+            surface = NULL;
+        } else {
+            texture = GPU_CopyImageFromSurface(surface);
+            GPU_SetImageFilter(texture, GPU_FILTER_NEAREST);
+        }
     }
 
     if(surface != NULL) {
         EASY_BLOCK("draw text", UI_PROFILER_COLOR);
         GPU_Image* tex = disabled ? textureDisabled : texture;
 
-        GPU_Blit(tex, NULL, t, bounds->x + transformX + 1 - align * surface->w / 2 + bounds->w / 2 + surface->w * 0.5, bounds->y + transformY + 1 + surface->h * 0.5);
+        if(tex != NULL) {
+            GPU_Blit(tex, NULL, t, bounds->x + transformX + 1 - align * surface->w / 2 + bounds->w / 2 + surface->w * 0.5, bounds->y + transformY + 1 + surface->h * 0.5);
+        }
         EASY_END_BLOCK;
     }
 
@@ -241,7 +251,7 @@ void UITextArea::draw(GPU_Target * t, int transformX, int transformY) {
             dirty = false;
         }
 
-        Drawing::drawText(t, textParams, (int)tb.x + 1, (int)tb.y + 1, ALIGN_LEFT);
+        Drawing::drawText(t, textParams, (int)tb.x + 1 + 2, (int)tb.y + 1, ALIGN_LEFT);
 
         std::string precursor = text.substr(0, cursorIndex);
         int w, h;
@@ -257,12 +267,12 @@ void UITextArea::draw(GPU_Target * t, int transformX, int transformY) {
             dirty = false;
         }
 
-        Drawing::drawText(t, textParams, (int)tb.x + 1, (int)tb.y + 2, false, ALIGN_LEFT);
+        Drawing::drawText(t, textParams, (int)tb.x + 1 + 2, (int)tb.y + 2, false, ALIGN_LEFT);
     }
 
     if(focused && (Time::millis() - lastCursorTimer) % 1000 < 500) {
-        GPU_Line(t, tb.x + 3 + cursorX - 1, tb.y + 2 + 2, tb.x + 2 + cursorX - 1, tb.y + 2 + TTF_FontHeight(font), {0xff, 0xff, 0xff, 0xff});
-        GPU_Line(t, tb.x + 3 + cursorX, tb.y + 2 + 2, tb.x + 2 + cursorX, tb.y + 2 + TTF_FontHeight(font), {0xaa, 0xaa, 0xaa, 0x80});
+        GPU_Line(t, tb.x + 3 + cursorX - 1 + 2, tb.y + 2 + 2, tb.x + 2 + cursorX - 1 + 2, tb.y + 2 + TTF_FontHeight(font), {0xff, 0xff, 0xff, 0xff});
+        GPU_Line(t, tb.x + 3 + cursorX + 2, tb.y + 2 + 2, tb.x + 2 + cursorX + 2, tb.y + 2 + TTF_FontHeight(font), {0xaa, 0xaa, 0xaa, 0x80});
     }
 
     UINode::draw(t, transformX, transformY);
@@ -303,7 +313,7 @@ bool UITextArea::onEvent(SDL_Event ev, GPU_Target * t, World * world, int transf
                         logError("TTF_SizeText failed: {}", TTF_GetError());
                     } else {
                         accW += w;
-                        if(ev.button.x + 3 < accW + (bounds->x + transformX) + 2) {
+                        if(ev.button.x + 3 < accW + (bounds->x + transformX) + 2 - 2) {
                             cursorIndex = i;
                             found = true;
                             break;

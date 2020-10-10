@@ -7,6 +7,8 @@
 #include "Textures.hpp"
 #endif
 
+#include "Populators.cpp"
+
 class MaterialTestGenerator : public WorldGenerator {
     void WorldGenerator::generateChunk(World* world, Chunk* ch) {
         MaterialInstance* prop = new MaterialInstance[CHUNK_W * CHUNK_H];
@@ -51,5 +53,9 @@ class MaterialTestGenerator : public WorldGenerator {
         ch->tiles = prop;
         ch->layer2 = layer2;
         ch->background = background;
+    }
+
+    std::vector<Populator*> WorldGenerator::getPopulators() {
+        return {};
     }
 };

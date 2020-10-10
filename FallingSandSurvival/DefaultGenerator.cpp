@@ -7,6 +7,8 @@
 #include "Textures.hpp"
 #endif
 
+#include "Populators.cpp"
+
 class DefaultGenerator : public WorldGenerator {
 
     int getBaseHeight(World* world, int x, Chunk* ch) {
@@ -211,5 +213,14 @@ class DefaultGenerator : public WorldGenerator {
         ch->tiles = prop;
         ch->layer2 = layer2;
         ch->background = background;
+    }
+
+    std::vector<Populator*> WorldGenerator::getPopulators() {
+        return {
+            new CavePopulator(),
+            new OrePopulator(),
+            new CobblePopulator()/*,
+            new TreePopulator()*/
+        };
     }
 };
