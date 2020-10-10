@@ -27,16 +27,12 @@ jobs:
       - name: Install Conan
         run: pip install conan
         shell: bash
-        
-      - name: Print Conan home
-        run: conan config home
-        shell: bash
 
       - name: Cache for .conan
         id: cache-conan
         uses: actions/cache@v2.1.2
         env:
-          #CONAN_USER_HOME: "${{ github.workspace }}/release/"
+          CONAN_USER_HOME: "C:\\Users\\runneradmin\\.conan"
           cache-name: cache-conan-modules
         with:
           path: ${{ env.CONAN_USER_HOME }}
