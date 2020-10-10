@@ -2211,6 +2211,9 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
             GPU_Rect r = {x, y, (float)cur->surface->w, (float)cur->surface->h};
 
             if(cur->texNeedsUpdate) {
+                if(cur->texture != nullptr) {
+                    GPU_FreeImage(cur->texture);
+                }
                 cur->texture = GPU_CopyImageFromSurface(cur->surface);
                 GPU_SetImageFilter(cur->texture, GPU_FILTER_NEAREST);
                 cur->texNeedsUpdate = false;
@@ -2670,6 +2673,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                 }
             }
 
+            GPU_FreeImage(cur->texture);
             cur->texture = GPU_CopyImageFromSurface(cur->surface);
             GPU_SetImageFilter(cur->texture, GPU_FILTER_NEAREST);
 
@@ -3481,6 +3485,8 @@ void Game::renderLate() {
         if(dt_fps.w == -1) {
             char buffFps[20];
             snprintf(buffFps, sizeof(buffFps), "%d FPS", fps);
+            if(dt_fps.t1 != nullptr) GPU_FreeImage(dt_fps.t1);
+            if(dt_fps.t2 != nullptr) GPU_FreeImage(dt_fps.t2);
             dt_fps = Drawing::drawTextParams(target, buffFps, font16, WIDTH - 4, 2, 0xff, 0xff, 0xff, ALIGN_RIGHT);
         }
 
@@ -3556,6 +3562,8 @@ void Game::renderLate() {
                     char buff[20];
                     snprintf(buff, sizeof(buff), "%d", i * 25);
                     std::string buffAsStdStr = buff;
+                    if(dt_frameGraph[i].t1 != nullptr) GPU_FreeImage(dt_frameGraph[i].t1);
+                    if(dt_frameGraph[i].t2 != nullptr) GPU_FreeImage(dt_frameGraph[i].t2);
                     dt_frameGraph[i] = Drawing::drawTextParams(target, buffAsStdStr.c_str(), font14, WIDTH - 20, HEIGHT - 15 - (i * 25) - 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
                 }
 
@@ -3638,14 +3646,20 @@ void Game::renderLate() {
         if(dt_versionInfo1.w == -1) {
             char buffDevBuild[40];
             snprintf(buffDevBuild, sizeof(buffDevBuild), "Development Build");
+            if(dt_versionInfo1.t1 != nullptr) GPU_FreeImage(dt_versionInfo1.t1);
+            if(dt_versionInfo1.t2 != nullptr) GPU_FreeImage(dt_versionInfo1.t2);
             dt_versionInfo1 = Drawing::drawTextParams(target, buffDevBuild, font16, 4, HEIGHT - 32 - 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
 
             char buffVersion[40];
             snprintf(buffVersion, sizeof(buffVersion), "Version %s - dev", VERSION);
+            if(dt_versionInfo2.t1 != nullptr) GPU_FreeImage(dt_versionInfo2.t1);
+            if(dt_versionInfo2.t2 != nullptr) GPU_FreeImage(dt_versionInfo2.t2);
             dt_versionInfo2 = Drawing::drawTextParams(target, buffVersion, font16, 4, HEIGHT - 32, 0xff, 0xff, 0xff, ALIGN_LEFT);
 
             char buffBuildDate[40];
             snprintf(buffBuildDate, sizeof(buffBuildDate), "%s : %s", __DATE__, __TIME__);
+            if(dt_versionInfo3.t1 != nullptr) GPU_FreeImage(dt_versionInfo3.t1);
+            if(dt_versionInfo3.t2 != nullptr) GPU_FreeImage(dt_versionInfo3.t2);
             dt_versionInfo3 = Drawing::drawTextParams(target, buffBuildDate, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
         }
 

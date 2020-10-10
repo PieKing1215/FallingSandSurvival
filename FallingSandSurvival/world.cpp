@@ -713,7 +713,10 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     EASY_BLOCK("erase old rigidbody");
     rigidBodies.erase(std::remove(rigidBodies.begin(), rigidBodies.end(), rb), rigidBodies.end());
     EASY_END_BLOCK;
+
     delete[] rb->tiles;
+    GPU_FreeImage(rb->texture);
+    SDL_FreeSurface(rb->surface);
     delete rb;
 
 }
@@ -980,6 +983,8 @@ found: {};
 
     if(chunk->rb) {
         delete[] chunk->rb->tiles;
+        GPU_FreeImage(chunk->rb->texture);
+        SDL_FreeSurface(chunk->rb->surface);
         delete chunk->rb;
     }
     chunk->rb = makeRigidBodyMulti(b2_staticBody, chunk->x * CHUNK_W + loadZone.x, chunk->y * CHUNK_H + loadZone.y, 0, chunk->polys, 1, 0.3, texture);
