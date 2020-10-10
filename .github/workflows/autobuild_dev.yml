@@ -35,6 +35,10 @@ jobs:
       - name: LS Conan home
         run: ls C:/Users/runneradmin/.conan
         shell: bash
+        
+      - name: Print current path
+        run: echo $PWD
+        shell: bash
 
       - name: Cache for .conan
         id: cache-conan
@@ -42,8 +46,8 @@ jobs:
         env:
           cache-name: cache-conan-modules
         with:
-          path: /Users/runneradmin/.conan
-          key: ${{ runner.os }}-builder-${{ env.cache-name }}-${{ hashFiles('./FallingSandSurvival/conanfile.txt') }}-b
+          path: /c/Users/runneradmin/.conan
+          key: ${{ runner.os }}-builder-${{ env.cache-name }}-${{ hashFiles('./FallingSandSurvival/conanfile.txt') }}-c
           restore-keys: ${{ runner.os }}-builder-${{ env.cache-name }}-
 
       - name: Run Conan install
