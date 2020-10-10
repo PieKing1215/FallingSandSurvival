@@ -31,6 +31,10 @@ jobs:
       - name: Print Conan home
         run: conan config home
         shell: bash
+        
+      - name: LS Conan home
+        run: ls C:/Users/runneradmin/.conan
+        shell: bash
 
       - name: Cache for .conan
         id: cache-conan
