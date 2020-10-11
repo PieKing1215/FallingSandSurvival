@@ -32,6 +32,16 @@ jobs:
         run: conan config home
         shell: bash
         
+      - name: Change Conan home
+        run: |
+          CONAN_USER_HOME='/d/a/FallingSandSurvival/conanhome/'
+          export CONAN_USER_HOME
+        shell: bash
+        
+      - name: Print Conan home
+        run: conan config home
+        shell: bash
+        
       - name: LS Conan home
         run: ls C:/Users/runneradmin/.conan
         shell: bash
@@ -46,7 +56,7 @@ jobs:
         env:
           cache-name: cache-conan-modules
         with:
-          path: /c/Users/runneradmin/.conan
+          path: ${{ env.CONAN_USER_HOME }}
           key: ${{ runner.os }}-builder-${{ env.cache-name }}-${{ hashFiles('./FallingSandSurvival/conanfile.txt') }}-c
           restore-keys: ${{ runner.os }}-builder-${{ env.cache-name }}-
 
