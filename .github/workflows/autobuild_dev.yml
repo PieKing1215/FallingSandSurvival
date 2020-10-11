@@ -31,11 +31,21 @@ jobs:
       - name: Print Conan home
         run: conan config home
         shell: bash
+
+      - name: Print env Conan home
+        run: echo $CONAN_USER_HOME
+        shell: bash
         
       - name: Change Conan home
-        run: |
-          CONAN_USER_HOME='/d/a/FallingSandSurvival/conanhome/'
-          export CONAN_USER_HOME
+        run: CONAN_USER_HOME='/d/a/FallingSandSurvival/conanhome/'
+        shell: bash
+        
+      - name: Change Conan home
+        run: export CONAN_USER_HOME
+        shell: bash
+
+      - name: Print env Conan home
+        run: echo $CONAN_USER_HOME
         shell: bash
         
       - name: Print Conan home
