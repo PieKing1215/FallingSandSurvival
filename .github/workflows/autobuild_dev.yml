@@ -46,14 +46,14 @@ jobs:
           key: ${{ runner.os }}-builder-${{ env.cache-name }}-${{ hashFiles('./FallingSandSurvival/conanfile.txt') }}-c
           restore-keys: ${{ runner.os }}-builder-${{ env.cache-name }}-
 
+      - name: Run setup.sh
+        run: yes n | ./setup.sh || if [[ $? -eq 141 ]]; then true; else exit $?; fi
+        shell: bash
+
       - name: Run Conan install
         run: conan install ./FallingSandSurvival/conanfile.txt -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.toolset=v141 -s compiler.version=15 -s compiler.runtime=MD  --build=missing --update
         shell: bash
 
-#      - name: Run setup.sh
-#        run: yes n | ./setup.sh || if [[ $? -eq 141 ]]; then true; else exit $?; fi
-#        shell: bash
-#        
 #      - name: Run Conan install
 #        run: conan install ./FallingSandSurvival/conanfile.txt -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.toolset=v141 -s compiler.version=15 -s compiler.runtime=MD  --build=missing --update
 #        shell: bash
