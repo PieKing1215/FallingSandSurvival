@@ -27,33 +27,9 @@ jobs:
       - name: Install Conan
         run: pip install conan
         shell: bash
-        
-      - name: Print Conan home
-        run: conan config home
-        shell: bash
 
-      - name: Print env Conan home
-        run: echo $CONAN_USER_HOME
-        shell: bash
-        
       - name: Change Conan home
         run: echo "CONAN_USER_HOME=D:/a/FallingSandSurvival/conanhome/" >> $GITHUB_ENV
-        shell: bash
-
-      - name: Print env Conan home
-        run: echo $CONAN_USER_HOME
-        shell: bash
-        
-      - name: Print Conan home
-        run: conan config home
-        shell: bash
-        
-      - name: LS Conan home
-        run: ls C:/Users/runneradmin/.conan
-        shell: bash
-        
-      - name: Print current path
-        run: echo $PWD
         shell: bash
 
       - name: Cache for .conan
@@ -66,43 +42,35 @@ jobs:
           key: ${{ runner.os }}-builder-${{ env.cache-name }}-${{ hashFiles('./FallingSandSurvival/conanfile.txt') }}-c
           restore-keys: ${{ runner.os }}-builder-${{ env.cache-name }}-
 
-      - name: Run Conan install
-        run: conan install zlib/1.2.11@conan/stable -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.toolset=v141 -s compiler.version=15 -s compiler.runtime=MD  --build=missing --update
+      - name: Run setup.sh
+        run: yes n | ./setup.sh || if [[ $? -eq 141 ]]; then true; else exit $?; fi
         shell: bash
         
-      - name: LS Conan home
-        run: ls C:/Users/runneradmin/.conan
+      - name: Run Conan install
+        run: conan install ./FallingSandSurvival/conanfile.txt -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.toolset=v141 -s compiler.version=15 -s compiler.runtime=MD  --build=missing --update
         shell: bash
-
-#      - name: Run setup.sh
-#        run: yes n | ./setup.sh || if [[ $? -eq 141 ]]; then true; else exit $?; fi
-#        shell: bash
-#        
-#      - name: Run Conan install
-#        run: conan install ./FallingSandSurvival/conanfile.txt -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.toolset=v141 -s compiler.version=15 -s compiler.runtime=MD  --build=missing --update
-#        shell: bash
-#        
-#      - name: Build Binary
-#        run: |
-#          bash -c "'C:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild/15.0/Bin/MSBuild.exe' -p:Configuration=Release;Platform=x64"
-#          mkdir Build
-#          cp ./x64/Release/FallingSandSurvival.exe ./Build/FallingSandSurvival.exe
-#          cp ./FallingSandSurvival/lib/bin/x64/fmodL.dll ./Build/fmodL.dll
-#          cp ./FallingSandSurvival/lib/bin/x64/fmodstudioL.dll ./Build/fmodstudioL.dll
-#          cp -r ./FallingSandSurvival/assets ./Build/assets
-#          cp -r ./FallingSandSurvival/data ./Build/data
-#          cp -r ./FallingSandSurvival/gamedir ./Build/gamedir
-#        shell: bash
-#        
-##      - name: Collect Artifact
-##        run: Compress-Archive -Path '.\Build' -DestinationPath '.\FallingSandSurvival_x64.zip'
-##        shell: powershell
-#        
-#      - name: Upload a Build Artifact
-#        uses: actions/upload-artifact@v2.2.0
-#        with:
-#          name: FallingSandSurvival_x64
-#          path: ./Build
+        
+      - name: Build Binary
+        run: |
+          bash -c "'C:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild/15.0/Bin/MSBuild.exe' -p:Configuration=Release;Platform=x64"
+          mkdir Build
+          cp ./x64/Release/FallingSandSurvival.exe ./Build/FallingSandSurvival.exe
+          cp ./FallingSandSurvival/lib/bin/x64/fmodL.dll ./Build/fmodL.dll
+          cp ./FallingSandSurvival/lib/bin/x64/fmodstudioL.dll ./Build/fmodstudioL.dll
+          cp -r ./FallingSandSurvival/assets ./Build/assets
+          cp -r ./FallingSandSurvival/data ./Build/data
+          cp -r ./FallingSandSurvival/gamedir ./Build/gamedir
+        shell: bash
+        
+#      - name: Collect Artifact
+#        run: Compress-Archive -Path '.\Build' -DestinationPath '.\FallingSandSurvival_x64.zip'
+#        shell: powershell
+        
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v2.2.0
+        with:
+          name: FallingSandSurvival_x64
+          path: ./Build
         
 #      - name: Create Release
 #        id: create_release
