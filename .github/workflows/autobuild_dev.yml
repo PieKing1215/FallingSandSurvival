@@ -37,11 +37,7 @@ jobs:
         shell: bash
         
       - name: Change Conan home
-        run: CONAN_USER_HOME='/d/a/FallingSandSurvival/conanhome/'
-        shell: bash
-        
-      - name: Change Conan home
-        run: export CONAN_USER_HOME
+        run: echo "CONAN_USER_HOME=D:/a/FallingSandSurvival/conanhome/" >> $GITHUB_ENV
         shell: bash
 
       - name: Print env Conan home
