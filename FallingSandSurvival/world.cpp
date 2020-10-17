@@ -1351,6 +1351,7 @@ void World::tick() {
 
     // TODO: what if we only check tiles that were marked as dirty last tick?
 
+    //#define DEBUG_FRICTION
     #define DO_MULTITHREADING
 
     for(int iter = 0; iter < 4; iter++) {
@@ -1400,13 +1401,10 @@ void World::tick() {
                                     continue;
                                 }
                                 MaterialInstance tile = tiles[index];
-                                Material* mat = tile.mat;
-                                int type = mat->physicsType;
-                                if(type == PhysicsType::AIR) continue;
 
-                                if(mat->id == Materials::FIRE.id) {
-                                    tickVisited[index] = true;
+                                int type = tile.mat->physicsType;
 
+                                if(tile.mat->id == Materials::FIRE.id) {
                                     if(rand() % 10 == 0) {
                                         Uint32 rgb = 255;
                                         rgb = (rgb << 8) + 100 + rand() % 50;
@@ -1427,19 +1425,20 @@ void World::tick() {
                                     }
 
                                     if(rand() % 150 == 0) {
-                                        tiles[index] = Tiles::createSteam();
-                                        //tiles[index] = Tiles::NOTHING;
+                                        //tiles[index] = Tiles::createSteam();
+                                        tiles[index] = Tiles::NOTHING;
                                         dirty[index] = true;
+                                        tickVisited[index] = true;
                                     } else {
                                         bool foundAny = false;
                                         for(int xx = -2; xx <= 2; xx++) {
                                             for(int yy = -2; yy <= 2; yy++) {
-                                                MaterialInstance fireSpread = tiles[(x + xx) + (y + yy) * width];
-                                                if(fireSpread.mat->physicsType == PhysicsType::SOLID && fireSpread.mat->id != Materials::FIRE.id) {
+                                                if(tiles[(x + xx) + (y + yy) * width].mat->physicsType == PhysicsType::SOLID) {
                                                     foundAny = true;
                                                     if(rand() % 500 == 0) {
                                                         tiles[(x + xx) + (y + yy) * width] = Tiles::createFire();
                                                         dirty[(x + xx) + (y + yy) * width] = true;
+                                                        tickVisited[(x + xx) + (y + yy) * width] = true;
                                                     }
                                                 }
                                             }
@@ -1447,6 +1446,7 @@ void World::tick() {
                                         if(!foundAny && rand() % 120 == 0) {
                                             tiles[index] = Tiles::NOTHING;
                                             dirty[index] = true;
+                                            tickVisited[index] = true;
                                         }
                                     }
                                 }
@@ -1456,9 +1456,9 @@ void World::tick() {
                                     MaterialInstance belowTile = tiles[x + (y + 1) * width];
                                     int below = belowTile.mat->physicsType;
 
-                                    if(mat->interact && belowTile.mat->id >= 0 && belowTile.mat->id < Materials::nMaterials && mat->nInteractions[belowTile.mat->id] > 0) {
-                                        for(int i = 0; i < mat->nInteractions[belowTile.mat->id]; i++) {
-                                            MaterialInteraction in = mat->interactions[belowTile.mat->id][i];
+                                    if(tile.mat->interact && belowTile.mat->id >= 0 && belowTile.mat->id < Materials::nMaterials && tile.mat->nInteractions[belowTile.mat->id] > 0) {
+                                        for(int i = 0; i < tile.mat->nInteractions[belowTile.mat->id]; i++) {
+                                            MaterialInteraction in = tile.mat->interactions[belowTile.mat->id][i];
                                             if(in.type == INTERACT_TRANSFORM_MATERIAL) {
                                                 for(int xx = in.ofsX - in.data2; xx <= in.ofsX + in.data2; xx++) {
                                                     for(int yy = in.ofsY - in.data2; yy <= in.ofsY + in.data2; yy++) {
@@ -1484,10 +1484,10 @@ void World::tick() {
                                         continue;
                                     }
 
-                                    if(mat->react && mat->nReactions > 0) {
+                                    if(tile.mat->react && tile.mat->nReactions > 0) {
                                         bool react = false;
-                                        for(int i = 0; i < mat->nReactions; i++) {
-                                            MaterialInteraction in = mat->reactions[i];
+                                        for(int i = 0; i < tile.mat->nReactions; i++) {
+                                            MaterialInteraction in = tile.mat->reactions[i];
                                             if(in.type == REACT_TEMPERATURE_BELOW) {
                                                 if(tile.temperature < in.data1) {
                                                     tiles[index] = Tiles::create(Materials::MATERIALS[in.data2], x, y);
@@ -1509,7 +1509,7 @@ void World::tick() {
                                         if(react) continue;
                                     }
 
-                                    bool canMoveBelow = (below == PhysicsType::AIR || (below != PhysicsType::SOLID && belowTile.mat->density < mat->density));
+                                    bool canMoveBelow = (below == PhysicsType::AIR || (below != PhysicsType::SOLID && belowTile.mat->density < tile.mat->density));
                                     if(!canMoveBelow) continue;
 
                                     MaterialInstance belowLTile = tiles[(x - 1) + (y + 1) * width];
@@ -1517,8 +1517,8 @@ void World::tick() {
                                     MaterialInstance belowRTile = tiles[(x + 1) + (y + 1) * width];
                                     int belowR = belowRTile.mat->physicsType;
 
-                                    bool canMoveBelowL = (belowL == PhysicsType::AIR || (belowL != PhysicsType::SOLID && belowLTile.mat->density < mat->density));
-                                    bool canMoveBelowR = (belowR == PhysicsType::AIR || (belowR != PhysicsType::SOLID && belowRTile.mat->density < mat->density));
+                                    bool canMoveBelowL = (belowL == PhysicsType::AIR || (belowL != PhysicsType::SOLID && belowLTile.mat->density < tile.mat->density));
+                                    bool canMoveBelowR = (belowR == PhysicsType::AIR || (belowR != PhysicsType::SOLID && belowRTile.mat->density < tile.mat->density));
 
                                     if(canMoveBelow && !((canMoveBelowL || canMoveBelowR) && rand() % 20 == 0)) {
                                         if(belowTile.mat->physicsType == PhysicsType::AIR && getTile(x, y + 2).mat->physicsType == PhysicsType::AIR && getTile(x, y + 3).mat->physicsType == PhysicsType::AIR && getTile(x, y + 4).mat->physicsType == PhysicsType::AIR) {
@@ -1528,15 +1528,46 @@ void World::tick() {
                                             #else
                                             particles.push_back(new Particle(tile, x, y + 1, (rand() % 10 - 5) / 20.0f, -((rand() % 2) + 3) / 10.0f + 1.5f, 0, 0.1f));
                                             #endif
-
                                         } else {
                                             tiles[index] = belowTile;
                                             dirty[index] = true;
                                             //setTile(x, y, belowTile);
                                             //setTile(x, y + 1, tile);
+                                            if(rand() % 2 == 0) {
+                                                tile.moved = true;
+                                                #ifdef DEBUG_FRICTION
+                                                tile.color = 0xffffffff;
+                                                #endif
+                                            }
                                             tiles[(x)+(y + 1) * width] = tile;
                                             dirty[(x)+(y + 1) * width] = true;
                                             tickVisited[x + (y + 1) * width] = true;
+                                        }
+
+                                        int selfTrasmitMovementChance = 2;
+
+                                        if(rand() % selfTrasmitMovementChance == 0) {
+                                            if(x > 0 && tiles[(x - 1) + (y + 1) * width].mat->physicsType == PhysicsType::SAND) {
+                                                int otherTransmitMovementChance = 2;
+                                                if(rand() % otherTransmitMovementChance == 0) {
+                                                    tiles[(x - 1) + (y + 1) * width].moved = true;
+                                                    #ifdef DEBUG_FRICTION
+                                                    tiles[(x - 1) + (y + 1) * width].color = 0xff00ffff;
+                                                    dirty[(x - 1) + (y + 1) * width] = true;
+                                                    #endif
+                                                }
+                                            }
+
+                                            if(x < width - 1 && tiles[(x + 1) + (y + 1) * width].mat->physicsType == PhysicsType::SAND) {
+                                                int otherTransmitMovementChance = 2;
+                                                if(rand() % otherTransmitMovementChance == 0) {
+                                                    tiles[(x + 1) + (y + 1) * width].moved = true;
+                                                    #ifdef DEBUG_FRICTION
+                                                    tiles[(x + 1) + (y + 1) * width].color = 0xff00ffff;
+                                                    dirty[(x + 1) + (y + 1) * width] = true;
+                                                    #endif
+                                                }
+                                            }
                                         }
                                     }
 
@@ -1545,9 +1576,9 @@ void World::tick() {
                                     MaterialInstance belowTile = tiles[(x)+(y + 1) * width];
                                     int below = belowTile.mat->physicsType;
 
-                                    if(mat->interact && belowTile.mat->id >= 0 && belowTile.mat->id < Materials::nMaterials && mat->nInteractions[belowTile.mat->id] > 0) {
-                                        for(int i = 0; i < mat->nInteractions[belowTile.mat->id]; i++) {
-                                            MaterialInteraction in = mat->interactions[belowTile.mat->id][i];
+                                    if(tile.mat->interact && belowTile.mat->id >= 0 && belowTile.mat->id < Materials::nMaterials && tile.mat->nInteractions[belowTile.mat->id] > 0) {
+                                        for(int i = 0; i < tile.mat->nInteractions[belowTile.mat->id]; i++) {
+                                            MaterialInteraction in = tile.mat->interactions[belowTile.mat->id][i];
                                             if(in.type == INTERACT_TRANSFORM_MATERIAL) {
                                                 for(int xx = in.ofsX - in.data2; xx <= in.ofsX + in.data2; xx++) {
                                                     for(int yy = in.ofsY - in.data2; yy <= in.ofsY + in.data2; yy++) {
@@ -1573,10 +1604,10 @@ void World::tick() {
                                         continue;
                                     }
 
-                                    if(mat->react && mat->nReactions > 0) {
+                                    if(tile.mat->react && tile.mat->nReactions > 0) {
                                         bool react = false;
-                                        for(int i = 0; i < mat->nReactions; i++) {
-                                            MaterialInteraction in = mat->reactions[i];
+                                        for(int i = 0; i < tile.mat->nReactions; i++) {
+                                            MaterialInteraction in = tile.mat->reactions[i];
                                             if(in.type == REACT_TEMPERATURE_BELOW) {
                                                 if(tile.temperature < in.data1) {
                                                     tiles[index] = Tiles::create(Materials::MATERIALS[in.data2], x, y);
@@ -1598,7 +1629,7 @@ void World::tick() {
                                         if(react) continue;
                                     }
 
-                                    /*if (mat->id == Materials::WATER.id && belowTile.mat->id == Materials::LAVA.id) {
+                                    /*if (tile.mat->id == Materials::WATER.id && belowTile.mat->id == Materials::LAVA.id) {
                                         tiles[index] = Tiles::createSteam();
                                         dirty[index] = true;
                                         tiles[(x)+(y + 1) * width] = Tiles::createObsidian(x, y + 1);
@@ -1618,7 +1649,7 @@ void World::tick() {
                                         continue;
                                     }*/
 
-                                    bool canMoveBelow = (below == PhysicsType::AIR || (below != PhysicsType::SOLID && belowTile.mat->density < mat->density));
+                                    bool canMoveBelow = (below == PhysicsType::AIR || (below != PhysicsType::SOLID && belowTile.mat->density < tile.mat->density));
                                     if(!canMoveBelow) continue;
 
                                     MaterialInstance belowLTile = tiles[(x - 1) + (y + 1) * width];
@@ -1626,8 +1657,8 @@ void World::tick() {
                                     MaterialInstance belowRTile = tiles[(x + 1) + (y + 1) * width];
                                     int belowR = belowRTile.mat->physicsType;
 
-                                    bool canMoveBelowL = (belowL == PhysicsType::AIR || (belowL != PhysicsType::SOLID && belowLTile.mat->density < mat->density));
-                                    bool canMoveBelowR = (belowR == PhysicsType::AIR || (belowR != PhysicsType::SOLID && belowRTile.mat->density < mat->density));
+                                    bool canMoveBelowL = (belowL == PhysicsType::AIR || (belowL != PhysicsType::SOLID && belowLTile.mat->density < tile.mat->density));
+                                    bool canMoveBelowR = (belowR == PhysicsType::AIR || (belowR != PhysicsType::SOLID && belowRTile.mat->density < tile.mat->density));
 
                                     if(canMoveBelow && !((canMoveBelowL || canMoveBelowR) && rand() % 10 == 0)) {
                                         if(belowTile.mat->physicsType == PhysicsType::AIR && getTile(x, y + 2).mat->physicsType == PhysicsType::AIR && getTile(x, y + 3).mat->physicsType == PhysicsType::AIR && getTile(x, y + 4).mat->physicsType == PhysicsType::AIR) {
@@ -1678,10 +1709,8 @@ void World::tick() {
                                 if(tickVisited[index]) continue;
 
                                 MaterialInstance tile = tiles[index];
-                                Material* mat = tile.mat;
 
-                                int type = mat->physicsType;
-                                if(type == PhysicsType::AIR) continue;
+                                int type = tile.mat->physicsType;
 
                                 if(type == PhysicsType::SAND) {
                                     //active[index] = true;
@@ -1690,16 +1719,77 @@ void World::tick() {
                                     MaterialInstance belowRTile = tiles[(x + 1) + (y + 1) * width];
                                     int belowR = belowRTile.mat->physicsType;
 
-                                    bool canMoveBelowL = (belowL == PhysicsType::AIR || (belowL != PhysicsType::SOLID && belowLTile.mat->density < mat->density));
-                                    bool canMoveBelowR = (belowR == PhysicsType::AIR || (belowR != PhysicsType::SOLID && belowRTile.mat->density < mat->density));
+                                    bool canMoveBelowL = (belowL == PhysicsType::AIR || (belowL != PhysicsType::SOLID && belowLTile.mat->density < tile.mat->density));
+                                    bool canMoveBelowR = (belowR == PhysicsType::AIR || (belowR != PhysicsType::SOLID && belowRTile.mat->density < tile.mat->density));
 
-                                    if(!(canMoveBelowL || canMoveBelowR)) continue;
+                                    bool stoppedByFriction = !tile.moved;
 
-                                    if(canMoveBelowL && (!canMoveBelowR || rand() % 2 == 0)) {
+                                    // 1 to ~127
+                                    int slipperyness = tile.mat->slipperyness;
+
+                                    if(stoppedByFriction) {
+                                        int drop = 0;
+
+                                        for(int pil = 0; pil < 10; pil++) {
+                                            int pilChL = tiles[(x - 1) + (y + 1 + pil) * width].mat->physicsType;
+                                            int pilChR = tiles[(x + 1) + (y + 1 + pil) * width].mat->physicsType;
+
+                                            if(pilChL == PhysicsType::AIR || pilChR == PhysicsType::AIR) {
+                                                drop++;
+                                            }
+                                        }
+
+                                        // max number of pixels tall a pillar can be before being unstable
+                                        int maxStability = 8 / sqrt(slipperyness) + 1;
+
+                                        if(drop + 1 - maxStability > 0) {
+                                            int chance = 1000 / (drop + 1 - maxStability);
+                                            if(chance < 1000) {
+                                                if(rand() % chance == 0) {
+                                                    stoppedByFriction = false;
+                                                    tiles[(x)+(y)*width].moved = true;
+                                                    #ifdef DEBUG_FRICTION
+                                                    tiles[(x)+(y)*width].color = 0xff0000ff;
+                                                    dirty[(x)+(y)*width] = true;
+                                                    #endif
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if(stoppedByFriction || !(canMoveBelowL || canMoveBelowR)) {
+                                        tiles[(x)+(y)*width].moved = false;
+                                        #ifdef DEBUG_FRICTION
+                                        tiles[(x)+(y)*width].color = 0xff000000;
+                                        dirty[(x)+(y)*width] = true;
+                                        #endif
+                                        continue;
+                                    }
+
+                                    bool shouldMove = rand() % (2 * slipperyness) != 0;
+
+                                    if(shouldMove && (canMoveBelowL || canMoveBelowR)) {
+                                        int selfTrasmitMovementChance = 2;
+
+                                        if(rand() % selfTrasmitMovementChance == 0) {
+                                            if(tiles[(x)+(y + 1) * width].mat->physicsType == PhysicsType::SAND) {
+                                                int otherTransmitMovementChance = 2;
+                                                if(rand() % otherTransmitMovementChance == 0) {
+                                                    tiles[(x)+(y + 1) * width].moved = true;
+                                                    #ifdef DEBUG_FRICTION
+                                                    tiles[(x)+(y + 1) * width].color = 0xffff00ff;
+                                                    dirty[(x)+(y + 1) * width] = true;
+                                                    #endif
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if(shouldMove && canMoveBelowL && (!canMoveBelowR || rand() % 2 == 0)) {
                                         if(tiles[(x - 1) + y * width].mat->physicsType == PhysicsType::AIR) {
                                             tiles[(x - 1) + y * width] = belowLTile;
                                             dirty[(x - 1) + y * width] = true;
-                                            tickVisited[(x - 1) + (y)* width] = true;
+                                            tickVisited[(x - 1) + (y)*width] = true;
                                             tiles[index] = Tiles::NOTHING;
                                             dirty[index] = true;
                                         } else {
@@ -1708,10 +1798,17 @@ void World::tick() {
                                             tickVisited[index] = true;
                                         }
 
+                                        if(rand() % (20 * slipperyness) == 0) {
+                                            tile.moved = false;
+                                            #ifdef DEBUG_FRICTION
+                                            tile.color = 0xff000000;
+                                            #endif
+                                        }
                                         tiles[(x - 1) + (y + 1) * width] = tile;
                                         dirty[(x - 1) + (y + 1) * width] = true;
                                         tickVisited[(x - 1) + (y + 1) * width] = true;
-                                    } else if(canMoveBelowR) {
+
+                                    } else if(shouldMove && canMoveBelowR) {
 
                                         if(tiles[(x + 1) + y * width].mat->physicsType == PhysicsType::AIR) {
                                             tiles[(x + 1) + y * width] = belowRTile;
@@ -1724,9 +1821,22 @@ void World::tick() {
                                             tickVisited[index] = true;
                                         }
 
+                                        if(rand() % (20 * slipperyness) == 0) {
+                                            tile.moved = false;
+                                            #ifdef DEBUG_FRICTION
+                                            tile.color = 0xff000000;
+                                            #endif
+                                        }
                                         tiles[(x + 1) + (y + 1) * width] = tile;
                                         dirty[(x + 1) + (y + 1) * width] = true;
                                         tickVisited[(x + 1) + (y + 1) * width] = true;
+
+                                    } else {
+                                        tiles[(x)+(y)*width].moved = false;
+                                        #ifdef DEBUG_FRICTION
+                                        tiles[(x)+(y)*width].color = 0xff000000;
+                                        dirty[(x)+(y)*width] = true;
+                                        #endif
                                     }
                                 } else if(type == PhysicsType::SOUP) {
                                     //active[index] = true;
@@ -1735,20 +1845,20 @@ void World::tick() {
                                     MaterialInstance belowRTile = tiles[(x + 1) + (y + 1) * width];
                                     int belowR = belowRTile.mat->physicsType;
 
-                                    bool canMoveBelowL = (belowL == PhysicsType::AIR || (belowL != PhysicsType::SOLID && belowLTile.mat->density < mat->density));
-                                    bool canMoveBelowR = (belowR == PhysicsType::AIR || (belowR != PhysicsType::SOLID && belowRTile.mat->density < mat->density));
+                                    bool canMoveBelowL = (belowL == PhysicsType::AIR || (belowL != PhysicsType::SOLID && belowLTile.mat->density < tile.mat->density));
+                                    bool canMoveBelowR = (belowR == PhysicsType::AIR || (belowR != PhysicsType::SOLID && belowRTile.mat->density < tile.mat->density));
 
                                     if(!(canMoveBelowL || canMoveBelowR)) continue;
 
-                                    MaterialInstance lTile = tiles[(x - 1) + (y)* width];
+                                    MaterialInstance lTile = tiles[(x - 1) + (y)*width];
                                     int l = lTile.mat->physicsType;
-                                    MaterialInstance rTile = tiles[(x + 1) + (y)* width];
+                                    MaterialInstance rTile = tiles[(x + 1) + (y)*width];
                                     int r = rTile.mat->physicsType;
 
-                                    bool canMoveL = (l == PhysicsType::AIR || (l != PhysicsType::SOLID && lTile.mat->density < mat->density));
-                                    bool canMoveR = (r == PhysicsType::AIR || (r != PhysicsType::SOLID && rTile.mat->density < mat->density));
+                                    bool canMoveL = (l == PhysicsType::AIR || (l != PhysicsType::SOLID && lTile.mat->density < tile.mat->density));
+                                    bool canMoveR = (r == PhysicsType::AIR || (r != PhysicsType::SOLID && rTile.mat->density < tile.mat->density));
 
-                                    if(!((canMoveL || canMoveR) && rand() % 10 < 0)) {
+                                    if(!((canMoveL || canMoveR) && rand() % 10 == 0)) {
                                         if(canMoveBelowL && !(canMoveBelowR && rand() % 2 == 0)) {
                                             if(tiles[(x - 1) + y * width].mat->physicsType == PhysicsType::AIR) {
                                                 tiles[(x - 1) + y * width] = belowLTile;
@@ -2027,9 +2137,41 @@ void World::tick() {
                                             dirty[index] = true;
                                             //setTile(x, y, belowTile);
                                             //setTile(x, y + 1, tile);
+                                            if(rand() % 2 == 0) {
+                                                tile.moved = true;
+                                                #ifdef DEBUG_FRICTION
+                                                tile.color = 0xffffffff;
+                                                #endif
+                                            }
                                             tiles[(x)+(y + 1) * width] = tile;
                                             dirty[(x)+(y + 1) * width] = true;
                                             tickVisited[x + (y + 1) * width] = true;
+                                        }
+
+                                        int selfTrasmitMovementChance = 2;
+
+                                        if(rand() % selfTrasmitMovementChance == 0) {
+                                            if(x > 0 && tiles[(x - 1) + (y + 1) * width].mat->physicsType == PhysicsType::SAND) {
+                                                int otherTransmitMovementChance = 2;
+                                                if(rand() % otherTransmitMovementChance == 0) {
+                                                    tiles[(x - 1) + (y + 1) * width].moved = true;
+                                                    #ifdef DEBUG_FRICTION
+                                                    tiles[(x - 1) + (y + 1) * width].color = 0xff00ffff;
+                                                    dirty[(x - 1) + (y + 1) * width] = true;
+                                                    #endif
+                                                }
+                                            }
+
+                                            if(x < width - 1 && tiles[(x + 1) + (y + 1) * width].mat->physicsType == PhysicsType::SAND) {
+                                                int otherTransmitMovementChance = 2;
+                                                if(rand() % otherTransmitMovementChance == 0) {
+                                                    tiles[(x + 1) + (y + 1) * width].moved = true;
+                                                    #ifdef DEBUG_FRICTION
+                                                    tiles[(x + 1) + (y + 1) * width].color = 0xff00ffff;
+                                                    dirty[(x + 1) + (y + 1) * width] = true;
+                                                    #endif
+                                                }
+                                            }
                                         }
                                     }
 
@@ -2184,9 +2326,70 @@ void World::tick() {
                                     bool canMoveBelowL = (belowL == PhysicsType::AIR || (belowL != PhysicsType::SOLID && belowLTile.mat->density < tile.mat->density));
                                     bool canMoveBelowR = (belowR == PhysicsType::AIR || (belowR != PhysicsType::SOLID && belowRTile.mat->density < tile.mat->density));
 
-                                    if(!(canMoveBelowL || canMoveBelowR)) continue;
+                                    bool stoppedByFriction = !tile.moved;
 
-                                    if(canMoveBelowL && (!canMoveBelowR || rand() % 2 == 0)) {
+                                    // 1 to ~127
+                                    int slipperyness = tile.mat->slipperyness;
+
+                                    if(stoppedByFriction) {
+                                        int drop = 0;
+
+                                        for(int pil = 0; pil < 10; pil++) {
+                                            int pilChL = tiles[(x - 1) + (y + 1 + pil) * width].mat->physicsType;
+                                            int pilChR = tiles[(x + 1) + (y + 1 + pil) * width].mat->physicsType;
+
+                                            if(pilChL == PhysicsType::AIR || pilChR == PhysicsType::AIR) {
+                                                drop++;
+                                            }
+                                        }
+
+                                        // max number of pixels tall a pillar can be before being unstable
+                                        int maxStability = 8 / sqrt(slipperyness) + 1;
+
+                                        if(drop + 1 - maxStability > 0) {
+                                            int chance = 1000 / (drop + 1 - maxStability);
+                                            if(chance < 1000) {
+                                                if(rand() % chance == 0) {
+                                                    stoppedByFriction = false;
+                                                    tiles[(x)+(y)*width].moved = true;
+                                                    #ifdef DEBUG_FRICTION
+                                                    tiles[(x)+(y)*width].color = 0xff0000ff;
+                                                    dirty[(x)+(y)*width] = true;
+                                                    #endif
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if(stoppedByFriction || !(canMoveBelowL || canMoveBelowR)) {
+                                        tiles[(x)+(y)*width].moved = false;
+                                        #ifdef DEBUG_FRICTION
+                                        tiles[(x)+(y)*width].color = 0xff000000;
+                                        dirty[(x)+(y)*width] = true;
+                                        #endif
+                                        continue;
+                                    }
+
+                                    bool shouldMove = rand() % (2 * slipperyness) != 0;
+
+                                    if(shouldMove && (canMoveBelowL || canMoveBelowR)) {
+                                        int selfTrasmitMovementChance = 2;
+
+                                        if(rand() % selfTrasmitMovementChance == 0) {
+                                            if(tiles[(x)+(y + 1) * width].mat->physicsType == PhysicsType::SAND) {
+                                                int otherTransmitMovementChance = 2;
+                                                if(rand() % otherTransmitMovementChance == 0) {
+                                                    tiles[(x) + (y + 1) * width].moved = true;
+                                                    #ifdef DEBUG_FRICTION
+                                                    tiles[(x) + (y + 1) * width].color = 0xffff00ff;
+                                                    dirty[(x) + (y + 1) * width] = true;
+                                                    #endif
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if(shouldMove && canMoveBelowL && (!canMoveBelowR || rand() % 2 == 0)) {
                                         if(tiles[(x - 1) + y * width].mat->physicsType == PhysicsType::AIR) {
                                             tiles[(x - 1) + y * width] = belowLTile;
                                             dirty[(x - 1) + y * width] = true;
@@ -2199,10 +2402,17 @@ void World::tick() {
                                             tickVisited[index] = true;
                                         }
 
+                                        if(rand() % (20 * slipperyness) == 0) {
+                                            tile.moved = false;
+                                            #ifdef DEBUG_FRICTION
+                                            tile.color = 0xff000000;
+                                            #endif
+                                        }
                                         tiles[(x - 1) + (y + 1) * width] = tile;
                                         dirty[(x - 1) + (y + 1) * width] = true;
                                         tickVisited[(x - 1) + (y + 1) * width] = true;
-                                    } else if(canMoveBelowR) {
+
+                                    } else if(shouldMove && canMoveBelowR) {
 
                                         if(tiles[(x + 1) + y * width].mat->physicsType == PhysicsType::AIR) {
                                             tiles[(x + 1) + y * width] = belowRTile;
@@ -2215,9 +2425,22 @@ void World::tick() {
                                             tickVisited[index] = true;
                                         }
 
+                                        if(rand() % (20 * slipperyness) == 0) {
+                                            tile.moved = false;
+                                            #ifdef DEBUG_FRICTION
+                                            tile.color = 0xff000000;
+                                            #endif
+                                        }
                                         tiles[(x + 1) + (y + 1) * width] = tile;
                                         dirty[(x + 1) + (y + 1) * width] = true;
                                         tickVisited[(x + 1) + (y + 1) * width] = true;
+
+                                    } else {
+                                        tiles[(x)+(y)*width].moved = false;
+                                        #ifdef DEBUG_FRICTION
+                                        tiles[(x)+(y)*width].color = 0xff000000;
+                                        dirty[(x) + (y) * width] = true;
+                                        #endif
                                     }
                                 } else if(type == PhysicsType::SOUP) {
                                     //active[index] = true;
