@@ -728,6 +728,39 @@ int Game::init(int argc, char *argv[]) {
         SETTINGS_CHECK(tick_world, [](bool checked) {});
         SETTINGS_CHECK(tick_box2d, [](bool checked) {});
         SETTINGS_CHECK(tick_temperature, [](bool checked) {});
+
+        SETTINGS_CHECK(double_res_objects, [&](bool checked) {
+
+            GPU_FreeTarget(textureObjects->target);
+            GPU_FreeImage(textureObjects);
+            GPU_FreeTarget(textureObjectsBack->target);
+            GPU_FreeImage(textureObjectsBack);
+            GPU_FreeTarget(textureEntities->target);
+            GPU_FreeImage(textureEntities);
+
+            textureObjects = GPU_CreateImage(
+                world->width * (Settings::double_res_objects ? 2 : 1), world->height * (Settings::double_res_objects ? 2 : 1),
+                GPU_FormatEnum::GPU_FORMAT_RGBA
+            );
+            GPU_SetImageFilter(textureObjects, GPU_FILTER_NEAREST);
+
+            textureObjectsBack = GPU_CreateImage(
+                world->width * (Settings::double_res_objects ? 2 : 1), world->height * (Settings::double_res_objects ? 2 : 1),
+                GPU_FormatEnum::GPU_FORMAT_RGBA
+            );
+            GPU_SetImageFilter(textureObjectsBack, GPU_FILTER_NEAREST);
+
+            GPU_LoadTarget(textureObjects);
+            GPU_LoadTarget(textureObjectsBack);
+
+            textureEntities = GPU_CreateImage(
+                world->width * (Settings::double_res_objects ? 2 : 1), world->height * (Settings::double_res_objects ? 2 : 1),
+                GPU_FormatEnum::GPU_FORMAT_RGBA
+            );
+            GPU_SetImageFilter(textureEntities, GPU_FILTER_NEAREST);
+
+            GPU_LoadTarget(textureEntities);
+        });
         #undef SETTINGS_CHECK
         #pragma endregion
 
@@ -913,7 +946,7 @@ int Game::init(int argc, char *argv[]) {
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         worldTexture = GPU_CreateImage(
-            world->width, world->height,
+            world->width * 2, world->height * 2,
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
@@ -982,7 +1015,7 @@ int Game::init(int argc, char *argv[]) {
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         textureObjects = GPU_CreateImage(
-            world->width, world->height,
+            world->width * (Settings::double_res_objects ? 2 : 1), world->height * (Settings::double_res_objects ? 2 : 1),
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
@@ -991,8 +1024,18 @@ int Game::init(int argc, char *argv[]) {
         EASY_END_BLOCK;
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureObjectsBack = GPU_CreateImage(
+        textureObjectsLQ = GPU_CreateImage(
             world->width, world->height,
+            GPU_FormatEnum::GPU_FORMAT_RGBA
+        );
+        EASY_END_BLOCK;
+        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+        GPU_SetImageFilter(textureObjectsLQ, GPU_FILTER_NEAREST);
+        EASY_END_BLOCK;
+
+        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+        textureObjectsBack = GPU_CreateImage(
+            world->width * (Settings::double_res_objects ? 2 : 1), world->height * (Settings::double_res_objects ? 2 : 1),
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
@@ -1002,6 +1045,9 @@ int Game::init(int argc, char *argv[]) {
 
         EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
         GPU_LoadTarget(textureObjects);
+        EASY_END_BLOCK;
+        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+        GPU_LoadTarget(textureObjectsLQ);
         EASY_END_BLOCK;
         EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
         GPU_LoadTarget(textureObjectsBack);
@@ -1019,7 +1065,7 @@ int Game::init(int argc, char *argv[]) {
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         textureEntities = GPU_CreateImage(
-            world->width, world->height,
+            world->width * (Settings::double_res_objects ? 2 : 1), world->height * (Settings::double_res_objects ? 2 : 1),
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
@@ -1028,6 +1074,19 @@ int Game::init(int argc, char *argv[]) {
         EASY_END_BLOCK;
         EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
         GPU_SetImageFilter(textureEntities, GPU_FILTER_NEAREST);
+        EASY_END_BLOCK;
+
+        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+        textureEntitiesLQ = GPU_CreateImage(
+            world->width, world->height,
+            GPU_FormatEnum::GPU_FORMAT_RGBA
+        );
+        EASY_END_BLOCK;
+        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+        GPU_LoadTarget(textureEntitiesLQ);
+        EASY_END_BLOCK;
+        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+        GPU_SetImageFilter(textureEntitiesLQ, GPU_FILTER_NEAREST);
         EASY_END_BLOCK;
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
@@ -2330,6 +2389,9 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
         GPU_Clear(textureObjects->target);
 
         GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
+        GPU_Clear(textureObjectsLQ->target);
+
+        GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
         GPU_Clear(textureObjectsBack->target);
 
         // render objects
@@ -2340,6 +2402,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
 
         EASY_BLOCK("render rigidbodies");
         GPU_SetBlendMode(textureObjects, GPU_BLEND_NORMAL);
+        GPU_SetBlendMode(textureObjectsLQ, GPU_BLEND_NORMAL);
         GPU_SetBlendMode(textureObjectsBack, GPU_BLEND_NORMAL);
 
         for(size_t i = 0; i < world->rigidBodies.size(); i++) {
@@ -2354,8 +2417,10 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
             // draw
             #pragma region
             GPU_Target* tgt = cur->back ? textureObjectsBack->target : textureObjects->target;
+            GPU_Target* tgtLQ = cur->back ? textureObjectsBack->target : textureObjectsLQ->target;
+            int scaleObjTex = Settings::double_res_objects ? 2 : 1;
 
-            GPU_Rect r = {x, y, (float)cur->surface->w, (float)cur->surface->h};
+            GPU_Rect r = {x * scaleObjTex, y * scaleObjTex, (float)cur->surface->w * scaleObjTex, (float)cur->surface->h * scaleObjTex};
 
             if(cur->texNeedsUpdate) {
                 if(cur->texture != nullptr) {
@@ -2380,7 +2445,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                     for(int j = 0; j < l.GetNumPoints(); j++) {
                         vec[j] = {(float)l.GetPoint(j).x / scale, (float)l.GetPoint(j).y / scale};
                     }
-                    Drawing::drawPolygon(tgt, col, vec, (int)x, (int)y, scale, l.GetNumPoints(), cur->body->GetAngle(), 0, 0);
+                    Drawing::drawPolygon(tgtLQ, col, vec, (int)x, (int)y, scale, l.GetNumPoints(), cur->body->GetAngle(), 0, 0);
                     delete[] vec;
                 }
                 GPU_SetShapeBlendMode(GPU_BLEND_NORMAL); // SDL_BLENDMODE_NONE
@@ -2448,7 +2513,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                 if(world->player->holdHammer) {
                     int x = (int)((mx - ofsX - camX) / scale);
                     int y = (int)((my - ofsY - camY) / scale);
-                    GPU_Line(textureEntities->target, x, y, world->player->hammerX, world->player->hammerY, {0xff, 0xff, 0x00, 0xff});
+                    GPU_Line(textureEntitiesLQ->target, x, y, world->player->hammerX, world->player->hammerY, {0xff, 0xff, 0x00, 0xff});
                 }
             }
         }
@@ -3204,8 +3269,13 @@ void Game::renderEarly() {
                 float thruTick = (float)((now - lastTick) / (double)mspt);
                 EASY_BLOCK("render entities LERP");
                 GPU_SetBlendMode(textureEntities, GPU_BLEND_ADD);
+                GPU_SetBlendMode(textureEntitiesLQ, GPU_BLEND_ADD);
                 GPU_Clear(textureEntities->target);
+                GPU_Clear(textureEntitiesLQ->target);
+                int scaleEnt = Settings::double_res_objects ? 2 : 1;
+
                 for(auto& v : world->entities) {
+                    v->renderLQ(textureEntitiesLQ->target, world->loadZone.x + (int)(v->vx * thruTick), world->loadZone.y + (int)(v->vy * thruTick));
                     v->render(textureEntities->target, world->loadZone.x + (int)(v->vx * thruTick), world->loadZone.y + (int)(v->vy * thruTick));
                 }
 
@@ -3223,19 +3293,20 @@ void Game::renderEarly() {
                                 dy = dy / len * 40;
                             }
 
-                            GPU_Line(textureEntities->target, world->player->hammerX + dx, world->player->hammerY + dy, world->player->hammerX, world->player->hammerY, {0xff, 0xff, 0x00, 0xff});
+                            GPU_Line(textureEntitiesLQ->target, world->player->hammerX + dx, world->player->hammerY + dy, world->player->hammerX, world->player->hammerY, {0xff, 0xff, 0x00, 0xff});
                         } else {
                             int startInd = getAimSolidSurface(64);
 
                             if(startInd != -1) {
                                 int x = startInd % world->width;
                                 int y = startInd / world->width;
-                                GPU_Rectangle(textureEntities->target, x - 1, y - 1, x + 1, y + 1, {0xff, 0xff, 0x00, 0xE0});
+                                GPU_Rectangle(textureEntitiesLQ->target, x - 1, y - 1, x + 1, y + 1, {0xff, 0xff, 0x00, 0xE0});
                             }
                         }
                     }
                 }
                 GPU_SetBlendMode(textureEntities, GPU_BLEND_NORMAL);
+                GPU_SetBlendMode(textureEntitiesLQ, GPU_BLEND_NORMAL);
                 EASY_END_BLOCK;
             }
         }
@@ -3372,10 +3443,14 @@ void Game::renderLate() {
 
         GPU_SetBlendMode(textureObjects, GPU_BLEND_NORMAL);
         GPU_BlitRect(textureObjects, NULL, worldTexture->target, NULL);
+        GPU_SetBlendMode(textureObjectsLQ, GPU_BLEND_NORMAL);
+        GPU_BlitRect(textureObjectsLQ, NULL, worldTexture->target, NULL);
 
         GPU_SetBlendMode(textureParticles, GPU_BLEND_NORMAL);
         GPU_BlitRect(textureParticles, NULL, worldTexture->target, NULL);
 
+        GPU_SetBlendMode(textureEntitiesLQ, GPU_BLEND_NORMAL);
+        GPU_BlitRect(textureEntitiesLQ, NULL, worldTexture->target, NULL);
         GPU_SetBlendMode(textureEntities, GPU_BLEND_NORMAL);
         GPU_BlitRect(textureEntities, NULL, worldTexture->target, NULL);
 

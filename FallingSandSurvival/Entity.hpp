@@ -18,5 +18,6 @@ public:
     RigidBody* rb = nullptr;
 
     virtual void render(GPU_Target* target, int ofsX, int ofsY);
+    virtual void renderLQ(GPU_Target* target, int ofsX, int ofsY);
     ~Entity();
 };

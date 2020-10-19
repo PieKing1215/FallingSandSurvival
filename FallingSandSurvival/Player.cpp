@@ -1,11 +1,14 @@
 
 #include "Player.hpp"
 #include "UTime.hpp"
+#include "Settings.hpp"
 
 void Player::render(GPU_Target* target, int ofsX, int ofsY) {
     Entity::render(target, ofsX, ofsY);
 
     if(heldItem != NULL) {
+        int scaleEnt = Settings::double_res_objects ? 2 : 1;
+
         GPU_Rect* ir = new GPU_Rect {(float)(ofsX + x + hw / 2.0 - heldItem->surface->w), (float)(ofsY + y + hh / 2.0 - heldItem->surface->h / 2), (float)heldItem->surface->w, (float)heldItem->surface->h};
         SDL_FPoint* fp = new SDL_FPoint {(float)(-ir->x + ofsX + x + hw / 2.0), (float)(-ir->y + ofsY + y + hh / 2.0)};
         fp->x -= heldItem->pivotX;
@@ -15,10 +18,18 @@ void Player::render(GPU_Target* target, int ofsX, int ofsY) {
         GPU_SetShapeBlendMode(GPU_BlendPresetEnum::GPU_BLEND_ADD);
         //GPU_BlitTransformX(heldItem->texture, NULL, target, ir->x, ir->y, fp->x, fp->y, holdAngle, 1, 1);
         //SDL_RenderCopyExF(renderer, heldItem->texture, NULL, ir, holdAngle, fp, abs(holdAngle) > 90 ? SDL_FLIP_VERTICAL : SDL_FLIP_NONE);
+        ir->x *= scaleEnt;
+        ir->y *= scaleEnt;
+        ir->w *= scaleEnt;
+        ir->h *= scaleEnt;
         GPU_BlitRectX(heldItem->texture, NULL, target, ir, holdAngle, fp->x, fp->y, abs(holdAngle) > 90 ? GPU_FLIP_VERTICAL : GPU_FLIP_NONE);
         delete ir;
         delete fp;
     }
+}
+
+void Player::renderLQ(GPU_Target* target, int ofsX, int ofsY) {
+    Entity::renderLQ(target, ofsX, ofsY);
 }
 
 b2Vec2 rotate_point2(float cx, float cy, float angle, b2Vec2 p);

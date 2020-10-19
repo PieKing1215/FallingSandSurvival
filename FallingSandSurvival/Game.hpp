@@ -124,6 +124,7 @@ public:
     vector< unsigned char > pixelsBackground;
     unsigned char* pixelsBackground_ar = nullptr;
     GPU_Image* textureObjects = nullptr;
+    GPU_Image* textureObjectsLQ = nullptr;
     vector< unsigned char > pixelsObjects;
     unsigned char* pixelsObjects_ar = nullptr;
     GPU_Image* textureObjectsBack = nullptr;
@@ -131,6 +132,7 @@ public:
     vector< unsigned char > pixelsParticles;
     unsigned char* pixelsParticles_ar = nullptr;
     GPU_Image* textureEntities = nullptr;
+    GPU_Image* textureEntitiesLQ = nullptr;
 
     GPU_Image* textureFire = nullptr;
     GPU_Image* texture2Fire = nullptr;
