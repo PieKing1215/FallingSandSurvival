@@ -1,3 +1,4 @@
+#pragma once
 
 #ifndef INC_WorldGenerator
 #include "WorldGenerator.hpp"

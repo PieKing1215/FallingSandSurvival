@@ -84,7 +84,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)lib\FMOD\inc;$(ProjectDir)lib\FMOD_studio\inc;$(ProjectDir)lib\steam\include;$(ProjectDir)lib\discord_game_sdk\cpp\;$(ConanIncludeDirectories);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)lib\FMOD\inc;$(ProjectDir)lib\FMOD_studio\inc;$(ProjectDir)lib\steam\include;$(ProjectDir)lib\discord_game_sdk\cpp\;$(ProjectDir)lib\imgui\backends\;$(ProjectDir)lib\imgui\libs\gl3w\;$(ConanIncludeDirectories);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessToFile>false</PreprocessToFile>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;$(ConanPreprocessorDefinitions)%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -118,13 +118,13 @@ exit 0</Command>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)lib\FMOD\inc;$(ProjectDir)lib\FMOD_studio\inc;$(ProjectDir)lib\steam\include;$(ProjectDir)lib\discord_game_sdk\cpp\;$(ConanIncludeDirectories);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)lib\FMOD\inc;$(ProjectDir)lib\FMOD_studio\inc;$(ProjectDir)lib\steam\include;$(ProjectDir)lib\discord_game_sdk\cpp\;$(ProjectDir)lib\imgui\backends\;$(ProjectDir)lib\imgui\libs\gl3w\;$(ConanIncludeDirectories);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>false</OmitFramePointers>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;$(ConanPreprocessorDefinitions)%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;IMGUI_IMPL_OPENGL_LOADER_GL3W;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
       <DisableSpecificWarnings>4244;4101;4018;4305</DisableSpecificWarnings>
@@ -150,7 +150,7 @@ exit 0</Command>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)lib\FMOD\inc;$(ProjectDir)lib\FMOD_studio\inc;$(ProjectDir)lib\steam\include;$(ProjectDir)lib\discord_game_sdk\cpp\;$(ConanIncludeDirectories);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)lib\FMOD\inc;$(ProjectDir)lib\FMOD_studio\inc;$(ProjectDir)lib\steam\include;$(ProjectDir)lib\discord_game_sdk\cpp\;$(ProjectDir)lib\imgui\backends\;$(ProjectDir)lib\imgui\libs\gl3w\;$(ConanIncludeDirectories);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
@@ -195,7 +195,7 @@ exit 0</Command>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)lib\FMOD\inc;$(ProjectDir)lib\FMOD_studio\inc;$(ProjectDir)lib\steam\include;$(ProjectDir)lib\discord_game_sdk\cpp\;$(ConanIncludeDirectories);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)lib\FMOD\inc;$(ProjectDir)lib\FMOD_studio\inc;$(ProjectDir)lib\steam\include;$(ProjectDir)lib\discord_game_sdk\cpp\;$(ProjectDir)lib\imgui\backends\;$(ProjectDir)lib\imgui\libs\gl3w\;$(ConanIncludeDirectories);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -281,6 +281,9 @@ exit 0</Command>
     <ClCompile Include="lib\FastNoiseSIMD\FastNoiseSIMD_sse2.cpp" />
     <ClCompile Include="lib\FastNoiseSIMD\FastNoiseSIMD_sse41.cpp" />
     <ClCompile Include="lib\FastNoise\FastNoise.cpp" />
+    <ClCompile Include="lib\imgui\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="lib\imgui\backends\imgui_impl_sdl.cpp" />
+    <ClCompile Include="lib\imgui\libs\gl3w\GL\gl3w.c" />
     <ClCompile Include="lib\polypartition-master\src\polypartition.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Materials.cpp" />
@@ -316,6 +319,10 @@ exit 0</Command>
     <ClInclude Include="Chunk.hpp" />
     <ClInclude Include="ChunkReadyToMerge.hpp" />
     <ClInclude Include="Controls.hpp" />
+    <ClCompile Include="CreateWorldUI.cpp" />
+    <ClCompile Include="DebugCheatsUI.cpp" />
+    <ClCompile Include="DebugDrawUI.cpp" />
+    <ClCompile Include="DebugUI.cpp" />
     <ClInclude Include="Drawing.hpp" />
     <ClInclude Include="Entity.hpp" />
     <ClInclude Include="Game.hpp" />
@@ -380,6 +387,10 @@ exit 0</Command>
     <ClInclude Include="lib\FastNoiseSIMD\FastNoiseSIMD.h" />
     <ClInclude Include="lib\FastNoiseSIMD\FastNoiseSIMD_internal.h" />
     <ClInclude Include="lib\FastNoise\FastNoise.h" />
+    <ClInclude Include="lib\imgui\backends\imgui_impl_opengl3.h" />
+    <ClInclude Include="lib\imgui\backends\imgui_impl_sdl.h" />
+    <ClInclude Include="lib\imgui\libs\gl3w\GL\gl3w.h" />
+    <ClInclude Include="lib\imgui\libs\gl3w\GL\glcorearb.h" />
     <ClInclude Include="lib\polypartition-master\src\polypartition.h" />
     <ClInclude Include="lib\sparsehash\dense_hash_map.h" />
     <ClInclude Include="lib\sparsehash\internal\densehashtable.h" />
@@ -388,6 +399,7 @@ exit 0</Command>
     <ClInclude Include="lib\sparsehash\internal\sparsehashtable.h" />
     <ClInclude Include="lib\sparsehash\sparse_hash_map.h" />
     <ClInclude Include="Macros.hpp" />
+    <ClCompile Include="MainMenuUI.cpp" />
     <ClInclude Include="Material.hpp" />
     <ClInclude Include="MaterialInstance.hpp" />
     <ClInclude Include="Materials.hpp" />
@@ -408,6 +420,7 @@ exit 0</Command>
     <ClInclude Include="Textures.hpp" />
     <ClInclude Include="Tiles.hpp" />
     <ClInclude Include="UI.hpp" />
+    <ClInclude Include="UIs.hpp" />
     <ClInclude Include="UTime.hpp" />
     <ClInclude Include="world.hpp" />
     <ClInclude Include="WorldGenerator.hpp" />

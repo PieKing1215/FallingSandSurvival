@@ -59,6 +59,12 @@
     <Filter Include="Source Files\net">
       <UniqueIdentifier>{bdd14dcd-2f91-4e09-86a1-b435f86cd145}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\libraries\imgui">
+      <UniqueIdentifier>{fe639ea7-4dda-4e11-bd5f-f9f5821a219e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\vfx\gui">
+      <UniqueIdentifier>{a5293a6a-99a5-4881-99c0-026613ebb5b6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -225,6 +231,30 @@
     </ClCompile>
     <ClCompile Include="Networking.cpp">
       <Filter>Source Files\net</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\imgui\backends\imgui_impl_sdl.cpp">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\imgui\backends\imgui_impl_opengl3.cpp">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\imgui\libs\gl3w\GL\gl3w.c">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="MainMenuUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="CreateWorldUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugCheatsUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugDrawUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -423,6 +453,21 @@
     </ClInclude>
     <ClInclude Include="Networking.hpp">
       <Filter>Source Files\net</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\imgui\backends\imgui_impl_sdl.h">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\imgui\backends\imgui_impl_opengl3.h">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\imgui\libs\gl3w\GL\gl3w.h">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\imgui\libs\gl3w\GL\glcorearb.h">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="UIs.hpp">
+      <Filter>Source Files\vfx\gui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

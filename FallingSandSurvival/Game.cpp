@@ -7,8 +7,17 @@
 #include "DefaultGenerator.cpp"
 #include "MaterialTestGenerator.cpp"
 
+#include "imgui.h"
+#include "imgui_impl_sdl.h"
+#include "imgui_impl_opengl3.h"
+
+#include "UIs.hpp"
+
+#include <GL/gl3w.h>
+
 #define BUILD_WITH_EASY_PROFILER
 #include <easy/profiler.h>
+
 
 #define timegm _mkgmtime
 
@@ -161,7 +170,7 @@ int Game::init(int argc, char *argv[]) {
     }
 
     //SDL_SetHintWithPriority(SDL_HINT_RENDER_DRIVER, "direct3d11", SDL_HINT_OVERRIDE);
-    SDL_SetHintWithPriority(SDL_HINT_RENDER_DRIVER, "opengles2", SDL_HINT_OVERRIDE);
+    SDL_SetHintWithPriority(SDL_HINT_RENDER_DRIVER, "opengl", SDL_HINT_OVERRIDE);
     EASY_END_BLOCK;
 
     EASY_BLOCK("TTF_Init");
@@ -233,6 +242,80 @@ int Game::init(int argc, char *argv[]) {
         realTarget = target;
         EASY_END_BLOCK;
         #pragma endregion
+
+        SDL_GLContext& gl_context = target->context->context;
+
+        SDL_GL_MakeCurrent(window, gl_context);
+
+        bool err = gl3wInit() != 0;
+
+        if(err) {
+            fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+            return EXIT_FAILURE;
+        }
+
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        ImGui::GetIO().Fonts->AddFontDefault();
+        ImGui::GetIO().Fonts->AddFontFromFileTTF("assets\\fonts\\pixel_operator\\PixelOperator.ttf", 32);
+
+        ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+
+        const char* glsl_version = "#version 130";
+        ImGui_ImplOpenGL3_Init(glsl_version);
+
+        ImGui::StyleColorsClassic();
+        ImGui::GetStyle().WindowTitleAlign = ImVec2(0.5f, 0.5f);
+        ImVec4* colors = ImGui::GetStyle().Colors;
+        colors[ImGuiCol_Text]                   = ImVec4(0.90f, 0.90f, 0.90f, 1.00f);
+        colors[ImGuiCol_TextDisabled]           = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
+        colors[ImGuiCol_WindowBg]               = ImVec4(0.11f, 0.11f, 0.11f, 0.72f);
+        colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+        colors[ImGuiCol_PopupBg]                = ImVec4(0.11f, 0.11f, 0.14f, 0.92f);
+        colors[ImGuiCol_Border]                 = ImVec4(1.00f, 1.00f, 1.00f, 0.64f);
+        colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+        colors[ImGuiCol_FrameBg]                = ImVec4(0.43f, 0.43f, 0.43f, 0.43f);
+        colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.47f, 0.47f, 0.69f, 0.40f);
+        colors[ImGuiCol_FrameBgActive]          = ImVec4(0.42f, 0.41f, 0.64f, 0.69f);
+        colors[ImGuiCol_TitleBg]                = ImVec4(0.41f, 0.47f, 0.60f, 0.83f);
+        colors[ImGuiCol_TitleBgActive]          = ImVec4(0.29f, 0.43f, 0.73f, 0.87f);
+        colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.37f, 0.48f, 0.69f, 0.46f);
+        colors[ImGuiCol_MenuBarBg]              = ImVec4(0.27f, 0.32f, 0.44f, 0.87f);
+        colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.20f, 0.25f, 0.30f, 0.60f);
+        colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.44f, 0.60f, 0.86f, 0.44f);
+        colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.54f, 0.67f, 0.87f, 0.44f);
+        colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.64f, 0.74f, 0.90f, 0.44f);
+        colors[ImGuiCol_CheckMark]              = ImVec4(0.76f, 0.91f, 0.75f, 0.58f);
+        colors[ImGuiCol_SliderGrab]             = ImVec4(1.00f, 1.00f, 1.00f, 0.30f);
+        colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.41f, 0.39f, 0.80f, 0.60f);
+        colors[ImGuiCol_Button]                 = ImVec4(0.35f, 0.40f, 0.61f, 0.62f);
+        colors[ImGuiCol_ButtonHovered]          = ImVec4(0.40f, 0.48f, 0.71f, 0.79f);
+        colors[ImGuiCol_ButtonActive]           = ImVec4(0.46f, 0.54f, 0.80f, 1.00f);
+        colors[ImGuiCol_Header]                 = ImVec4(0.40f, 0.44f, 0.90f, 0.45f);
+        colors[ImGuiCol_HeaderHovered]          = ImVec4(0.45f, 0.45f, 0.90f, 0.80f);
+        colors[ImGuiCol_HeaderActive]           = ImVec4(0.53f, 0.53f, 0.87f, 0.80f);
+        colors[ImGuiCol_Separator]              = ImVec4(0.50f, 0.50f, 0.50f, 0.60f);
+        colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.60f, 0.60f, 0.70f, 1.00f);
+        colors[ImGuiCol_SeparatorActive]        = ImVec4(0.70f, 0.70f, 0.90f, 1.00f);
+        colors[ImGuiCol_ResizeGrip]             = ImVec4(1.00f, 1.00f, 1.00f, 0.16f);
+        colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.78f, 0.82f, 1.00f, 0.60f);
+        colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.78f, 0.82f, 1.00f, 0.90f);
+        colors[ImGuiCol_Tab]                    = ImVec4(0.35f, 0.41f, 0.57f, 0.77f);
+        colors[ImGuiCol_TabHovered]             = ImVec4(0.45f, 0.56f, 0.90f, 0.80f);
+        colors[ImGuiCol_TabActive]              = ImVec4(0.31f, 0.41f, 0.86f, 0.84f);
+        colors[ImGuiCol_TabUnfocused]           = ImVec4(0.28f, 0.28f, 0.57f, 0.82f);
+        colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.35f, 0.35f, 0.65f, 0.84f);
+        colors[ImGuiCol_PlotLines]              = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+        colors[ImGuiCol_PlotLinesHovered]       = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+        colors[ImGuiCol_PlotHistogram]          = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+        colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+        colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.66f, 0.77f, 0.99f, 0.35f);
+        colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+        colors[ImGuiCol_NavHighlight]           = ImVec4(0.45f, 0.45f, 0.90f, 0.80f);
+        colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+        colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+        colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
 
         // load splash screen
         #pragma region
@@ -384,539 +467,6 @@ int Game::init(int argc, char *argv[]) {
         logInfo("Setting up main menu...");
         TTF_Font* labelFont = TTF_OpenFont("assets/fonts/pixel_operator/PixelOperator.ttf", 32);
         TTF_Font* uiFont = TTF_OpenFont("assets/fonts/pixel_operator/PixelOperator.ttf", 16);
-
-        mainMenuUI = new UI(new SDL_Rect {WIDTH / 2 - 200, HEIGHT / 2 - 250, 400, 500});
-        mainMenuUI->background = new SolidBackground(0x80000000);
-        mainMenuUI->drawBorder = true;
-
-        int mainMenuButtonsWidth = 250;
-        int mainMenuButtonsYOffset = 50;
-
-        UILabel* mainMenuTitleLabel = new UILabel(new SDL_Rect {200, 10, 100, 30}, "Falling Sand Survival", labelFont, 0xffffff, ALIGN_CENTER);
-        mainMenuUI->children.push_back(mainMenuTitleLabel);
-
-        int connectWidth = 200;
-        UIButton* connectButton;
-        UITextArea* connectInput = new UITextArea(new SDL_Rect {200 - connectWidth / 2 - 60 / 2, 60, connectWidth, 20}, "", "ip:port", uiFont);
-        connectInput->maxLength = 24;
-        connectInput->callback = [&](std::string text) {
-            regex connectInputRegex("([^:]+):(\\d+)");
-            connectButton->disabled = !regex_match(text, connectInputRegex);
-        };
-        mainMenuUI->children.push_back(connectInput);
-
-        connectButton = new UIButton(new SDL_Rect {connectInput->bounds->x + connectInput->bounds->w + 4, connectInput->bounds->y, 60, 20}, "Connect", uiFont, 0xffffff, ALIGN_CENTER);
-        connectButton->drawBorder = true;
-        connectButton->disabled = true;
-        connectButton->selectCallback = [&]() {
-            logInfo("connectButton select");
-            if(client->connect("172.23.16.150", 1337)) {
-                networkMode = NetworkMode::CLIENT;
-                mainMenuUI->visible = false;
-                state = LOADING;
-                stateAfterLoad = INGAME;
-            }
-        };
-        mainMenuUI->children.push_back(connectButton);
-
-
-        int mainMenuNewButtonWidth = 150;
-        UIButton* mainMenuNewButton = new UIButton(new SDL_Rect {200 - mainMenuNewButtonWidth / 2, 50 + mainMenuButtonsYOffset, mainMenuNewButtonWidth, 36}, "New World", labelFont, 0xffffff, ALIGN_CENTER);
-        mainMenuNewButton->drawBorder = true;
-        mainMenuUI->children.push_back(mainMenuNewButton);
-
-        mainMenuNewButton->selectCallback = [&]() {
-            mainMenuUI->visible = false;
-            createWorldUI->setVisible(true);
-        };
-
-        int nMainMenuButtons = 1;
-        for(auto& p : experimental::filesystem::directory_iterator(getFileInGameDir("worlds/"))) {
-            string worldName = p.path().filename().generic_string();
-
-            WorldMeta meta = WorldMeta::loadWorldMeta((char*)getWorldDir(worldName).c_str());
-
-            UIButton* worldButton = new UIButton(new SDL_Rect {200 - mainMenuButtonsWidth / 2, 60 + mainMenuButtonsYOffset + (nMainMenuButtons++ * 60), mainMenuButtonsWidth, 50}, meta.worldName.c_str(), labelFont, 0xffffff, ALIGN_CENTER);
-
-            tm* tm_utc = gmtime(&meta.lastOpenedTime);
-
-            // convert to local time
-            time_t time_utc = timegm(tm_utc);
-            time_t time_local = mktime(tm_utc);
-            time_local += time_utc - time_local;
-            tm* tm_local = localtime(&time_local);
-
-            char* formattedTime = new char[100];
-            strftime(formattedTime, 100, "%D %I:%M %p", tm_local);
-
-            char* filenameAndTimestamp = new char[200];
-            snprintf(filenameAndTimestamp, 100, "%s (%s)", worldName.c_str(), formattedTime);
-
-            UILabel* worldFileName = new UILabel(new SDL_Rect {mainMenuButtonsWidth / 2, 30, 0, 0}, filenameAndTimestamp, font16, 0xcccccc, ALIGN_CENTER);
-            worldButton->children.push_back(worldFileName);
-            worldButton->drawBorder = true;
-
-            mainMenuUI->children.push_back(worldButton);
-
-            worldButton->selectCallback = [&, worldName]() {
-                logInfo("Selected world: {}", worldName.c_str());
-                mainMenuUI->visible = false;
-                createWorldUI->setVisible(false);
-
-                fadeOutStart = now;
-                fadeOutLength = 250;
-                fadeOutCallback = [&, worldName]() {
-                    state = LOADING;
-                    stateAfterLoad = INGAME;
-
-                    EASY_BLOCK("Close world");
-                    delete world;
-                    world = nullptr;
-                    EASY_END_BLOCK;
-
-                    //std::thread loadWorldThread([&] () {
-                    EASY_BLOCK("Load world");
-                    World* w = new World();
-                    w->init((char*)getWorldDir(worldName).c_str(), (int)ceil(WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode);
-
-                    EASY_BLOCK("Queue chunk loading");
-                    logInfo("Queueing chunk loading...");
-                    for(int x = -CHUNK_W * 4; x < w->width + CHUNK_W * 4; x += CHUNK_W) {
-                        for(int y = -CHUNK_H * 3; y < w->height + CHUNK_H * 8; y += CHUNK_H) {
-                            w->queueLoadChunk(x / CHUNK_W, y / CHUNK_H, true, true);
-                        }
-                    }
-                    EASY_END_BLOCK;
-                    EASY_END_BLOCK;
-
-                    world = w;
-                    //});
-
-                    fadeInStart = now;
-                    fadeInLength = 250;
-                    fadeInWaitFrames = 4;
-                };
-            };
-
-        }
-
-        uis.push_back(mainMenuUI);
-        EASY_END_BLOCK;
-        #pragma endregion
-
-        // set up create world ui
-        #pragma region
-        createWorldUI = new UI(new SDL_Rect {WIDTH / 2 - 200, HEIGHT / 2 - 250, 400, 350});
-        createWorldUI->background = new SolidBackground(0x80000000);
-        createWorldUI->drawBorder = true;
-        createWorldUI->visible = false;
-
-        UILabel* createWorldTitleLabel = new UILabel(new SDL_Rect {200, 10, 100, 30}, "Create World", labelFont, 0xffffff, ALIGN_CENTER);
-        createWorldUI->children.push_back(createWorldTitleLabel);
-
-        ImageButtonNode* createMaterialTestGen = new ImageButtonNode(new SDL_Rect {createWorldUI->bounds->w / 2 - 100 - 24, 170, 100, 100}, Textures::loadTexture("assets/ui/prev_materialtest.png"));
-        createMaterialTestGen->drawBorder = true;
-        createWorldUI->children.push_back(createMaterialTestGen);
-        UILabel* createMaterialTestLabel = new UILabel(new SDL_Rect {createMaterialTestGen->bounds->x + createMaterialTestGen->bounds->w / 2, createMaterialTestGen->bounds->y - 20, 0, 30}, "Material Test World", uiFont, 0xffffff, ALIGN_CENTER);
-        createWorldUI->children.push_back(createMaterialTestLabel);
-
-        ImageButtonNode* createDefaultGen = new ImageButtonNode(new SDL_Rect {createWorldUI->bounds->w / 2 + 24, 170, 100, 100}, Textures::loadTexture("assets/ui/prev_default.png"));
-        createDefaultGen->drawBorder = true;
-        createWorldUI->children.push_back(createDefaultGen);
-        UILabel* createDefaultLabel = new UILabel(new SDL_Rect {createDefaultGen->bounds->x + createDefaultGen->bounds->w / 2, createDefaultGen->bounds->y - 20, 0, 30}, "Default World (WIP)", uiFont, 0xffffff, ALIGN_CENTER);
-        createWorldUI->children.push_back(createDefaultLabel);
-
-        createMaterialTestGen->selectCallback = [&]() {
-            createMaterialTestGen->drawBorder = true;
-            createMaterialTestLabel->textColor = 0xffffff;
-            createMaterialTestLabel->updateTexture();
-            createDefaultGen->drawBorder = false;
-            createDefaultLabel->textColor = 0xcccccc;
-            createDefaultLabel->updateTexture();
-        };
-
-        createDefaultGen->selectCallback = [&]() {
-            createMaterialTestGen->drawBorder = false;
-            createMaterialTestLabel->textColor = 0xcccccc;
-            createMaterialTestLabel->updateTexture();
-            createDefaultGen->drawBorder = true;
-            createDefaultLabel->textColor = 0xffffff;
-            createDefaultLabel->updateTexture();
-        };
-
-        createMaterialTestGen->selectCallback();
-
-        int createWorldWidth = 350;
-        UIButton* createWorldButton;
-        UILabel* worldFolderLabel;
-        UITextArea* worldNameInput = new UITextArea(new SDL_Rect {200 - createWorldWidth / 2, 70, createWorldWidth, 35}, "New World", "New World", labelFont);
-        worldNameInput->maxLength = 24;
-        worldNameInput->callback = [&](std::string text) {
-            regex trimWhitespaceRegex("^ *(.+?) *$");
-            text = regex_replace(text, trimWhitespaceRegex, "$1");
-            if(text.length() == 0 || text == " ") {
-                worldFolderLabel->text = "Saved in: ";
-                worldFolderLabel->updateTexture();
-                createWorldButton->disabled = true;
-                return;
-            }
-
-            regex worldNameInputRegex("^[\\x20-\\x7E]+$");
-            createWorldButton->disabled = !regex_match(text, worldNameInputRegex);
-
-            regex worldFolderRegex("[\\/\\\\:*?\"<>|.]");
-
-            std::string worldFolderName = regex_replace(text, worldFolderRegex, "_");
-            std::string folder = getWorldDir(worldFolderName);
-            struct stat buffer;
-            bool exists = (stat(folder.c_str(), &buffer) == 0);
-
-            std::string newWorldFolderName = worldFolderName;
-            int i = 2;
-            while(exists) {
-                newWorldFolderName = worldFolderName + " (" + std::to_string(i) + ")";
-                folder = getWorldDir(newWorldFolderName);
-
-                exists = (stat(folder.c_str(), &buffer) == 0);
-
-                i++;
-            }
-            
-
-            worldFolderLabel->text = "Saved in: " + newWorldFolderName;
-            worldFolderLabel->updateTexture();
-        };
-        createWorldUI->children.push_back(worldNameInput);
-
-        createWorldUI->setVisibleCallback = [&](bool wasVis, bool nowVis) {
-            if(nowVis && !wasVis) {
-                createWorldUI->bounds->x = mainMenuUI->bounds->x;
-                createWorldUI->bounds->y = mainMenuUI->bounds->y;
-                worldNameInput->text = "New World";
-                worldNameInput->dirty = true;
-                worldNameInput->callback(worldNameInput->text);
-            }
-        };
-
-        UILabel* worldNameLabel = new UILabel(new SDL_Rect {worldNameInput->bounds->x, worldNameInput->bounds->y - 20, 100, 20}, "World Name", uiFont, 0xffffff, ALIGN_LEFT);
-        createWorldUI->children.push_back(worldNameLabel);
-
-        worldFolderLabel = new UILabel(new SDL_Rect {worldNameInput->bounds->x, worldNameInput->bounds->y + worldNameInput->bounds->h + 2, createWorldWidth, 20}, "Saved in: New World", uiFont, 0xcccccc, ALIGN_LEFT);
-        createWorldUI->children.push_back(worldFolderLabel);
-
-        UIButton* createWorldBackButton = new UIButton(new SDL_Rect {8, createWorldUI->bounds->h - 20 - 8, 60, 20}, "Back", uiFont, 0xffffff, ALIGN_CENTER);
-        createWorldBackButton->drawBorder = true;
-        createWorldBackButton->selectCallback = [&]() {
-            mainMenuUI->visible = true;
-            createWorldUI->setVisible(false);
-        };
-        createWorldUI->children.push_back(createWorldBackButton);
-
-        createWorldButton = new UIButton(new SDL_Rect {createWorldUI->bounds->w - 60 - 8, createWorldUI->bounds->h - 20 - 8, 60, 20}, "Create", uiFont, 0xffffff, ALIGN_CENTER);
-        createWorldButton->drawBorder = true;
-        createWorldButton->disabled = true;
-        createWorldButton->selectCallback = [&]() {
-            std::string pref = "Saved in: ";
-
-            std::string worldName = worldFolderLabel->text.substr(pref.length());
-            char* wn = (char*)worldName.c_str();
-
-            std::string worldTitle = worldNameInput->text;
-            regex trimWhitespaceRegex("^ *(.+?) *$");
-            worldTitle = regex_replace(worldTitle, trimWhitespaceRegex, "$1");
-
-            logInfo("Creating world named \"{}\" at \"{}\"", worldTitle, getWorldDir(wn));
-            mainMenuUI->visible = false;
-            createWorldUI->setVisible(false);
-            state = LOADING;
-            stateAfterLoad = INGAME;
-
-            EASY_BLOCK("Close world");
-            delete world;
-            world = nullptr;
-            EASY_END_BLOCK;
-
-            WorldGenerator* generator;
-
-            if(createMaterialTestGen->drawBorder && !createDefaultGen->drawBorder) {
-                generator = new MaterialTestGenerator();
-            }else if(!createMaterialTestGen->drawBorder && createDefaultGen->drawBorder) {
-                generator = new DefaultGenerator();
-            } else {
-                // create world UI is in invalid state
-                generator = new MaterialTestGenerator();
-            }
-
-            EASY_BLOCK("Load world");
-            world = new World();
-            world->init((char*)getWorldDir(wn).c_str(), (int)ceil(WIDTH / 3 / (double)CHUNK_W)* CHUNK_W + CHUNK_W * 3, (int)ceil(HEIGHT / 3 / (double)CHUNK_H)* CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode, generator);
-
-            EASY_BLOCK("Queue chunk loading");
-            logInfo("Queueing chunk loading...");
-            for(int x = -CHUNK_W * 4; x < world->width + CHUNK_W * 4; x += CHUNK_W) {
-                for(int y = -CHUNK_H * 3; y < world->height + CHUNK_H * 8; y += CHUNK_H) {
-                    world->queueLoadChunk(x / CHUNK_W, y / CHUNK_H, true, true);
-                }
-            }
-            EASY_END_BLOCK;
-            EASY_END_BLOCK;
-
-        };
-        createWorldUI->children.push_back(createWorldButton);
-
-        worldNameInput->callback(worldNameInput->text);
-        uis.push_back(createWorldUI);
-        #pragma endregion
-
-        // set up debug ui
-        #pragma region
-        logInfo("Setting up debug UI...");
-        EASY_BLOCK("init debug UI");
-        debugUI = new UI(new SDL_Rect {WIDTH - 200 - 15, 25, 200, 350});
-        debugUI->background = new SolidBackground(0x80000000);
-        debugUI->drawBorder = true;
-
-        UILabel* titleLabel = new UILabel(new SDL_Rect {100, 10, 1, 30}, "Debug", labelFont, 0xffffff, ALIGN_CENTER);
-        debugUI->children.push_back(titleLabel);
-
-        uis.push_back(debugUI);
-        #pragma endregion
-
-        // set up debug ui checkboxes
-        #pragma region
-        int checkIndex = 0;
-
-        #define SETTINGS_CHECK(settingName, v_cb) { \
-	UICheckbox* check = new UICheckbox(new SDL_Rect{ 20, 50 + 18 * checkIndex++, 12, 12 }, Settings::settingName); \
-	check->drawBorder = true; \
-	debugUI->children.push_back(check); \
-	check->callback = [&](bool checked) { \
-	Settings::settingName = checked; \
-	v_cb(checked); }; \
-	UILabel* checkLabel = new UILabel(new SDL_Rect{ 16, 0, 150, 14 }, QUOTE(settingName), uiFont, 0xffffff, ALIGN_LEFT); \
-	check->children.push_back(checkLabel); }
-
-        SETTINGS_CHECK(draw_frame_graph, [](bool checked) {});
-
-        SETTINGS_CHECK(draw_background, [&](bool checked) {
-            for(int x = 0; x < world->width; x++) {
-                for(int y = 0; y < world->height; y++) {
-                    world->dirty[x + y * world->width] = true;
-                    world->layer2Dirty[x + y * world->width] = true;
-                }
-            }
-        });
-
-        SETTINGS_CHECK(draw_background_grid, [&](bool checked) {
-            for(int x = 0; x < world->width; x++) {
-                for(int y = 0; y < world->height; y++) {
-                    world->dirty[x + y * world->width] = true;
-                    world->layer2Dirty[x + y * world->width] = true;
-                }
-            }
-        });
-
-        SETTINGS_CHECK(draw_load_zones, [](bool checked) {});
-        SETTINGS_CHECK(draw_physics_meshes, [](bool checked) {});
-        SETTINGS_CHECK(draw_chunk_state, [](bool checked) {});
-        SETTINGS_CHECK(draw_chunk_queue, [](bool checked) {});
-        SETTINGS_CHECK(draw_material_info, [](bool checked) {});
-        SETTINGS_CHECK(draw_uinode_bounds, [](bool checked) {});
-        SETTINGS_CHECK(draw_light_map, [](bool checked) {});
-        SETTINGS_CHECK(draw_temperature_map, [](bool checked) {});
-        SETTINGS_CHECK(draw_shaders, [](bool checked) {});
-        SETTINGS_CHECK(tick_world, [](bool checked) {});
-        SETTINGS_CHECK(tick_box2d, [](bool checked) {});
-        SETTINGS_CHECK(tick_temperature, [](bool checked) {});
-
-        SETTINGS_CHECK(double_res_objects, [&](bool checked) {
-
-            GPU_FreeTarget(textureObjects->target);
-            GPU_FreeImage(textureObjects);
-            GPU_FreeTarget(textureObjectsBack->target);
-            GPU_FreeImage(textureObjectsBack);
-            GPU_FreeTarget(textureEntities->target);
-            GPU_FreeImage(textureEntities);
-
-            textureObjects = GPU_CreateImage(
-                world->width * (Settings::double_res_objects ? 2 : 1), world->height * (Settings::double_res_objects ? 2 : 1),
-                GPU_FormatEnum::GPU_FORMAT_RGBA
-            );
-            GPU_SetImageFilter(textureObjects, GPU_FILTER_NEAREST);
-
-            textureObjectsBack = GPU_CreateImage(
-                world->width * (Settings::double_res_objects ? 2 : 1), world->height * (Settings::double_res_objects ? 2 : 1),
-                GPU_FormatEnum::GPU_FORMAT_RGBA
-            );
-            GPU_SetImageFilter(textureObjectsBack, GPU_FILTER_NEAREST);
-
-            GPU_LoadTarget(textureObjects);
-            GPU_LoadTarget(textureObjectsBack);
-
-            textureEntities = GPU_CreateImage(
-                world->width * (Settings::double_res_objects ? 2 : 1), world->height * (Settings::double_res_objects ? 2 : 1),
-                GPU_FormatEnum::GPU_FORMAT_RGBA
-            );
-            GPU_SetImageFilter(textureEntities, GPU_FILTER_NEAREST);
-
-            GPU_LoadTarget(textureEntities);
-        });
-        #undef SETTINGS_CHECK
-        #pragma endregion
-
-        // set up debug draw ui
-        #pragma region
-        debugDrawUI = new UI(new SDL_Rect {15, 25, 200, (int)(80 + 37 * (Materials::MATERIALS.size() / 5 + 1) + 5)});
-        debugDrawUI->background = new SolidBackground(0x80000000);
-        debugDrawUI->drawBorder = true;
-
-        titleLabel = new UILabel(new SDL_Rect {100, 10, 1, 30}, "Draw", labelFont, 0xffffff, ALIGN_CENTER);
-        debugDrawUI->children.push_back(titleLabel);
-
-        UILabel* hoverMaterialLabelL = new UILabel(new SDL_Rect {15, 40, 1, 30}, "Hover:", uiFont, 0xffffff, ALIGN_LEFT);
-        debugDrawUI->children.push_back(hoverMaterialLabelL);
-
-        UILabel* hoverMaterialLabel = new UILabel(new SDL_Rect {75, 40, 1, 30}, "None", uiFont, 0xffffff, ALIGN_LEFT);
-        debugDrawUI->children.push_back(hoverMaterialLabel);
-
-        UILabel* selectMaterialLabelL = new UILabel(new SDL_Rect {15, 52, 1, 30}, "Selected:", uiFont, 0xffffff, ALIGN_LEFT);
-        debugDrawUI->children.push_back(selectMaterialLabelL);
-
-        UILabel* selectMaterialLabel = new UILabel(new SDL_Rect {75, 52, 1, 30}, "None", uiFont, 0xffffff, ALIGN_LEFT);
-        debugDrawUI->children.push_back(selectMaterialLabel);
-
-        UILabel* brushSizeLabelL = new UILabel(new SDL_Rect {15, 64, 1, 30}, "Brush size:", uiFont, 0xffffff, ALIGN_LEFT);
-        debugDrawUI->children.push_back(brushSizeLabelL);
-
-        this->brushSizeLabel = new UILabel(new SDL_Rect {85, 64, 1, 30}, std::to_string(brushSize), uiFont, 0xffffff, ALIGN_LEFT);
-        debugDrawUI->children.push_back(this->brushSizeLabel);
-
-        for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
-            MaterialNode* mn = new MaterialNode(new SDL_Rect {10 + 37 * (int)(i % 5), 80 + 37 * (int)(i / 5), 16, 16}, Materials::MATERIALS[i]);
-            mn->bounds->w = 32;
-            mn->bounds->h = 32;
-            mn->drawBorder = true;
-            mn->hoverCallback = [hoverMaterialLabel](Material* mat) {
-                hoverMaterialLabel->text = mat->name;
-                hoverMaterialLabel->updateTexture();
-            };
-            mn->selectCallback = [&](Material* mat) {
-                selectMaterialLabel->text = mat->name;
-                selectMaterialLabel->updateTexture();
-                selectedMaterial = mat;
-            };
-            debugDrawUI->children.push_back(mn);
-        }
-
-        uis.push_back(debugDrawUI);
-        EASY_END_BLOCK;
-        #pragma endregion
-
-        // set up debug item ui
-        #pragma region
-        debugItemUI = new UI(new SDL_Rect {15, debugDrawUI->bounds->y + debugDrawUI->bounds->h + 5, 200, 0});
-        debugItemUI->background = new SolidBackground(0x80000000);
-        debugItemUI->drawBorder = true;
-
-        titleLabel = new UILabel(new SDL_Rect {100, 10, 1, 30}, "Items", labelFont, 0xffffff, ALIGN_CENTER);
-        debugItemUI->children.push_back(titleLabel);
-
-        UILabel* hoverItemLabel = new UILabel(new SDL_Rect {15, 40, 1, 30}, "None", uiFont, 0xffffff, ALIGN_LEFT);
-        debugItemUI->children.push_back(hoverItemLabel);
-
-        int itemIndex = 0;
-
-        ImageButtonNode* itemNode = new ImageButtonNode(new SDL_Rect {16 + (48 + 12) * (int)(itemIndex % 3), 60 + (48 + 12) * (int)(itemIndex / 3), 16, 16}, Textures::loadTexture("assets/objects/chisel.png"));
-        itemNode->bounds->w = 48;
-        itemNode->bounds->h = 48;
-        itemNode->drawBorder = false;
-        itemNode->hoverCallback = [&]() {
-            hoverItemLabel->text = "Chisel";
-            hoverItemLabel->updateTexture();
-        };
-        itemNode->selectCallback = [&]() {
-            Item* i3 = new Item();
-            i3->setFlag(ItemFlags::CHISEL);
-            i3->surface = Textures::loadTexture("assets/objects/chisel.png");
-            i3->texture = GPU_CopyImageFromSurface(i3->surface);
-            GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
-            i3->pivotX = 2;
-            world->player->setItemInHand(i3, world);
-        };
-        debugItemUI->children.push_back(itemNode);
-
-        itemIndex++;
-        itemNode = new ImageButtonNode(new SDL_Rect {16 + (48 + 12) * (int)(itemIndex % 3), 60 + (48 + 12) * (int)(itemIndex / 3), 16, 16}, Textures::loadTexture("assets/objects/testHammer.png"));
-        itemNode->bounds->w = 48;
-        itemNode->bounds->h = 48;
-        itemNode->drawBorder = false;
-        itemNode->hoverCallback = [&]() {
-            hoverItemLabel->text = "Hammer";
-            hoverItemLabel->updateTexture();
-        };
-        itemNode->selectCallback = [&]() {
-            Item* i3 = new Item();
-            i3->setFlag(ItemFlags::HAMMER);
-            i3->surface = Textures::loadTexture("assets/objects/testHammer.png");
-            i3->texture = GPU_CopyImageFromSurface(i3->surface);
-            GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
-            i3->pivotX = 2;
-            world->player->setItemInHand(i3, world);
-        };
-        debugItemUI->children.push_back(itemNode);
-
-        itemIndex++;
-        itemNode = new ImageButtonNode(new SDL_Rect {16 + (48 + 12) * (int)(itemIndex % 3), 60 + (48 + 12) * (int)(itemIndex / 3), 16, 16}, Textures::loadTexture("assets/objects/testVacuum.png"));
-        itemNode->bounds->w = 48;
-        itemNode->bounds->h = 48;
-        itemNode->drawBorder = false;
-        itemNode->hoverCallback = [&]() {
-            hoverItemLabel->text = "Vacuum";
-            hoverItemLabel->updateTexture();
-        };
-        itemNode->selectCallback = [&]() {
-            if(world->player == nullptr) return;
-
-            Item* i3 = new Item();
-            i3->setFlag(ItemFlags::VACUUM);
-            i3->surface = Textures::loadTexture("assets/objects/testVacuum.png");
-            i3->texture = GPU_CopyImageFromSurface(i3->surface);
-            GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
-            i3->pivotX = 6;
-            world->player->setItemInHand(i3, world);
-        };
-        debugItemUI->children.push_back(itemNode);
-
-        itemIndex++;
-        itemNode = new ImageButtonNode(new SDL_Rect {16 + (48 + 12) * (int)(itemIndex % 3), 60 + (48 + 12) * (int)(itemIndex / 3), 16, 16}, Textures::loadTexture("assets/objects/testBucket.png"));
-        itemNode->bounds->w = 48;
-        itemNode->bounds->h = 48;
-        itemNode->drawBorder = false;
-        itemNode->hoverCallback = [&]() {
-            hoverItemLabel->text = "Container";
-            hoverItemLabel->updateTexture();
-        };
-        itemNode->selectCallback = [&]() {
-            if(world->player == nullptr) return;
-
-            Item* i3 = new Item();
-            i3->setFlag(ItemFlags::FLUID_CONTAINER);
-            i3->surface = Textures::loadTexture("assets/objects/testBucket.png");
-            i3->capacity = 100;
-            i3->loadFillTexture(Textures::loadTexture("assets/objects/testBucket_fill.png"));
-            i3->texture = GPU_CopyImageFromSurface(i3->surface);
-            GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
-            i3->pivotX = 0;
-            world->player->setItemInHand(i3, world);
-        };
-
-        itemIndex++;
-        debugItemUI->bounds->h = 60 + (48 + 12) * ((itemIndex + 2) / 3) + 10;
-
-        debugItemUI->children.push_back(itemNode);
-
-        uis.push_back(debugItemUI);
-        #pragma endregion
 
         // create textures
         #pragma region
@@ -1278,14 +828,19 @@ int Game::run(int argc, char *argv[]) {
                     goto exit;
                 }
 
-                bool discardEvent = false;
-                for(auto& v : uis) {
-                    if(v->visible && v->checkEvent(windowEvent, target, world, 0, 0)) {
-                        discardEvent = true;
-                        break;
+                ImGui_ImplSDL2_ProcessEvent(&windowEvent);
+
+                if(ImGui::GetIO().WantCaptureMouse) {
+                    if(windowEvent.type == SDL_MOUSEBUTTONDOWN || windowEvent.type == SDL_MOUSEBUTTONUP || windowEvent.type == SDL_MOUSEMOTION || windowEvent.type == SDL_MOUSEWHEEL) {
+                        continue;
                     }
                 }
-                if(discardEvent) continue;
+
+                if(ImGui::GetIO().WantCaptureKeyboard) {
+                    if(windowEvent.type == SDL_KEYDOWN || windowEvent.type == SDL_KEYUP) {
+                        continue;
+                    }
+                }
 
                 if(windowEvent.type == SDL_MOUSEWHEEL) {
                     // zoom in/out
@@ -1303,9 +858,9 @@ int Game::run(int argc, char *argv[]) {
                     #pragma region
                     int x = (int)((windowEvent.motion.x - ofsX - camX) / scale);
                     int y = (int)((windowEvent.motion.y - ofsY - camY) / scale);
-                    for(int xx = -brushSize / 2; xx < (int)(ceil(brushSize / 2.0)); xx++) {
-                        for(int yy = -brushSize / 2; yy < (int)(ceil(brushSize / 2.0)); yy++) {
-                            MaterialInstance tp = Tiles::create(selectedMaterial, x + xx, y + yy);
+                    for(int xx = -DebugDrawUI::brushSize / 2; xx < (int)(ceil(DebugDrawUI::brushSize / 2.0)); xx++) {
+                        for(int yy = -DebugDrawUI::brushSize / 2; yy < (int)(ceil(DebugDrawUI::brushSize / 2.0)); yy++) {
+                            MaterialInstance tp = Tiles::create(DebugDrawUI::selectedMaterial, x + xx, y + yy);
                             world->tiles[(x + xx) + (y + yy) * world->width] = tp;
                             world->dirty[(x + xx) + (y + yy) * world->width] = true;
                             /*Particle* p = new Particle(tp, x + xx, y + yy, 0, 0, 0, (float)0.01f);
@@ -1323,10 +878,10 @@ int Game::run(int argc, char *argv[]) {
                     // erase from world
                     int x = (int)((windowEvent.motion.x - ofsX - camX) / scale);
                     int y = (int)((windowEvent.motion.y - ofsY - camY) / scale);
-                    for(int xx = -brushSize / 2; xx < (int)(ceil(brushSize / 2.0)); xx++) {
-                        for(int yy = -brushSize / 2; yy < (int)(ceil(brushSize / 2.0)); yy++) {
+                    for(int xx = -DebugDrawUI::brushSize / 2; xx < (int)(ceil(DebugDrawUI::brushSize / 2.0)); xx++) {
+                        for(int yy = -DebugDrawUI::brushSize / 2; yy < (int)(ceil(DebugDrawUI::brushSize / 2.0)); yy++) {
 
-                            if(abs(xx) + abs(yy) == brushSize) continue;
+                            if(abs(xx) + abs(yy) == DebugDrawUI::brushSize) continue;
                             if(world->getTile(x + xx, y + yy).mat->physicsType != PhysicsType::AIR) {
                                 world->setTile(x + xx, y + yy, Tiles::NOTHING);
                                 world->lastMeshZone.x--;
@@ -1459,27 +1014,7 @@ int Game::run(int argc, char *argv[]) {
 
                                     if(connect) {
 
-                                        chiselUI = new UI(new SDL_Rect {0, 0, cur->surface->w * 4 + 10 + 10, cur->surface->h * 4 + 10 + 40});
-                                        chiselUI->bounds->x = WIDTH / 2 - chiselUI->bounds->w / 2;
-                                        chiselUI->bounds->y = HEIGHT / 2 - chiselUI->bounds->h / 2;
-
-                                        UILabel* chiselUITitleLabel = new UILabel(new SDL_Rect {chiselUI->bounds->w / 2, 10, 1, 30}, "Chisel", TTF_OpenFont("assets/fonts/pixel_operator/PixelOperator.ttf", 32), 0xffffff, ALIGN_CENTER);
-                                        chiselUI->children.push_back(chiselUITitleLabel);
-
-                                        chiselUI->background = new SolidBackground(0xC0505050);
-                                        chiselUI->drawBorder = true;
-
-                                        ChiselNode* chisel = new ChiselNode(new SDL_Rect {10, 40, chiselUI->bounds->w - 20, chiselUI->bounds->h - 10 - 40});
-                                        chisel->drawBorder = true;
-                                        chisel->rb = cur;
-                                        SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(cur->surface->flags, cur->surface->w, cur->surface->h, cur->surface->format->BitsPerPixel, cur->surface->format->format);
-                                        SDL_BlitSurface(cur->surface, NULL, surf, NULL);
-                                        chisel->surface = surf;
-                                        chisel->texture = GPU_CopyImageFromSurface(surf);
-                                        GPU_SetImageFilter(chisel->texture, GPU_FILTER_NEAREST);
-                                        chiselUI->children.push_back(chisel);
-
-                                        uis.push_back(chiselUI);
+                                        // previously: open chisel ui
 
                                         break;
                                     }
@@ -1746,6 +1281,49 @@ int Game::run(int argc, char *argv[]) {
             renderLate();
             target = realTarget;
 
+            // render ImGui
+
+            EASY_BLOCK("render ImGui", UI_PROFILER_COLOR);
+
+            GPU_ActivateShaderProgram(0, NULL);
+            GPU_FlushBlitBuffer();
+
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplSDL2_NewFrame(window);
+            ImGui::NewFrame();
+
+            DebugUI::Draw(this);
+            DebugDrawUI::Draw(this);
+            DebugCheatsUI::Draw(this);
+            MainMenuUI::Draw(this);
+            CreateWorldUI::Draw(this);
+            //ImGui::ShowDemoWindow();
+
+            if(DebugUI::visible) {
+                ImGui::Begin("Debug Info");
+                ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+                GPU_Renderer* renderer = GPU_GetCurrentRenderer();
+                GPU_RendererID id = renderer->id;
+
+                ImGui::Text("Using renderer: %s (%d.%d)\n", id.name, id.major_version, id.minor_version);
+                ImGui::Text("  Shader versions supported: %d to %d\n\n", renderer->min_shader_version, renderer->max_shader_version);
+
+                ImGui::End();
+            }
+
+            EASY_BLOCK("ImGui::Render()", UI_PROFILER_COLOR);
+            ImGui::Render();
+            EASY_END_BLOCK;
+            SDL_GL_MakeCurrent(window, realTarget->context->context);
+            EASY_BLOCK("ImGui_ImplOpenGL3_RenderDrawData", UI_PROFILER_COLOR);
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            EASY_END_BLOCK;
+
+            EASY_END_BLOCK;
+
+            // render fade in/out
+
             EASY_BLOCK("fades");
             if(fadeInWaitFrames > 0) {
                 fadeInWaitFrames--;
@@ -1874,9 +1452,9 @@ void Game::updateFrameEarly() {
     #pragma region
     EASY_BLOCK("controls");
     if(Controls::DEBUG_UI->get()) {
-        debugUI->visible = !debugUI->visible;
-        debugDrawUI->visible = !debugDrawUI->visible;
-        debugItemUI->visible = !debugItemUI->visible;
+        DebugUI::visible ^= true;
+        DebugDrawUI::visible ^= true;
+        DebugCheatsUI::visible ^= true;
     }
 
     if(Controls::DEBUG_REFRESH->get()) {
@@ -1988,15 +1566,11 @@ void Game::updateFrameEarly() {
     }
 
     if(Controls::DEBUG_BRUSHSIZE_INC->get()) {
-        brushSize = brushSize < 50 ? brushSize + 1 : brushSize;
-        brushSizeLabel->text = std::to_string(brushSize);
-        brushSizeLabel->updateTexture();
+        DebugDrawUI::brushSize = DebugDrawUI::brushSize < 50 ? DebugDrawUI::brushSize + 1 : DebugDrawUI::brushSize;
     }
 
     if(Controls::DEBUG_BRUSHSIZE_DEC->get()) {
-        brushSize = brushSize > 1 ? brushSize - 1 : brushSize;
-        brushSizeLabel->text = std::to_string(brushSize);
-        brushSizeLabel->updateTexture();
+        DebugDrawUI::brushSize = DebugDrawUI::brushSize > 1 ? DebugDrawUI::brushSize - 1 : DebugDrawUI::brushSize;
     }
 
     if(Controls::DEBUG_TOGGLE_PLAYER->get()) {
@@ -3825,49 +3399,7 @@ void Game::renderLate() {
             EASY_END_BLOCK; // draw frame graph
         }
 
-        EASY_BLOCK("draw ui", RENDER_PROFILER_COLOR);
         GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
-
-        for(auto& v : uis) {
-            v->bounds->x = max(0, min(v->bounds->x, WIDTH - v->bounds->w));
-            v->bounds->y = max(0, min(v->bounds->y, HEIGHT - v->bounds->h));
-        }
-
-        EASY_BLOCK("draw debugUI", RENDER_PROFILER_COLOR);
-        debugUI->draw(target, 0, 0);
-        EASY_END_BLOCK; // draw debugUI
-
-        EASY_BLOCK("draw debugDrawUI", RENDER_PROFILER_COLOR);
-        debugDrawUI->draw(target, 0, 0);
-        EASY_END_BLOCK; // draw debugDrawUI
-
-        EASY_BLOCK("draw debugItemUI", RENDER_PROFILER_COLOR);
-        debugItemUI->draw(target, 0, 0);
-        EASY_END_BLOCK; // draw debugItemUI
-
-        EASY_BLOCK("draw chiselUI", RENDER_PROFILER_COLOR);
-        if(chiselUI != NULL) {
-            if(!chiselUI->visible) {
-                uis.erase(std::remove(uis.begin(), uis.end(), chiselUI), uis.end());
-                delete chiselUI;
-                chiselUI = NULL;
-            } else {
-                chiselUI->draw(target, 0, 0);
-            }
-        }
-        EASY_END_BLOCK; // draw chiselUI
-        EASY_BLOCK("draw mainMenuUI", RENDER_PROFILER_COLOR);
-        //if (state == MAIN_MENU) { // handled by setting mainMenuUI->visible
-        mainMenuUI->draw(target, 0, 0);
-        //}
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("draw createWorldUI", RENDER_PROFILER_COLOR);
-        //if (state == MAIN_MENU) { // handled by setting createWorldUI->visible
-        createWorldUI->draw(target, 0, 0);
-        //}
-        EASY_END_BLOCK;
-        EASY_END_BLOCK; // draw ui
 
         EASY_BLOCK("draw version info", RENDER_PROFILER_COLOR);
         #ifdef DEVELOPMENT_BUILD

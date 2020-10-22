@@ -153,17 +153,6 @@ public:
     GPU_Image* lightTex = nullptr;
     SDL_Surface* lightSurf = nullptr;
 
-    vector<UI*> uis;
-    UI* debugUI = nullptr;
-    UI* debugDrawUI = nullptr;
-    UI* debugItemUI = nullptr;
-    int brushSize = 5;
-    UILabel* brushSizeLabel = nullptr;
-    UI* mainMenuUI = nullptr;
-    UI* createWorldUI = nullptr;
-
-    UI* chiselUI = nullptr;
-
     int tickTime = 0;
 
     bool running = true;
@@ -177,8 +166,6 @@ public:
     int my = 0;
 
     bool* objectDelete = nullptr;
-
-    Material* selectedMaterial = &Materials::GENERIC_AIR;
 
     Uint32 water_shader = 0;
     GPU_ShaderBlock water_shader_block {};

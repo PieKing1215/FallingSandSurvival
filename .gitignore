@@ -3,6 +3,7 @@
 !/FallingSandSurvival/gamedir/worlds/mainMenu/world.txt
 /FallingSandSurvival/gamedir/worlds/mainMenu/chunks/*
 /FallingSandSurvival/gamedir/profiler/*
+/FallingSandSurvival/imgui.ini
 /FallingSandExtras/*
 /steamworks_sdk_148a/*
 /steamworks_sdk_148a/
