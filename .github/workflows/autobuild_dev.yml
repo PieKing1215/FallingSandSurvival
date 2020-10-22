@@ -57,6 +57,7 @@ jobs:
       - name: Build Binary
         run: |
           bash -c "'C:/Program Files (x86)/Microsoft Visual Studio/2017/Enterprise/MSBuild/15.0/Bin/MSBuild.exe' -p:Configuration=Release;Platform=x64"
+          rm -r Build
           mkdir Build
           cp ./x64/Release/FallingSandSurvival.exe ./Build/FallingSandSurvival.exe
           cp ./FallingSandSurvival/lib/bin/x64/fmodL.dll ./Build/fmodL.dll
