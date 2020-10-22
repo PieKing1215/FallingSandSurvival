@@ -31,9 +31,11 @@
 #include <memory>
 
 #include "SDL2/SDL.h"
+#undef M_PI
 #include "SDL2/SDL_ttf.h"
 #include "SDL2/SDL_image.h"
 #include "SDL_gpu.h"
+
 
 #include "box2d/b2_math.h"
 #include "box2d/b2_world.h"

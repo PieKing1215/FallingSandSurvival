@@ -8,14 +8,14 @@
 
 bool DebugDrawUI::visible = true;
 int DebugDrawUI::selIndex = -1;
-GPU_Image** DebugDrawUI::images = nullptr;
+std::vector<GPU_Image*> DebugDrawUI::images = {};
 uint8 DebugDrawUI::brushSize = 5;
 Material* DebugDrawUI::selectedMaterial = &Materials::GENERIC_AIR;
 
 void DebugDrawUI::Setup() {
     EASY_FUNCTION(UI_PROFILER_COLOR);
 
-    images = new GPU_Image*[Materials::MATERIALS.size()];
+    images = {};
     for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
         Material* mat = Materials::MATERIALS[i];
         SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, 16, 16, 32, SDL_PIXELFORMAT_ARGB8888);
@@ -25,7 +25,7 @@ void DebugDrawUI::Setup() {
                 PIXEL(surface, x, y) = m.color + (m.mat->alpha << 24);
             }
         }
-        images[i] = GPU_CopyImageFromSurface(surface);
+        images.push_back(GPU_CopyImageFromSurface(surface));
         GPU_SetImageFilter(images[i], GPU_FILTER_NEAREST);
         SDL_FreeSurface(surface);
     }
@@ -34,7 +34,7 @@ void DebugDrawUI::Setup() {
 void DebugDrawUI::Draw(Game* game) {
     EASY_FUNCTION(UI_PROFILER_COLOR);
 
-    if(images == nullptr) Setup();
+    if(images.empty()) Setup();
 
 	if(!visible) return;
 

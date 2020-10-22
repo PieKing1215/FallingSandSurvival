@@ -25,7 +25,7 @@ class DebugDrawUI {
 public:
 	static bool visible;
 	static int selIndex;
-	static GPU_Image** images;
+	static std::vector<GPU_Image*> images;
 
 	static Material* selectedMaterial;
 	static uint8 brushSize;
