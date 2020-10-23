@@ -184,7 +184,7 @@ void MainMenuUI::Draw(Game* game) {
 		tm* tm_local = localtime(&time_local);
 
 		char* formattedTime = new char[100];
-		strftime(formattedTime, 100, "%D %I:%M %p", tm_local);
+		strftime(formattedTime, 100, "%#m/%#d/%y %#I:%M%p", tm_local);
 
 		char* filenameAndTimestamp = new char[200];
 		snprintf(filenameAndTimestamp, 100, "%s (%s)", worldName.c_str(), formattedTime);
