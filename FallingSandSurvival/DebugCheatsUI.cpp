@@ -13,7 +13,7 @@ void DebugCheatsUI::Setup() {
     EASY_FUNCTION(UI_PROFILER_COLOR);
 
     images = {};
-    SDL_Surface* sfc = Textures::loadTexture("assets/objects/chisel.png");
+    SDL_Surface* sfc = Textures::loadTexture("assets/objects/testPickaxe.png");
     images.push_back(GPU_CopyImageFromSurface(sfc));
     GPU_SetImageFilter(images[0], GPU_FILTER_NEAREST);
     SDL_FreeSurface(sfc);
@@ -62,8 +62,8 @@ void DebugCheatsUI::Draw(Game* game) {
             ImTextureID texId = (ImTextureID)GPU_GetTextureHandle(images[i]);
             if(ImGui::ImageButton(texId, size, uv0, uv1, frame_padding, bg_col, tint_col)) {
                 Item* i3 = new Item();
-                i3->setFlag(ItemFlags::CHISEL);
-                i3->surface = Textures::loadTexture("assets/objects/chisel.png");
+                i3->setFlag(ItemFlags::TOOL);
+                i3->surface = Textures::loadTexture("assets/objects/testPickaxe.png");
                 i3->texture = GPU_CopyImageFromSurface(i3->surface);
                 GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
                 i3->pivotX = 2;
@@ -71,7 +71,7 @@ void DebugCheatsUI::Draw(Game* game) {
             }
             if(ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();
-                ImGui::Text("%s", "Chisel");
+                ImGui::Text("%s", "Pickaxe");
                 ImGui::EndTooltip();
             }
             ImGui::PopID();
