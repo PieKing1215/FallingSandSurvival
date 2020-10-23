@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <objects serializationModel="Studio.02.00.00">
-	<object class="AudioFile" id="{e04e0100-d608-4bf8-becd-524bd67cfb60}">
+	<object class="AudioFile" id="{09654da6-22cf-4bff-9523-a6cd0532f98a}">
 		<property name="assetPath">
-			<value>title.wav</value>
+			<value>sand.ogg</value>
 		</property>
 		<property name="frequencyInKHz">
 			<value>44.0999985</value>

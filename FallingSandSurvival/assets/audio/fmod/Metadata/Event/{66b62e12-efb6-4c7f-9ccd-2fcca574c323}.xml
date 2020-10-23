@@ -5,7 +5,7 @@
 			<value>Title</value>
 		</property>
 		<property name="outputFormat">
-			<value>1</value>
+			<value>0</value>
 		</property>
 		<relationship name="folder">
 			<destination>{75b8d149-924f-4b76-aa08-89467e37ca8c}</destination>
@@ -93,7 +93,7 @@
 			<value>2</value>
 		</property>
 		<relationship name="audioFile">
-			<destination>{e04e0100-d608-4bf8-becd-524bd67cfb60}</destination>
+			<destination>{62898b19-acc4-4f6d-849f-0b9835ad3694}</destination>
 		</relationship>
 	</object>
 	<object class="EventMixerGroup" id="{3911e805-2b19-437d-91f9-ee69a280815b}">
