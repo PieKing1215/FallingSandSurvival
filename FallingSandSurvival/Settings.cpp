@@ -16,4 +16,6 @@ bool Settings::draw_shaders		    = false;
 bool Settings::tick_world           = true;
 bool Settings::tick_box2d           = true;
 bool Settings::tick_temperature     = true;
-bool Settings::double_res_objects   = false;
+bool Settings::hd_objects           = false;
+
+int Settings::hd_objects_size = 3;

@@ -17,5 +17,7 @@ public:
     static bool tick_world;
     static bool tick_box2d;
     static bool tick_temperature;
-    static bool double_res_objects;
+    static bool hd_objects;
+
+    static int hd_objects_size;
 };

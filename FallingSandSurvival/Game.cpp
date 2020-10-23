@@ -496,7 +496,7 @@ int Game::init(int argc, char *argv[]) {
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         worldTexture = GPU_CreateImage(
-            world->width * 2, world->height * 2,
+            world->width * Settings::hd_objects_size, world->height * Settings::hd_objects_size,
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
@@ -565,7 +565,7 @@ int Game::init(int argc, char *argv[]) {
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         textureObjects = GPU_CreateImage(
-            world->width * (Settings::double_res_objects ? 2 : 1), world->height * (Settings::double_res_objects ? 2 : 1),
+            world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
@@ -585,7 +585,7 @@ int Game::init(int argc, char *argv[]) {
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         textureObjectsBack = GPU_CreateImage(
-            world->width * (Settings::double_res_objects ? 2 : 1), world->height * (Settings::double_res_objects ? 2 : 1),
+            world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
@@ -615,7 +615,7 @@ int Game::init(int argc, char *argv[]) {
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         textureEntities = GPU_CreateImage(
-            world->width * (Settings::double_res_objects ? 2 : 1), world->height * (Settings::double_res_objects ? 2 : 1),
+            world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
@@ -1992,7 +1992,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
             #pragma region
             GPU_Target* tgt = cur->back ? textureObjectsBack->target : textureObjects->target;
             GPU_Target* tgtLQ = cur->back ? textureObjectsBack->target : textureObjectsLQ->target;
-            int scaleObjTex = Settings::double_res_objects ? 2 : 1;
+            int scaleObjTex = Settings::hd_objects ? Settings::hd_objects_size : 1;
 
             GPU_Rect r = {x * scaleObjTex, y * scaleObjTex, (float)cur->surface->w * scaleObjTex, (float)cur->surface->h * scaleObjTex};
 
@@ -2838,15 +2838,15 @@ void Game::renderEarly() {
     } else {
         // render entities with LERP
         #pragma region
-        if(world->player) {
-            if(now - lastTick <= mspt) {
+        if(now - lastTick <= mspt) {
+            GPU_Clear(textureEntities->target);
+            GPU_Clear(textureEntitiesLQ->target);
+            if(world->player) {
                 float thruTick = (float)((now - lastTick) / (double)mspt);
                 EASY_BLOCK("render entities LERP");
                 GPU_SetBlendMode(textureEntities, GPU_BLEND_ADD);
                 GPU_SetBlendMode(textureEntitiesLQ, GPU_BLEND_ADD);
-                GPU_Clear(textureEntities->target);
-                GPU_Clear(textureEntitiesLQ->target);
-                int scaleEnt = Settings::double_res_objects ? 2 : 1;
+                int scaleEnt = Settings::hd_objects ? Settings::hd_objects_size : 1;
 
                 for(auto& v : world->entities) {
                     v->renderLQ(textureEntitiesLQ->target, world->loadZone.x + (int)(v->vx * thruTick), world->loadZone.y + (int)(v->vy * thruTick));

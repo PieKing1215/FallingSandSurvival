@@ -55,7 +55,7 @@ void DebugUI::Draw(Game* game) {
     ImGui::Checkbox("Tick Box2D"          , &Settings::tick_box2d);
     ImGui::Checkbox("Tick Temperature"    , &Settings::tick_temperature);
 
-    if(ImGui::Checkbox("Double Res Objects", &Settings::double_res_objects)) {
+    if(ImGui::Checkbox("Double Res Objects", &Settings::hd_objects)) {
         GPU_FreeTarget(game->textureObjects->target);
         GPU_FreeImage(game->textureObjects);
         GPU_FreeTarget(game->textureObjectsBack->target);
@@ -64,13 +64,13 @@ void DebugUI::Draw(Game* game) {
         GPU_FreeImage(game->textureEntities);
 
         game->textureObjects = GPU_CreateImage(
-            game->world->width * (Settings::double_res_objects ? 2 : 1), game->world->height * (Settings::double_res_objects ? 2 : 1),
+            game->world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), game->world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         GPU_SetImageFilter(game->textureObjects, GPU_FILTER_NEAREST);
 
         game->textureObjectsBack = GPU_CreateImage(
-            game->world->width * (Settings::double_res_objects ? 2 : 1), game->world->height * (Settings::double_res_objects ? 2 : 1),
+            game->world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), game->world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         GPU_SetImageFilter(game->textureObjectsBack, GPU_FILTER_NEAREST);
@@ -79,7 +79,7 @@ void DebugUI::Draw(Game* game) {
         GPU_LoadTarget(game->textureObjectsBack);
 
         game->textureEntities = GPU_CreateImage(
-            game->world->width * (Settings::double_res_objects ? 2 : 1), game->world->height * (Settings::double_res_objects ? 2 : 1),
+            game->world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), game->world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         GPU_SetImageFilter(game->textureEntities, GPU_FILTER_NEAREST);
