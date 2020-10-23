@@ -69,6 +69,21 @@ jobs:
 #      - name: Collect Artifact
 #        run: Compress-Archive -Path '.\Build' -DestinationPath '.\FallingSandSurvival_x64.zip'
 #        shell: powershell
+      
+      - name: Compress FallingSandSurvival.exe with UPX
+        uses: svenstaro/upx-action@2.0.1
+        with:
+          file: ./Build/FallingSandSurvival.exe
+      
+      - name: Compress fmodL.dll with UPX
+        uses: svenstaro/upx-action@2.0.1
+        with:
+          file: ./Build/fmodL.dll
+      
+      - name: Compress fmodstudioL.dll with UPX
+        uses: svenstaro/upx-action@2.0.1
+        with:
+          file: ./Build/fmodstudioL.dll
         
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.0
