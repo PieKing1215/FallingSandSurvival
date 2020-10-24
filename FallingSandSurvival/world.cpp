@@ -33,8 +33,6 @@
 
 #define W_PI 3.14159265358979323846
 
-bool TestPointOpt(b2PolygonShape* sh, float x, float y);
-
 void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode) {
     init(worldPath, w, h, target, audioEngine, netMode, new MaterialTestGenerator());
 }
@@ -716,15 +714,6 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     SDL_FreeSurface(rb->surface);
     delete rb;
 
-}
-
-bool TestPointOpt(b2PolygonShape* sh, float x, float y) {
-    for(int32 i = 0; i < sh->m_count; ++i) {
-        if(sh->m_normals[i].x * (x - sh->m_vertices[i].x) + sh->m_normals[i].y * (y - sh->m_vertices[i].y) > 0.0f) {
-            return false;
-        }
-    }
-    return true;
 }
 
 void World::updateChunkMesh(Chunk* chunk) {
