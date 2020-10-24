@@ -59,7 +59,7 @@ int Game::init(int argc, char *argv[]) {
     EASY_END_BLOCK;
 
     // TODO: commandline option
-    this->gameDir = "gamedir/";
+    this->gameDir = GameDir("gamedir/");
 
     networkMode = ch == 's' ? NetworkMode::SERVER : NetworkMode::HOST;
     if(argc >= 2) {
@@ -456,7 +456,7 @@ int Game::init(int argc, char *argv[]) {
     EASY_BLOCK("init world");
     logInfo("Initializing world...");
     world = new World();
-    world->init((char*)getWorldDir("mainMenu").c_str(), (int)ceil(WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode);
+    world->init((char*)gameDir.getWorldPath("mainMenu").c_str(), (int)ceil(WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode);
     EASY_END_BLOCK;
     #pragma endregion
 
@@ -1428,7 +1428,7 @@ exit:
         time(&rawtime);
         timeinfo = localtime(&rawtime);
 
-        strftime(buf, sizeof(buf), getFileInGameDir("profiler/%Y-%m-%d_%H-%M-%S.prof").c_str(), timeinfo);
+        strftime(buf, sizeof(buf), gameDir.getPath("profiler/%Y-%m-%d_%H-%M-%S.prof").c_str(), timeinfo);
         std::string str(buf);
 
         profiler::dumpBlocksToFile(str.c_str());
@@ -1436,7 +1436,7 @@ exit:
         if(stat(str.c_str(), &buffer) == 0) {
 
             std::ifstream src(str.c_str(), std::ios::binary);
-            std::ofstream dst(getFileInGameDir("profiler/latest.prof").c_str(), std::ios::binary);
+            std::ofstream dst(gameDir.getPath("profiler/latest.prof").c_str(), std::ios::binary);
 
             dst << src.rdbuf();
         }
@@ -3522,14 +3522,6 @@ int Game::getAimSurface(int dist) {
     });
 
     return startInd;
-}
-
-string Game::getFileInGameDir(string filePathRel) {
-    return this->gameDir + filePathRel;
-}
-
-string Game::getWorldDir(string worldName) {
-    return this->getFileInGameDir("worlds/" + worldName);
 }
 
 int Game::getAimSolidSurface(int dist) {

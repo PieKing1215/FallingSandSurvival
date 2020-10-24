@@ -171,7 +171,7 @@ void CreateWorldUI::Draw(Game* game) {
         regex trimWhitespaceRegex("^ *(.+?) *$");
         worldTitle = regex_replace(worldTitle, trimWhitespaceRegex, "$1");
 
-        logInfo("Creating world named \"{}\" at \"{}\"", worldTitle, game->getWorldDir(wn));
+        logInfo("Creating world named \"{}\" at \"{}\"", worldTitle, game->gameDir.getWorldPath(wn));
         MainMenuUI::visible = false;
         visible = false;
         game->state = LOADING;
@@ -195,7 +195,7 @@ void CreateWorldUI::Draw(Game* game) {
 
         EASY_BLOCK("Load world");
         game->world = new World();
-        game->world->init((char*)game->getWorldDir(wn).c_str(), (int)ceil(game->WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(game->HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, game->target, &game->audioEngine, game->networkMode, generator);
+        game->world->init((char*)game->gameDir.getWorldPath(wn).c_str(), (int)ceil(game->WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(game->HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, game->target, &game->audioEngine, game->networkMode, generator);
 
         EASY_BLOCK("Queue chunk loading");
         logInfo("Queueing chunk loading...");
@@ -240,7 +240,7 @@ void CreateWorldUI::inputChanged(std::string text, Game* game) {
     regex worldFolderRegex("[\\/\\\\:*?\"<>|.]");
 
     std::string worldFolderName = regex_replace(text, worldFolderRegex, "_");
-    std::string folder = game->getWorldDir(worldFolderName);
+    std::string folder = game->gameDir.getWorldPath(worldFolderName);
     struct stat buffer;
     bool exists = (stat(folder.c_str(), &buffer) == 0);
 
@@ -248,7 +248,7 @@ void CreateWorldUI::inputChanged(std::string text, Game* game) {
     int i = 2;
     while(exists) {
         newWorldFolderName = worldFolderName + " (" + std::to_string(i) + ")";
-        folder = game->getWorldDir(newWorldFolderName);
+        folder = game->gameDir.getWorldPath(newWorldFolderName);
 
         exists = (stat(folder.c_str(), &buffer) == 0);
 

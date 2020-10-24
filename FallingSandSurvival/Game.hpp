@@ -44,6 +44,8 @@
 
 #include "ProfilerConfig.hpp"
 
+#include "GameDir.hpp"
+
 enum GameState {
     MAIN_MENU,
     LOADING,
@@ -176,8 +178,6 @@ public:
     FireShader* fireShader = nullptr;
     Fire2Shader* fire2Shader = nullptr;
 
-    int init(int argc, char *argv[]);
-
     int fps = 0;
     long long lastTime = 0;
     long long lastTick = 0;
@@ -198,6 +198,19 @@ public:
     DrawTextParams dt_frameGraph[5];
     DrawTextParams dt_loading;
 
+    long long fadeInStart = 0;
+    long long fadeInLength = 0;
+    int fadeInWaitFrames = 0;
+
+    long long fadeOutStart = 0;
+    long long fadeOutLength = 0;
+    int fadeOutWaitFrames = 0;
+    std::function<void()> fadeOutCallback = []() {};
+
+    GameDir gameDir;
+
+    int init(int argc, char* argv[]);
+
     int run(int argc, char *argv[]);
 
     void updateFrameEarly();
@@ -212,18 +225,5 @@ public:
 
     int getAimSolidSurface(int dist);
     int getAimSurface(int dist);
-
-    long long fadeInStart = 0;
-    long long fadeInLength = 0;
-    int fadeInWaitFrames = 0;
-
-    long long fadeOutStart = 0;
-    long long fadeOutLength = 0;
-    int fadeOutWaitFrames = 0;
-    std::function<void()> fadeOutCallback = []() {};
-
-    string gameDir;
-    string getFileInGameDir(string filePathRel);
-    string getWorldDir(string worldName);
 
 };

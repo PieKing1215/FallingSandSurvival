@@ -19,10 +19,10 @@ void MainMenuUI::RefreshWorlds(Game* game) {
 
 	worlds = {};
 
-	for(auto& p : experimental::filesystem::directory_iterator(game->getFileInGameDir("worlds/"))) {
+	for(auto& p : experimental::filesystem::directory_iterator(game->gameDir.getPath("worlds/"))) {
 		string worldName = p.path().filename().generic_string();
 
-		WorldMeta meta = WorldMeta::loadWorldMeta((char*)game->getWorldDir(worldName).c_str());
+		WorldMeta meta = WorldMeta::loadWorldMeta((char*)game->gameDir.getWorldPath(worldName).c_str());
 
 		worlds.push_back(std::make_tuple(worldName, meta));
 	}
@@ -150,7 +150,7 @@ void MainMenuUI::Draw(Game* game) {
 				//std::thread loadWorldThread([&] () {
 				EASY_BLOCK("Load world");
 				World* w = new World();
-				w->init((char*)game->getWorldDir(worldName).c_str(), (int)ceil(game->WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(game->HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, game->target, &game->audioEngine, game->networkMode);
+				w->init((char*)game->gameDir.getWorldPath(worldName).c_str(), (int)ceil(game->WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(game->HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, game->target, &game->audioEngine, game->networkMode);
 
 				EASY_BLOCK("Queue chunk loading");
 				logInfo("Queueing chunk loading...");

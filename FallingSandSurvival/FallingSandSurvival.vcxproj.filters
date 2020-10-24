@@ -256,6 +256,9 @@
     <ClCompile Include="DebugDrawUI.cpp">
       <Filter>Source Files\vfx\gui</Filter>
     </ClCompile>
+    <ClCompile Include="GameDir.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lib\polypartition-master\src\polypartition.h">
@@ -468,6 +471,9 @@
     </ClInclude>
     <ClInclude Include="UIs.hpp">
       <Filter>Source Files\vfx\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="GameDir.hpp">
+      <Filter>Source Files\util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

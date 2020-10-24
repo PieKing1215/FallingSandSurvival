@@ -228,6 +228,7 @@ exit 0</Command>
     <ClCompile Include="Drawing.cpp" />
     <ClCompile Include="Entity.cpp" />
     <ClCompile Include="Game.cpp" />
+    <ClCompile Include="GameDir.cpp" />
     <ClCompile Include="Item.cpp" />
     <ClCompile Include="lib\AudioAdventure\source\AudioEngine.cpp" />
     <ClCompile Include="lib\discord_game_sdk\cpp\achievement_manager.cpp">
@@ -326,6 +327,7 @@ exit 0</Command>
     <ClInclude Include="Drawing.hpp" />
     <ClInclude Include="Entity.hpp" />
     <ClInclude Include="Game.hpp" />
+    <ClInclude Include="GameDir.hpp" />
     <ClInclude Include="Item.hpp" />
     <ClInclude Include="lib\AudioAdventure\include\AudioEngine.h" />
     <ClInclude Include="lib\cpp-marching-squares-master\Direction.h" />
