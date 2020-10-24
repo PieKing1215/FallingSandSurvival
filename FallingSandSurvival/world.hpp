@@ -172,12 +172,6 @@ public:
 
     CAudioEngine* audioEngine = nullptr;
 
-    float* light = nullptr;
-    void setLight(int x, int y, float light);
-    float getLight(int x, int y);
-    float getLightBlockingAmountAt(int x, int y);
-    void applyLightRec(int currentx, int currenty, float lastLight);
-
     void forLine(int x0, int y0, int x1, int y1, std::function<bool(int)> fn);
     void forLineCornered(int x0, int y0, int x1, int y1, std::function<bool(int)> fn);
 

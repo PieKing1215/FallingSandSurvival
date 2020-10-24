@@ -11,7 +11,6 @@ public:
     static bool draw_chunk_queue;
     static bool draw_material_info;
     static bool draw_uinode_bounds;
-    static bool draw_light_map;
     static bool draw_temperature_map;
     static bool draw_shaders;
     static bool tick_world;

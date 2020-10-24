@@ -67,11 +67,9 @@ void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CA
         EASY_END_BLOCK;
     }
 
-    EASY_BLOCK("create newTemps and light arrays");
+    EASY_BLOCK("create newTemp array");
     newTemps = new int32_t[width * height];
-    light = new float[width * height];
     EASY_END_BLOCK;
-
 
     EASY_BLOCK("init generator");
     gen = generator;
@@ -2597,7 +2595,6 @@ void World::frame() {
     }
 }
 
-
 void World::tickChunkGeneration() {
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
 
@@ -3369,115 +3366,6 @@ void World::tickEntities(GPU_Target* t) {
     }), entities.end());
 }
 
-World::~World() {
-
-    //delete worldName;
-    delete tiles;
-    delete layer2;
-    delete background;
-
-    for(auto& v : particles) {
-        delete v;
-    }
-    particles.clear();
-
-    tickPool->stop(false);
-    delete tickPool;
-
-    updateRigidBodyHitboxPool->stop(false);
-    delete updateRigidBodyHitboxPool;
-
-    delete newTemps;
-
-    delete dirty;
-    delete active;
-    delete lastActive;
-    delete layer2Dirty;
-    delete backgroundDirty;
-
-    delete b2world;
-
-    for(auto& v : rigidBodies) {
-        delete v;
-    }
-    rigidBodies.clear();
-    delete staticBody;
-
-    worldMeshes.clear();
-    worldTris.clear();
-
-    for(auto& v : worldRigidBodies) {
-        delete v;
-    }
-    worldRigidBodies.clear();
-
-    toLoad.clear();
-
-    readyToReadyToMerge.clear();
-
-    for(auto& v : readyToMerge) {
-        delete v;
-    }
-    readyToMerge.clear();
-
-    delete gen;
-    delete noiseSIMD;
-
-    structures.clear();
-
-    distributedPoints.clear();
-
-    for(auto& v : chunkCache) {
-        for(auto& v2 : v.second) {
-            delete v2.second;
-        }
-        v.second.clear();
-    }
-    chunkCache.clear();
-
-    for(auto& v : populators) {
-        delete v;
-    }
-    populators.clear();
-
-    delete hasPopulator;
-
-    for(auto& v : entities) {
-        delete v;
-    }
-    entities.clear();
-    //delete player;
-
-}
-
-void World::setLight(int x, int y, float light) {
-    this->light[x + y * width] = light;
-}
-
-float World::getLight(int x, int y) {
-    return this->light[x + y * width];
-}
-
-float World::getLightBlockingAmountAt(int x, int y) {
-    return this->tiles[x + y * width].mat->physicsType == PhysicsType::AIR ? 0.01 : 0.1;
-}
-
-void World::applyLightRec(int currentx, int currenty, float lastLight) {
-    if(currentx < 0 || currenty < 0 || currentx >= width || currenty >= height) return;
-
-    float newLight = lastLight - getLightBlockingAmountAt(currentx, currenty);
-
-    float ll = getLight(currentx, currenty);
-    if(newLight <= ll) return;
-
-    setLight(currentx, currenty, newLight);
-
-    applyLightRec(currentx + 1, currenty, newLight);
-    applyLightRec(currentx, currenty + 1, newLight);
-    applyLightRec(currentx - 1, currenty, newLight);
-    applyLightRec(currentx, currenty - 1, newLight);
-}
-
 // Adapted from https://stackoverflow.com/a/52859805/8267529
 void World::forLine(int x0, int y0, int x1, int y1, std::function<bool(int)> fn) {
     int dx = x1 - x0;
@@ -3695,4 +3583,85 @@ WorldMeta WorldMeta::loadWorldMeta(char* worldFileName) {
     }
 
     return meta;
+}
+
+World::~World() {
+
+    //delete worldName;
+    delete tiles;
+    delete layer2;
+    delete background;
+
+    for(auto& v : particles) {
+        delete v;
+    }
+    particles.clear();
+
+    tickPool->stop(false);
+    delete tickPool;
+
+    updateRigidBodyHitboxPool->stop(false);
+    delete updateRigidBodyHitboxPool;
+
+    delete newTemps;
+
+    delete dirty;
+    delete active;
+    delete lastActive;
+    delete layer2Dirty;
+    delete backgroundDirty;
+
+    delete b2world;
+
+    for(auto& v : rigidBodies) {
+        delete v;
+    }
+    rigidBodies.clear();
+    delete staticBody;
+
+    worldMeshes.clear();
+    worldTris.clear();
+
+    for(auto& v : worldRigidBodies) {
+        delete v;
+    }
+    worldRigidBodies.clear();
+
+    toLoad.clear();
+
+    readyToReadyToMerge.clear();
+
+    for(auto& v : readyToMerge) {
+        delete v;
+    }
+    readyToMerge.clear();
+
+    delete gen;
+    delete noiseSIMD;
+
+    structures.clear();
+
+    distributedPoints.clear();
+
+    for(auto& v : chunkCache) {
+        for(auto& v2 : v.second) {
+            delete v2.second;
+        }
+        v.second.clear();
+    }
+    chunkCache.clear();
+
+    for(auto& v : populators) {
+        delete v;
+    }
+    populators.clear();
+
+    delete hasPopulator;
+
+    for(auto& v : entities) {
+        delete v;
+    }
+    entities.clear();
+    //delete player;
+
 }

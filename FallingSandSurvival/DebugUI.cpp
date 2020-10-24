@@ -48,7 +48,6 @@ void DebugUI::Draw(Game* game) {
     ImGui::Checkbox("Draw Chunk Queue"    , &Settings::draw_chunk_queue);
     ImGui::Checkbox("Draw Material Info"  , &Settings::draw_material_info);
     ImGui::Checkbox("Draw UINode Bounds"  , &Settings::draw_uinode_bounds);
-    ImGui::Checkbox("Draw Light Map"      , &Settings::draw_light_map);
     ImGui::Checkbox("Draw Temperature Map", &Settings::draw_temperature_map);
     ImGui::Checkbox("Draw Shaders"        , &Settings::draw_shaders);
     ImGui::Checkbox("Tick World"          , &Settings::tick_world);

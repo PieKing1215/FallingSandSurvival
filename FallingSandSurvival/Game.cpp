@@ -640,16 +640,6 @@ int Game::init(int argc, char *argv[]) {
         EASY_END_BLOCK;
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        lightMap = GPU_CreateImage(
-            world->width - CHUNK_W * 2, world->height - CHUNK_H * 2,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(lightMap, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         temperatureMap = GPU_CreateImage(
             world->width, world->height,
             GPU_FormatEnum::GPU_FORMAT_RGBA
@@ -704,15 +694,6 @@ int Game::init(int argc, char *argv[]) {
     #pragma endregion
 
     if(networkMode != NetworkMode::SERVER) {
-        // load light texture
-        #pragma region
-        EASY_BLOCK("load light texture");
-        lightSurf = Textures::loadTexture("assets/light.png");
-        lightTex = GPU_CopyImageFromSurface(lightSurf);
-        GPU_SetImageFilter(lightTex, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-        #pragma endregion
-
         // load shaders
         #pragma region
         EASY_BLOCK("load shaders");
@@ -1943,7 +1924,6 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
 
             EASY_END_BLOCK;
 
-            if(Settings::draw_light_map) renderLightmap(world);
             world->tickChunks();
             world->updateWorldMesh();
             world->dirty[0] = true;
@@ -2638,7 +2618,6 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
         EASY_END_BLOCK; // post World::tick
         #pragma endregion
 
-        if(Settings::draw_light_map && tickTime % 4 == 0) renderLightmap(world);
         if(Settings::tick_temperature && tickTime % 4 == 2) {
             world->tickTemperature();
         }
@@ -3066,10 +3045,6 @@ void Game::renderLate() {
 
 
         GPU_Rect r2 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x*scale), (float)(ofsY + camY + world->tickZone.y*scale), (float)(world->tickZone.w * scale), (float)(world->tickZone.h * scale)};
-        if(Settings::draw_light_map) {
-            GPU_SetBlendMode(lightMap, GPU_BLEND_MULTIPLY);
-            GPU_BlitRect(lightMap, NULL, target, &r2);
-        }
 
         if(Settings::draw_temperature_map) {
             GPU_SetBlendMode(temperatureMap, GPU_BLEND_NORMAL);
@@ -3442,38 +3417,6 @@ void Game::renderLate() {
         EASY_END_BLOCK; // draw version info
 
     }
-}
-
-void Game::renderLightmap(World* world) {
-    EASY_FUNCTION(GAME_PROFILER_COLOR);
-
-    GPU_Target* lightTarget = GPU_LoadTarget(lightMap);
-    GPU_Rect r = GPU_Rect {0, 0, (float)world->tickZone.w, (float)world->tickZone.h};
-    GPU_RectangleFilled2(lightTarget, r, {0, 0, 0, 0xff});
-
-    GPU_SetBlendFunction(lightTex,
-        GPU_BlendFuncEnum::GPU_FUNC_ONE,
-        GPU_BlendFuncEnum::GPU_FUNC_ONE,
-        GPU_BlendFuncEnum::GPU_FUNC_ONE,
-        GPU_BlendFuncEnum::GPU_FUNC_ONE
-    );
-
-    GPU_SetBlendEquation(lightTex,
-        GPU_BlendEqEnum::GPU_EQ_ADD,
-        GPU_BlendEqEnum::GPU_EQ_ADD
-    );
-
-    for(int x = world->tickZone.x; x < world->tickZone.w + world->tickZone.x; x += 8) {
-        for(int y = world->tickZone.y; y < world->tickZone.h + world->tickZone.y; y += 8) {
-            if(world->tiles[x + y * world->width].mat->emit > 0) {
-                GPU_Rect lr = {(float)(x - world->tickZone.x - world->tiles[x + y * world->width].mat->emit), (float)(y - world->tickZone.y - world->tiles[x + y * world->width].mat->emit), (float)(world->tiles[x + y * world->width].mat->emit * 2), (float)(world->tiles[x + y * world->width].mat->emit * 2)};
-                GPU_SetColor(lightTex, {(world->tiles[x + y * world->width].mat->emitColor >> 16) & 0xff, (world->tiles[x + y * world->width].mat->emitColor >> 8) & 0xff, (world->tiles[x + y * world->width].mat->emitColor >> 0) & 0xff});
-                GPU_BlitRect(lightTex, NULL, lightTarget, &lr);
-            }
-        }
-    }
-
-    GPU_FreeTarget(lightTarget);
 }
 
 void Game::renderTemperatureMap(World* world) {

@@ -150,11 +150,6 @@ public:
     ctpl::thread_pool* updateDirtyPool = nullptr;
     ctpl::thread_pool* rotateVectorsPool = nullptr;
 
-    GPU_Image* lightMap = nullptr;
-
-    GPU_Image* lightTex = nullptr;
-    SDL_Surface* lightSurf = nullptr;
-
     int tickTime = 0;
 
     bool running = true;
@@ -220,7 +215,6 @@ public:
     void renderEarly();
     void renderLate();
 
-    void renderLightmap(World* world);
     void renderTemperatureMap(World* world);
 
     int getAimSolidSurface(int dist);
