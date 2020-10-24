@@ -113,11 +113,8 @@ public:
     bool* dirty = nullptr;
     bool* active = nullptr;
     bool* lastActive = nullptr;
-    bool* popDirty();
     bool* layer2Dirty = nullptr;
-    bool* popLayer2Dirty();
     bool* backgroundDirty = nullptr;
-    bool* popBackgroundDirty();
     SDL_Rect loadZone {};
     SDL_Rect lastLoadZone {};
     SDL_Rect tickZone {};
@@ -138,7 +135,6 @@ public:
     std::vector<std::vector<b2Vec2>> worldTris;
     void updateChunkMesh(Chunk* chunk);
     void updateWorldMesh();
-    void updateWorldMesh2();
     std::vector<RigidBody*> worldRigidBodies;
 
     std::vector<LoadChunkParams> toLoad;
