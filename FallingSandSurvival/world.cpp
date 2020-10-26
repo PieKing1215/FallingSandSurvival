@@ -2400,7 +2400,7 @@ void World::tickObjectsMesh() {
     std::vector<RigidBody*> rbs = rigidBodies;
     for(int i = 0; i < rbs.size(); i++) {
         RigidBody* cur = rbs[i];
-        if(cur->needsUpdate) {
+        if(cur->needsUpdate && cur->body->IsEnabled()) {
             updateRigidBodyHitbox(cur);
         }
     }
