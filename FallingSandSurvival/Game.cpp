@@ -1363,6 +1363,21 @@ int Game::run(int argc, char *argv[]) {
             fps = frames;
             dt_fps.w = -1;
             frames = 0;
+
+            // calculate "feels like" fps
+
+            float sum = 0;
+            float num = 0.01;
+
+            for(int i = 0; i < frameTimeNum; i++) {
+                float weight = frameTime[i];
+                sum += weight * frameTime[i];
+                num += weight;
+            }
+
+            feelsLikeFps = 1000 / (sum / num);
+
+            dt_feelsLikeFps.w = -1;
         }
 
         for(int i = 1; i < frameTimeNum; i++) {
@@ -3264,6 +3279,18 @@ void Game::renderLate() {
         Drawing::drawText(target, dt_fps, WIDTH - 4, 2, ALIGN_RIGHT);
         EASY_END_BLOCK; // draw fps
 
+        EASY_BLOCK("draw feels like fps", RENDER_PROFILER_COLOR);
+        if(dt_feelsLikeFps.w == -1) {
+            char buffFps[22];
+            snprintf(buffFps, sizeof(buffFps), "Feels Like: %d FPS", feelsLikeFps);
+            if(dt_feelsLikeFps.t1 != nullptr) GPU_FreeImage(dt_feelsLikeFps.t1);
+            if(dt_feelsLikeFps.t2 != nullptr) GPU_FreeImage(dt_feelsLikeFps.t2);
+            dt_feelsLikeFps = Drawing::drawTextParams(target, buffFps, font16, WIDTH - 4, 2, 0xff, 0xff, 0xff, ALIGN_RIGHT);
+        }
+
+        Drawing::drawText(target, dt_feelsLikeFps, WIDTH - 4, 2 + 14, ALIGN_RIGHT);
+        EASY_END_BLOCK; // draw feels like fps
+
         if(Settings::draw_chunk_state) {
             EASY_BLOCK("draw chunk state", RENDER_PROFILER_COLOR);
             GPU_Rect r = {0 , 0, 10, 10};
@@ -3370,6 +3397,7 @@ void Game::renderLate() {
             }
 
             GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (int)(1000.0 / fps), WIDTH - 25, HEIGHT - 10 - (int)(1000.0 / fps), {0x00, 0xff, 0xff, 0xff});
+            GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (int)(1000.0 / feelsLikeFps), WIDTH - 25, HEIGHT - 10 - (int)(1000.0 / feelsLikeFps), {0xff, 0x00, 0xff, 0xff});
 
             EASY_END_BLOCK; // draw frame graph
         }

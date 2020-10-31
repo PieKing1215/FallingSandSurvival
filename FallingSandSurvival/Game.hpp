@@ -174,6 +174,7 @@ public:
     Fire2Shader* fire2Shader = nullptr;
 
     int fps = 0;
+    int feelsLikeFps = 0;
     long long lastTime = 0;
     long long lastTick = 0;
     long long lastLoadingTick = 0;
@@ -189,6 +190,7 @@ public:
     DrawTextParams dt_versionInfo3;
 
     DrawTextParams dt_fps;
+    DrawTextParams dt_feelsLikeFps;
 
     DrawTextParams dt_frameGraph[5];
     DrawTextParams dt_loading;
