@@ -92,10 +92,12 @@ public:
     void setTileLayer2(int x, int y, MaterialInstance type);
     int tickCt = 0;
     ctpl::thread_pool* tickPool = nullptr;
+    ctpl::thread_pool* tickVisitedPool = nullptr;
     ctpl::thread_pool* updateRigidBodyHitboxPool = nullptr;
 
     GPU_Image* fireTex = nullptr;
-    bool* tickVisited = nullptr;
+    bool* tickVisited1 = nullptr;
+    bool* tickVisited2 = nullptr;
     void tick();
 
     void tickTemperature();

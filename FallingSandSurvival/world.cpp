@@ -53,7 +53,10 @@ void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CA
     tickPool = new ctpl::thread_pool(6);
     EASY_END_BLOCK;
 
-    
+    EASY_BLOCK("make tickVisitedPool");
+    tickVisitedPool = new ctpl::thread_pool(1);
+    EASY_END_BLOCK;
+
     EASY_BLOCK("make updateRigidBodyHitboxPool");
     updateRigidBodyHitboxPool = new ctpl::thread_pool(8);
     EASY_END_BLOCK;
@@ -130,7 +133,8 @@ tooClose: {}
     backgroundDirty = new bool[width * height];
     lastActive = new bool[width * height];
     active = new bool[width * height];
-    this->tickVisited = new bool[width * height];
+    this->tickVisited1 = new bool[width * height];
+    this->tickVisited2 = new bool[width * height];
     for(int x = 0; x < width; x++) {
         for(int y = 0; y < height; y++) {
             dirty[x + y * width] = false;
@@ -987,6 +991,8 @@ found: {};
 }
 
 void World::updateWorldMesh() {
+    EASY_FUNCTION(WORLD_PROFILER_COLOR);
+
     if(lastMeshZone.x == meshZone.x && lastMeshZone.y == meshZone.y && lastMeshZone.w == meshZone.w && lastMeshZone.h == meshZone.h) {
         if(lastMeshLoadZone.x == loadZone.x && lastMeshLoadZone.y == loadZone.y && lastMeshLoadZone.w == loadZone.w && lastMeshLoadZone.h == loadZone.h) {
             return;
@@ -1051,6 +1057,13 @@ void World::tick() {
 
     #define DO_MULTITHREADING
 
+    #ifdef DO_MULTITHREADING
+    bool whichTickVisited = false;
+    EASY_BLOCK("memset");
+    memset(tickVisited1, false, width * height);
+    EASY_END_BLOCK;
+    #endif
+
     for(int iter = 0; iter < 4; iter++) {
         EASY_BLOCK("iteration");
         bool reverseX = (tickCt + iter) % 2 == 0;
@@ -1063,9 +1076,20 @@ void World::tick() {
             #ifdef DO_MULTITHREADING
             std::vector<std::future<std::vector<Particle*>>> results = {};
             #endif
+            #ifdef DO_MULTITHREADING
+            bool* tickVisited = whichTickVisited ? tickVisited2 : tickVisited1;
+            std::future<void> tickVisitedDone = tickVisitedPool->push([&](int id) {
+                EASY_THREAD("memset tickVisited");
+                EASY_BLOCK("memset");
+                memset(whichTickVisited ? tickVisited1 : tickVisited2, false, width * height);
+                EASY_END_BLOCK;
+            });
+            #else
+            bool* tickVisited = tickVisited1;
             EASY_BLOCK("memset");
-            memset(tickVisited, false, width * height);
+            memset(tickVisited1, false, width * height);
             EASY_END_BLOCK;
+            #endif
             EASY_END_BLOCK;
             EASY_BLOCK("loop");
             for(int cx = tickZone.x + chOfsX * CHUNK_W; cx < (tickZone.x + tickZone.w); cx += CHUNK_W * 2) {
@@ -2088,6 +2112,10 @@ void World::tick() {
             particles.insert(particles.end(), pts.begin(), pts.end());
             EASY_END_BLOCK;
         }
+        tickVisitedDone.get();
+
+        whichTickVisited = !whichTickVisited;
+
         EASY_END_BLOCK;
         #endif
 
