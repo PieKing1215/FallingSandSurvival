@@ -9,8 +9,8 @@ void Player::render(GPU_Target* target, int ofsX, int ofsY) {
     if(heldItem != NULL) {
         int scaleEnt = Settings::hd_objects ? Settings::hd_objects_size : 1;
 
-        GPU_Rect* ir = new GPU_Rect {(float)(ofsX + x + hw / 2.0 - heldItem->surface->w), (float)(ofsY + y + hh / 2.0 - heldItem->surface->h / 2), (float)heldItem->surface->w, (float)heldItem->surface->h};
-        SDL_FPoint* fp = new SDL_FPoint {(float)(-ir->x + ofsX + x + hw / 2.0), (float)(-ir->y + ofsY + y + hh / 2.0)};
+        GPU_Rect* ir = new GPU_Rect {(float)(int)(ofsX + x + hw / 2.0 - heldItem->surface->w), (float)(int)(ofsY + y + hh / 2.0 - heldItem->surface->h / 2), (float)heldItem->surface->w, (float)heldItem->surface->h};
+        SDL_FPoint* fp = new SDL_FPoint {(float)(int)(-ir->x + ofsX + x + hw / 2.0), (float)(int)(-ir->y + ofsY + y + hh / 2.0)};
         fp->x -= heldItem->pivotX;
         ir->x += heldItem->pivotX;
         ir->y += heldItem->pivotY;
