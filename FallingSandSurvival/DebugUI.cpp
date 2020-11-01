@@ -54,7 +54,7 @@ void DebugUI::Draw(Game* game) {
     ImGui::Checkbox("Tick Box2D"          , &Settings::tick_box2d);
     ImGui::Checkbox("Tick Temperature"    , &Settings::tick_temperature);
 
-    if(ImGui::Checkbox("Double Res Objects", &Settings::hd_objects)) {
+    if(ImGui::Checkbox("HD Objects", &Settings::hd_objects)) {
         GPU_FreeTarget(game->textureObjects->target);
         GPU_FreeImage(game->textureObjects);
         GPU_FreeTarget(game->textureObjectsBack->target);
