@@ -45,7 +45,7 @@ Please use the [GitHub issues](https://github.com/PieKing1215/FallingSandSurviva
 See [Tech & Integrations](../../wiki/Tech-&-Integrations)
 
 ## Building<br>
-See [SETUP.txt](SETUP.txt)
+See [SETUP.txt](../dev/SETUP.txt)
 
 ## More Images<br>
 ![](../media/preview_2.gif)<br>
