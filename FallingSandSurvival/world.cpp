@@ -2698,6 +2698,8 @@ void World::tickChunks() {
                     int newY = y + changeY;
                     if(newX >= 0 && newY >= 0 && newX < width && newY < height) {
                         tiles[newX + newY * width] = tiles[x + y * width];
+                        background[newX + newY * width] = background[x + y * width];
+                        layer2[newX + newY * width] = layer2[x + y * width];
                         //dirty[newX + newY * width] = true;
                     }
                     //newTiles[x + y * width] = Tiles::NOTHING;

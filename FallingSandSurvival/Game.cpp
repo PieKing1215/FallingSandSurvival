@@ -1458,6 +1458,7 @@ void Game::updateFrameEarly() {
             for(int y = 0; y < world->height; y++) {
                 world->dirty[x + y * world->width] = true;
                 world->layer2Dirty[x + y * world->width] = true;
+                world->backgroundDirty[x + y * world->width] = true;
             }
         }
     }
