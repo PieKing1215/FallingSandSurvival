@@ -105,6 +105,7 @@ public:
     void frame();
     void tickParticles();
     void renderParticles(unsigned char** texture);
+    void tickObjectBounds();
     void tickObjects();
     void tickObjectsMesh();
     void tickChunks();

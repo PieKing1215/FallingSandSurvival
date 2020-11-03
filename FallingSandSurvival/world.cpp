@@ -2434,6 +2434,18 @@ void World::tickObjectsMesh() {
     }
 }
 
+void World::tickObjectBounds() {
+
+    std::vector<RigidBody*> rbs = rigidBodies;
+    for(int i = 0; i < rbs.size(); i++) {
+        RigidBody* cur = rbs[i];
+
+        float x = cur->body->GetWorldCenter().x;
+        float y = cur->body->GetWorldCenter().y;
+        cur->body->SetEnabled(x >= tickZone.x && y >= tickZone.y && x < tickZone.x + tickZone.w && y < tickZone.y + tickZone.h);
+    }
+}
+
 void World::tickObjects() {
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
 
@@ -2448,7 +2460,6 @@ void World::tickObjects() {
 
         float x = cur->body->GetWorldCenter().x;
         float y = cur->body->GetWorldCenter().y;
-        cur->body->SetEnabled(x >= tickZone.x && y >= tickZone.y && x < tickZone.x + tickZone.w && y < tickZone.y + tickZone.h);
 
         if(cur->body->IsEnabled()) {
             if(x - 100 < minX) minX = (int)x - 100;

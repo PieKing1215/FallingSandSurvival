@@ -2477,9 +2477,10 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
             EASY_END_BLOCK; // particles
         }));
 
-        if(Settings::tick_box2d && world->readyToMerge.size() == 0) {
+        if(world->readyToMerge.size() == 0) {
             results.push_back(updateDirtyPool->push([&](int id) {
-                world->tickObjects();
+                world->tickObjectBounds();
+                if(Settings::tick_box2d) world->tickObjects();
             }));
         }
 
