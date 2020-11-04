@@ -697,13 +697,8 @@ int Game::init(int argc, char *argv[]) {
         // load shaders
         #pragma region
         EASY_BLOCK("load shaders");
-        water_shader = 0;
-        water_shader_block = Shaders::load_shader_program(&water_shader, "data/shaders/common.vert", "data/shaders/water.frag");
-        Shaders::prepare_water_shader(water_shader, target, texture);
-
-        raycastLightingShader = new RaycastLightingShader();
-        simpleLightingShader = new SimpleLightingShader();
-        simpleLighting2Shader = new SimpleLighting2Shader();
+        waterShader = new WaterShader();
+        newLightingShader = new NewLightingShader();
         fireShader = new FireShader();
         fire2Shader = new Fire2Shader();
         EASY_END_BLOCK;
@@ -2989,9 +2984,11 @@ void Game::renderLate() {
 
         // shader
         EASY_BLOCK("water shader");
-        GPU_ActivateShaderProgram(water_shader, &water_shader_block);
-        float t = (now - startTime) / 1000.0;
-        //Shaders::update_marching_ants_shader(marching_ants_shader, t, target->w * scale, target->h * scale, texture, r1.x, HEIGHT - r1.y, r1.w, r1.h, scale);
+        if(Settings::draw_shaders) {
+            waterShader->activate();
+            float t = (now - startTime) / 1000.0;
+            waterShader->update(t, target->w * scale, target->h * scale, texture, r1.x, HEIGHT - r1.y, r1.w, r1.h, scale);
+        }
 
         target = realTarget;
 
@@ -3003,7 +3000,7 @@ void Game::renderLate() {
 
         // done shader
 
-        EASY_BLOCK("lighting shader");
+        EASY_BLOCK("draw world");
         int lmsx = (int)((mx - ofsX - camX) / scale);
         int lmsy = (int)((my - ofsY - camY) / scale);
 
@@ -3024,23 +3021,71 @@ void Game::renderLate() {
         GPU_SetBlendMode(textureEntities, GPU_BLEND_NORMAL);
         GPU_BlitRect(textureEntities, NULL, worldTexture->target, NULL);
 
-        //if (Settings::draw_shaders) raycastLightingShader->activate();
-        //if (Settings::draw_shaders) raycastLightingShader->update(worldTexture, msx / (float)world->width, msy / (float)world->height);
-        if(Settings::draw_shaders) simpleLightingShader->activate();
-        if(Settings::draw_shaders) simpleLightingShader->update(worldTexture, lmsx / (float)world->width, lmsy / (float)world->height);
+        EASY_BLOCK("lighting shader");
+        if(Settings::draw_shaders) newLightingShader->activate();
 
-        GPU_Clear(lightingTexture->target);
-        GPU_BlitRect(worldTexture, NULL, lightingTexture->target, NULL);
-        //GPU_BlitRect(worldTexture, NULL, target, &r1);
+        // I use this to only rerender the lighting when a parameter changes or N times per second anyway
+        // Doing this massively reduces the GPU load of the shader
+        bool needToRerenderLighting = false;
 
-        if(Settings::draw_shaders) simpleLighting2Shader->activate();
-        if(Settings::draw_shaders) simpleLighting2Shader->update(worldTexture, lightingTexture, lmsx / (float)world->width, lmsy / (float)world->height);
+        static long long lastLightingForceRefresh = 0;
+        long long now = Time::millis();
+        if(now - lastLightingForceRefresh > 100) {
+            lastLightingForceRefresh = now;
+            needToRerenderLighting = true;
+        }
 
-        GPU_BlitRect(worldTexture, NULL, target, &r1);
+        if(Settings::draw_shaders && world) {
+            float lightTx;
+            float lightTy;
+
+            if(world->player) {
+                lightTx = (world->loadZone.x + world->player->x + world->player->hw / 2) / (float)world->width;
+                lightTy = (world->loadZone.y + world->player->y + world->player->hh / 2) / (float)world->height;
+            } else {
+                lightTx = lmsx / (float)world->width;
+                lightTy = lmsy / (float)world->height;
+            }
+
+            if(newLightingShader->lastLx != lightTx || newLightingShader->lastLy != lightTy) needToRerenderLighting = true;
+            newLightingShader->update(worldTexture, lightTx, lightTy);
+            if(newLightingShader->lastQuality != Settings::lightingQuality) {
+                needToRerenderLighting = true;
+            }
+            newLightingShader->setQuality(Settings::lightingQuality);
+
+            int nBg = 0;
+            int range = 64;
+            for(int xx = max(0, (int)(lightTx * world->width) - range); xx <= min((int)(lightTx * world->width) + range, world->width - 1); xx++) {
+                for(int yy = max(0, (int)(lightTy * world->height) - range); yy <= min((int)(lightTy * world->height) + range, world->height - 1); yy++) {
+                    if(world->background[xx + yy * world->width] != 0x00) {
+                        nBg++;
+                    }
+                }
+            }
+
+            newLightingShader_insideDes = min(max(0.0f, (float)nBg / ((range * 2) * (range * 2))), 1.0f);
+            newLightingShader_insideCur += (newLightingShader_insideDes - newLightingShader_insideCur) / 2.0f * (deltaTime / 1000.0f);
+
+            float ins = newLightingShader_insideCur < 0.05 ? 0.0 : newLightingShader_insideCur;
+            if(newLightingShader->lastInside != ins) needToRerenderLighting = true;
+            newLightingShader->setInside(ins);
+            newLightingShader->setBounds(world->tickZone.x * Settings::hd_objects_size, world->tickZone.y * Settings::hd_objects_size, (world->tickZone.x + world->tickZone.w) * Settings::hd_objects_size, (world->tickZone.y + world->tickZone.h) * Settings::hd_objects_size);
+        }
+        
+        if(Settings::draw_shaders && needToRerenderLighting) {
+            GPU_Clear(lightingTexture->target);
+            GPU_BlitRect(worldTexture, NULL, lightingTexture->target, NULL);
+        }
+
+        EASY_END_BLOCK; // lighting shader
 
         if(Settings::draw_shaders) GPU_ActivateShaderProgram(0, NULL);
 
-        EASY_END_BLOCK; //lighting shader
+        GPU_BlitRect(worldTexture, NULL, target, &r1);
+        if(Settings::draw_shaders) GPU_BlitRect(lightingTexture, NULL, target, &r1);
+
+        EASY_END_BLOCK; // draw world
 
         GPU_Clear(texture2Fire->target);
         EASY_BLOCK("fire shader 1");

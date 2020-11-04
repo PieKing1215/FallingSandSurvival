@@ -12,6 +12,7 @@ bool Settings::draw_material_info   = false;
 bool Settings::draw_uinode_bounds   = false;
 bool Settings::draw_temperature_map = false;
 bool Settings::draw_shaders		    = false;
+float Settings::lightingQuality     = 0.5f;
 bool Settings::tick_world           = true;
 bool Settings::tick_box2d           = true;
 bool Settings::tick_temperature     = true;

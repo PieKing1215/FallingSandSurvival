@@ -50,6 +50,12 @@ void DebugUI::Draw(Game* game) {
     ImGui::Checkbox("Draw UINode Bounds"  , &Settings::draw_uinode_bounds);
     ImGui::Checkbox("Draw Temperature Map", &Settings::draw_temperature_map);
     ImGui::Checkbox("Draw Shaders"        , &Settings::draw_shaders);
+
+    if(Settings::draw_shaders) {
+        ImGui::SetNextItemWidth(90);
+        ImGui::SliderFloat("Light Quality", &Settings::lightingQuality, 0.0, 1.0, "", 0);
+    }
+
     ImGui::Checkbox("Tick World"          , &Settings::tick_world);
     ImGui::Checkbox("Tick Box2D"          , &Settings::tick_box2d);
     ImGui::Checkbox("Tick Temperature"    , &Settings::tick_temperature);

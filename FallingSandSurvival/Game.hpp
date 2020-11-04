@@ -164,12 +164,10 @@ public:
 
     bool* objectDelete = nullptr;
 
-    Uint32 water_shader = 0;
-    GPU_ShaderBlock water_shader_block {};
-
-    RaycastLightingShader* raycastLightingShader = nullptr;
-    SimpleLightingShader*  simpleLightingShader = nullptr;
-    SimpleLighting2Shader* simpleLighting2Shader = nullptr;
+    WaterShader* waterShader = nullptr;
+    NewLightingShader* newLightingShader = nullptr;
+    float newLightingShader_insideDes = 0.0f;
+    float newLightingShader_insideCur = 0.0f;
     FireShader* fireShader = nullptr;
     Fire2Shader* fire2Shader = nullptr;
 
