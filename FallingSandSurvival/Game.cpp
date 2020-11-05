@@ -841,88 +841,126 @@ int Game::run(int argc, char *argv[]) {
                     ofsX = (ofsX - WIDTH / 2) / oldScale * scale + WIDTH / 2;
                     ofsY = (ofsY - HEIGHT / 2) / oldScale * scale + HEIGHT / 2;
                     #pragma endregion
-                } else if(windowEvent.type == SDL_MOUSEMOTION && Controls::DEBUG_DRAW->get()) {
-                    // draw material
-                    #pragma region
-                    int x = (int)((windowEvent.motion.x - ofsX - camX) / scale);
-                    int y = (int)((windowEvent.motion.y - ofsY - camY) / scale);
-                    for(int xx = -DebugDrawUI::brushSize / 2; xx < (int)(ceil(DebugDrawUI::brushSize / 2.0)); xx++) {
-                        for(int yy = -DebugDrawUI::brushSize / 2; yy < (int)(ceil(DebugDrawUI::brushSize / 2.0)); yy++) {
-                            MaterialInstance tp = Tiles::create(DebugDrawUI::selectedMaterial, x + xx, y + yy);
-                            world->tiles[(x + xx) + (y + yy) * world->width] = tp;
-                            world->dirty[(x + xx) + (y + yy) * world->width] = true;
-                            /*Particle* p = new Particle(tp, x + xx, y + yy, 0, 0, 0, (float)0.01f);
-                            p->targetX = world->width/2;
-                            p->targetY = world->height/2;
-                            p->targetForce = 0.1f;
-                            p->phase = true;
-                            world->addParticle(p);*/
+                } else if(windowEvent.type == SDL_MOUSEMOTION) {
+                    if(Controls::DEBUG_DRAW->get()) {
+                        // draw material
+                        #pragma region
+                        int x = (int)((windowEvent.motion.x - ofsX - camX) / scale);
+                        int y = (int)((windowEvent.motion.y - ofsY - camY) / scale);
+
+                        if(lastDrawMX == 0 && lastDrawMY == 0) {
+                            lastDrawMX = x;
+                            lastDrawMY = y;
                         }
-                    }
-                    #pragma endregion
-                } else if(windowEvent.type == SDL_MOUSEMOTION && Controls::mmouse) {
-                    // erase material
-                    #pragma region
-                    // erase from world
-                    int x = (int)((windowEvent.motion.x - ofsX - camX) / scale);
-                    int y = (int)((windowEvent.motion.y - ofsY - camY) / scale);
-                    for(int xx = -DebugDrawUI::brushSize / 2; xx < (int)(ceil(DebugDrawUI::brushSize / 2.0)); xx++) {
-                        for(int yy = -DebugDrawUI::brushSize / 2; yy < (int)(ceil(DebugDrawUI::brushSize / 2.0)); yy++) {
 
-                            if(abs(xx) + abs(yy) == DebugDrawUI::brushSize) continue;
-                            if(world->getTile(x + xx, y + yy).mat->physicsType != PhysicsType::AIR) {
-                                world->setTile(x + xx, y + yy, Tiles::NOTHING);
-                                world->lastMeshZone.x--;
-                            }
-                            if(world->getTileLayer2(x + xx, y + yy).mat->physicsType != PhysicsType::AIR) {
-                                world->setTileLayer2(x + xx, y + yy, Tiles::NOTHING);
-                            }
-                        }
-                    }
+                        logDebug("{0:d} {1:d} {2:d} {3:d}", lastDrawMX, lastDrawMY, x, y);
 
-                    // erase from rigidbodies
-                    // this copies the vector
-                    vector<RigidBody*> rbs = world->rigidBodies;
+                        world->forLine(lastDrawMX, lastDrawMY, x, y, [&](int index) {
+                            int lineX = index % world->width;
+                            int lineY = index / world->width;
 
-                    for(size_t i = 0; i < rbs.size(); i++) {
-                        RigidBody* cur = rbs[i];
-                        if(cur->body->IsEnabled()) {
-                            float s = sin(-cur->body->GetAngle());
-                            float c = cos(-cur->body->GetAngle());
-                            bool upd = false;
-                            for(float xx = -3; xx <= 3; xx += 0.5) {
-                                for(float yy = -3; yy <= 3; yy += 0.5) {
-                                    if(abs(xx) + abs(yy) == 6) continue;
-                                    // rotate point
-
-                                    float tx = x + xx - cur->body->GetPosition().x;
-                                    float ty = y + yy - cur->body->GetPosition().y;
-
-                                    int ntx = (int)(tx * c - ty * s);
-                                    int nty = (int)(tx * s + ty * c);
-
-                                    if(ntx >= 0 && nty >= 0 && ntx < cur->surface->w && nty < cur->surface->h) {
-                                        Uint32 pixel = PIXEL(cur->surface, ntx, nty);
-                                        if(((pixel >> 24) & 0xff) != 0x00) {
-                                            PIXEL(cur->surface, ntx, nty) = 0x00000000;
-                                            upd = true;
-                                        }
-
-                                    }
+                            for(int xx = -DebugDrawUI::brushSize / 2; xx < (int)(ceil(DebugDrawUI::brushSize / 2.0)); xx++) {
+                                for(int yy = -DebugDrawUI::brushSize / 2; yy < (int)(ceil(DebugDrawUI::brushSize / 2.0)); yy++) {
+                                    if(lineX + xx < 0 || lineY + yy < 0 || lineX + xx >= world->width || lineY + yy >= world->height) continue;
+                                    MaterialInstance tp = Tiles::create(DebugDrawUI::selectedMaterial, lineX + xx, lineY + yy);
+                                    world->tiles[(lineX + xx) + (lineY + yy) * world->width] = tp;
+                                    world->dirty[(lineX + xx) + (lineY + yy) * world->width] = true;
                                 }
                             }
 
-                            if(upd) {
-                                GPU_FreeImage(cur->texture);
-                                cur->texture = GPU_CopyImageFromSurface(cur->surface);
-                                GPU_SetImageFilter(cur->texture, GPU_FILTER_NEAREST);
-                                //world->updateRigidBodyHitbox(cur);
-                                cur->needsUpdate = true;
-                            }
-                        }
+                            return false;
+                        });
+
+                        lastDrawMX = x;
+                        lastDrawMY = y;
+                        #pragma endregion
+                    } else {
+                        lastDrawMX = 0;
+                        lastDrawMY = 0;
                     }
 
-                    #pragma endregion
+                    if(Controls::mmouse) {
+                        // erase material
+                        #pragma region
+                        // erase from world
+                        int x = (int)((windowEvent.motion.x - ofsX - camX) / scale);
+                        int y = (int)((windowEvent.motion.y - ofsY - camY) / scale);
+
+                        if(lastEraseMX == 0 && lastEraseMY == 0) {
+                            lastEraseMX = x;
+                            lastEraseMY = y;
+                        }
+
+                        world->forLine(lastEraseMX, lastEraseMY, x, y, [&](int index) {
+                            int lineX = index % world->width;
+                            int lineY = index / world->width;
+
+                            for(int xx = -DebugDrawUI::brushSize / 2; xx < (int)(ceil(DebugDrawUI::brushSize / 2.0)); xx++) {
+                                for(int yy = -DebugDrawUI::brushSize / 2; yy < (int)(ceil(DebugDrawUI::brushSize / 2.0)); yy++) {
+
+                                    if(abs(xx) + abs(yy) == DebugDrawUI::brushSize) continue;
+                                    if(world->getTile(lineX + xx, lineY + yy).mat->physicsType != PhysicsType::AIR) {
+                                        world->setTile(lineX + xx, lineY + yy, Tiles::NOTHING);
+                                        world->lastMeshZone.x--;
+                                    }
+                                    if(world->getTileLayer2(lineX + xx, lineY + yy).mat->physicsType != PhysicsType::AIR) {
+                                        world->setTileLayer2(lineX + xx, lineY + yy, Tiles::NOTHING);
+                                    }
+                                }
+                            }
+                            return false;
+                        });
+
+                        lastEraseMX = x;
+                        lastEraseMY = y;
+
+                        // erase from rigidbodies
+                        // this copies the vector
+                        vector<RigidBody*> rbs = world->rigidBodies;
+
+                        for(size_t i = 0; i < rbs.size(); i++) {
+                            RigidBody* cur = rbs[i];
+                            if(cur->body->IsEnabled()) {
+                                float s = sin(-cur->body->GetAngle());
+                                float c = cos(-cur->body->GetAngle());
+                                bool upd = false;
+                                for(float xx = -3; xx <= 3; xx += 0.5) {
+                                    for(float yy = -3; yy <= 3; yy += 0.5) {
+                                        if(abs(xx) + abs(yy) == 6) continue;
+                                        // rotate point
+
+                                        float tx = x + xx - cur->body->GetPosition().x;
+                                        float ty = y + yy - cur->body->GetPosition().y;
+
+                                        int ntx = (int)(tx * c - ty * s);
+                                        int nty = (int)(tx * s + ty * c);
+
+                                        if(ntx >= 0 && nty >= 0 && ntx < cur->surface->w && nty < cur->surface->h) {
+                                            Uint32 pixel = PIXEL(cur->surface, ntx, nty);
+                                            if(((pixel >> 24) & 0xff) != 0x00) {
+                                                PIXEL(cur->surface, ntx, nty) = 0x00000000;
+                                                upd = true;
+                                            }
+
+                                        }
+                                    }
+                                }
+
+                                if(upd) {
+                                    GPU_FreeImage(cur->texture);
+                                    cur->texture = GPU_CopyImageFromSurface(cur->surface);
+                                    GPU_SetImageFilter(cur->texture, GPU_FILTER_NEAREST);
+                                    //world->updateRigidBodyHitbox(cur);
+                                    cur->needsUpdate = true;
+                                }
+                            }
+                        }
+
+                        #pragma endregion
+                    } else {
+                        lastEraseMX = 0;
+                        lastEraseMY = 0;
+                    }
                 } else if(windowEvent.type == SDL_KEYDOWN) {
                     EASY_BLOCK("Controls::keyEvent");
                     Controls::keyEvent(windowEvent.key);
@@ -2919,6 +2957,13 @@ void Game::renderEarly() {
             }
         }
         #pragma endregion
+
+        if(Controls::DEBUG_DRAW->get()) {
+            int x = (int)((mx - ofsX - camX) / scale);
+            int y = (int)((my - ofsY - camY) / scale);
+            GPU_Rectangle(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2, y - DebugDrawUI::brushSize / 2, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, y + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, {0x00, 0xff, 0xB0, 0xE0});
+        }
+
     }
 }
 

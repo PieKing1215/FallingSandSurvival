@@ -165,6 +165,10 @@ public:
 
     int mx = 0;
     int my = 0;
+    int lastDrawMX = 0;
+    int lastDrawMY = 0;
+    int lastEraseMX = 0;
+    int lastEraseMY = 0;
 
     bool* objectDelete = nullptr;
 
