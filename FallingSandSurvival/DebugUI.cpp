@@ -56,6 +56,8 @@ void DebugUI::Draw(Game* game) {
         ImGui::Indent(10.0f);
         ImGui::SliderFloat("Light Quality", &Settings::lightingQuality, 0.0, 1.0, "", 0);
         ImGui::Checkbox("Light Overlay", &Settings::draw_light_overlay);
+        ImGui::Checkbox("Simple Lighting", &Settings::simpleLighting);
+        ImGui::Checkbox("Lighting Emission", &Settings::lightingEmission);
         ImGui::Unindent(10.0f);
     }
 

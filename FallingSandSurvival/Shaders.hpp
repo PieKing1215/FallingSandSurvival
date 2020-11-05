@@ -151,10 +151,26 @@ public:
     float lastLy = 0.0;
     float lastQuality = 0.0;
     float lastInside = 0.0;
+    bool lastSimpleMode = false;
+    bool lastEmissionEnabled = false;
 
     NewLightingShader() : Shader("data/shaders/common.vert", "data/shaders/newLighting.frag") {};
 
     void prepare() {}
+
+    void setSimpleMode(bool simpleMode) {
+        int simpleOnly_loc = GPU_GetUniformLocation(shader, "simpleOnly");
+        GPU_SetUniformi(simpleOnly_loc, simpleMode);
+
+        lastSimpleMode = simpleMode;
+    }
+
+    void setEmissionEnabled(bool emissionEnabled) {
+        int emission_loc = GPU_GetUniformLocation(shader, "emission");
+        GPU_SetUniformi(emission_loc, emissionEnabled);
+
+        lastEmissionEnabled = emissionEnabled;
+    }
 
     void setQuality(float quality) {
         int lightingQuality_loc = GPU_GetUniformLocation(shader, "lightingQuality");

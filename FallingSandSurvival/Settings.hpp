@@ -12,9 +12,13 @@ public:
     static bool draw_material_info;
     static bool draw_uinode_bounds;
     static bool draw_temperature_map;
+
     static bool draw_shaders;
     static float lightingQuality;
     static bool draw_light_overlay;
+    static bool simpleLighting;
+    static bool lightingEmission;
+
     static bool tick_world;
     static bool tick_box2d;
     static bool tick_temperature;

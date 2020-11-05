@@ -3114,6 +3114,12 @@ void Game::renderLate() {
             if(newLightingShader->lastInside != ins) needToRerenderLighting = true;
             newLightingShader->setInside(ins);
             newLightingShader->setBounds(world->tickZone.x * Settings::hd_objects_size, world->tickZone.y * Settings::hd_objects_size, (world->tickZone.x + world->tickZone.w) * Settings::hd_objects_size, (world->tickZone.y + world->tickZone.h) * Settings::hd_objects_size);
+
+            if(newLightingShader->lastSimpleMode != Settings::simpleLighting) needToRerenderLighting = true;
+            newLightingShader->setSimpleMode(Settings::simpleLighting);
+
+            if(newLightingShader->lastEmissionEnabled != Settings::lightingEmission) needToRerenderLighting = true;
+            newLightingShader->setEmissionEnabled(Settings::lightingEmission);
         }
         
         if(Settings::draw_shaders && needToRerenderLighting) {

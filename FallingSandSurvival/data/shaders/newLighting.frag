@@ -1,6 +1,8 @@
 // Fragment
 precision mediump float;
 
+uniform bool simpleOnly = false;
+uniform bool emission = true;
 uniform float lightingQuality = 0.5;
 uniform float inside = 0.0;
 
@@ -26,6 +28,7 @@ vec4 light2(vec2 coord){
 }
 
 vec4 lightEmit(vec2 coord){
+    if(!emission) return vec4(0.0);
     vec4 emit = texture2D(emitmap, coord);
     return emit * emit.a;
 }
@@ -55,7 +58,7 @@ void main(){
             vec4 olcol = texture2D(txrmap, texCoord);
             float distNr = 1.0 - clamp(dst * 10.0, 0.0, 1.0);
             distNr *= 1.0;
-            if(olcol.a > 0){
+            if(!simpleOnly && olcol.a > 0){
                 // actual tile
             
                 vec4 lcol = light2(texCoord);
@@ -69,24 +72,44 @@ void main(){
                 for(float deg = 0.0; deg < 3.1415927 * 2; deg += (3.1415927 * 2) / nDirs){
                     for(float i = 1.0 / nSteps; i <= 1.0; i += 1.0 / nSteps){
                         lcol += light2(texCoord + vec2(cos(deg), sin(deg)) * rad * i);	
-                        ecol += lightEmit(texCoord + vec2(cos(deg), sin(deg)) * rad * i);	
+                        if(emission) ecol += lightEmit(texCoord + vec2(cos(deg), sin(deg)) * rad * i);	
                     }
                 }
                 
                 lcol.rgb /= nSteps * nDirs - 15.0;
-                ecol.rgb /= nSteps * nDirs - 15.0;
+                if(emission) ecol.rgb /= nSteps * nDirs - 15.0;
                 
                 vec4 brr = clamp(brightnessContrast2(lcol, 0.2, 0.9) * distBr, 0.0, 1.0);
                 brr = mix(brr, vec4(1.0), distNr);
-                brr += ecol;
+                if(emission) brr += pow(ecol, vec4(0.6));
                 //gl_FragColor = mix(vec4(vec3(0.0), 1.0), olcol, brr); // mix orig color
                 gl_FragColor = brr; // b/w
                 //gl_FragColor = vec4(vec3(0.0), 1.0 - brr); // transparent black
             }else{
                 // no tile (background)
             
+                vec4 col = vec4(vec3(clamp(mix(distBr, 1.0, distNr), 0.0, 1.0)), 1.0);
+            
+                if(!simpleOnly && emission){
+                    vec4 ecol = lightEmit(texCoord);
+                    vec4 emitCol = vec4(0.0);
+                    
+                    float nDirs = 10.0 + int(16.0 * lightingQuality);
+                    float nSteps = 5.0 + int(10.0 * lightingQuality);
+                    vec2 rad = 64.0 / texSize.xy;
+                    
+                    for(float deg = 0.0; deg < 3.1415927 * 2; deg += (3.1415927 * 2) / nDirs){
+                        for(float i = 1.0 / nSteps; i <= 1.0; i += 1.0 / nSteps){
+                            if(emission) ecol += lightEmit(texCoord + vec2(cos(deg), sin(deg)) * rad * i);	
+                        }
+                    }
+                    ecol.rgb /= nSteps * nDirs - 15.0;
+                    
+                    col += pow(ecol, vec4(0.6));
+                }
+            
                 //gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0 - clamp(mix(distBr, 1.0, distNr), 0.0, 1.0));
-                gl_FragColor = vec4(vec3(clamp(mix(distBr, 1.0, distNr), 0.0, 1.0)), 1.0);
+                gl_FragColor = col;
                 //gl_FragColor = vec4(vec3(0.0), 1.0 - clamp(mix(distBr, 1.0, distNr), 0.0, 1.0));
             }
         }
