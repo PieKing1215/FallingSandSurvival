@@ -116,6 +116,10 @@ public:
     GPU_Image* worldTexture = nullptr;
     GPU_Image* lightingTexture = nullptr;
 
+    GPU_Image* emissionTexture = nullptr;
+    vector< unsigned char > pixelsEmission;
+    unsigned char* pixelsEmission_ar = nullptr;
+
     GPU_Image* texture = nullptr;
     vector< unsigned char > pixels;
     unsigned char* pixels_ar = nullptr;

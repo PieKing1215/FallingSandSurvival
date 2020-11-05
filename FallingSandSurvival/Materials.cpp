@@ -2,7 +2,7 @@
 #include "Materials.hpp"
 
 int Materials::nMaterials = 0;
-Material Materials::GENERIC_AIR        = Material(nMaterials++, "_AIR", PhysicsType::AIR, 255, 0, 0, 16, 0xffffff);
+Material Materials::GENERIC_AIR        = Material(nMaterials++, "_AIR", PhysicsType::AIR, 255, 0, 0, 16, 0);
 Material Materials::GENERIC_SOLID      = Material(nMaterials++, "_SOLID", PhysicsType::SOLID, 255, 1, 0, 0, 0);
 Material Materials::GENERIC_SAND       = Material(nMaterials++, "_SAND", PhysicsType::SAND, 255, 10, 2, 0, 0);
 Material Materials::GENERIC_LIQUID     = Material(nMaterials++, "_LIQUID", PhysicsType::SOUP, 255, 1.5, 3, 0, 0);
@@ -24,16 +24,16 @@ Material Materials::SMOOTH_DIRT        = Material(nMaterials++, "Ground", Physic
 Material Materials::COBBLE_DIRT        = Material(nMaterials++, "Hard Ground", PhysicsType::SOLID, 1, 0);
 Material Materials::SOFT_DIRT          = Material(nMaterials++, "Dirt", PhysicsType::SOLID, 15, 2);
 
-Material Materials::WATER              = Material(nMaterials++, "Water", PhysicsType::SOUP, 0x80, 1.5, 3, 40, 0x0050ff);
-Material Materials::LAVA               = Material(nMaterials++, "Lava", PhysicsType::SOUP, 0xC0, 2, 1, 40, 0xff5000);
+Material Materials::WATER              = Material(nMaterials++, "Water", PhysicsType::SOUP, 0x80, 1.5, 3, 40, 0x5000AFB5);
+Material Materials::LAVA               = Material(nMaterials++, "Lava", PhysicsType::SOUP, 0xC0, 2, 1, 40, 0xFFFF9400);
 
 Material Materials::CLOUD              = Material(nMaterials++, "Cloud", PhysicsType::SOLID, 127, 1, 0);
 
-Material Materials::GOLD_ORE           = Material(nMaterials++, "Gold Ore", PhysicsType::SAND, 255, 20, 2, 8, 0x804000);
-Material Materials::GOLD_MOLTEN        = Material(nMaterials++, "Molten Gold", PhysicsType::SOUP, 255, 20, 2, 8, 0x804000);
-Material Materials::GOLD_SOLID         = Material(nMaterials++, "Solid Gold", PhysicsType::SOLID, 255, 20, 2, 8, 0x804000);
+Material Materials::GOLD_ORE           = Material(nMaterials++, "Gold Ore", PhysicsType::SAND, 255, 20, 2, 8, 0x40FFC156);
+Material Materials::GOLD_MOLTEN        = Material(nMaterials++, "Molten Gold", PhysicsType::SOUP, 255, 20, 2, 8, 0xFFFF9B56);
+Material Materials::GOLD_SOLID         = Material(nMaterials++, "Solid Gold", PhysicsType::SOLID, 255, 20, 2, 8, 0);
 
-Material Materials::IRON_ORE           = Material(nMaterials++, "Iron Ore", PhysicsType::SAND, 255, 20, 2, 8, 0x7F442F);
+Material Materials::IRON_ORE           = Material(nMaterials++, "Iron Ore", PhysicsType::SAND, 255, 20, 2, 8, 0x40FFB49E);
 
 Material Materials::OBSIDIAN           = Material(nMaterials++, "Obsidian", PhysicsType::SOLID, 255, 1, 0, 0, 0);
 Material Materials::STEAM              = Material(nMaterials++, "Steam", PhysicsType::GAS, 255, -1, 1, 0, 0);

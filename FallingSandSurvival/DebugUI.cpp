@@ -52,8 +52,11 @@ void DebugUI::Draw(Game* game) {
     ImGui::Checkbox("Draw Shaders"        , &Settings::draw_shaders);
 
     if(Settings::draw_shaders) {
-        ImGui::SetNextItemWidth(90);
+        ImGui::SetNextItemWidth(80);
+        ImGui::Indent(10.0f);
         ImGui::SliderFloat("Light Quality", &Settings::lightingQuality, 0.0, 1.0, "", 0);
+        ImGui::Checkbox("Light Overlay", &Settings::draw_light_overlay);
+        ImGui::Unindent(10.0f);
     }
 
     ImGui::Checkbox("Tick World"          , &Settings::tick_world);

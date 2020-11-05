@@ -521,6 +521,16 @@ int Game::init(int argc, char *argv[]) {
         EASY_END_BLOCK;
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+        emissionTexture = GPU_CreateImage(
+            world->width, world->height,
+            GPU_FormatEnum::GPU_FORMAT_RGBA
+        );
+        EASY_END_BLOCK;
+        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+        GPU_SetImageFilter(emissionTexture, GPU_FILTER_NEAREST);
+        EASY_END_BLOCK;
+
+        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         textureFire = GPU_CreateImage(
             world->width, world->height,
             GPU_FormatEnum::GPU_FORMAT_RGBA
@@ -680,6 +690,8 @@ int Game::init(int argc, char *argv[]) {
         pixelsLoading_ar = &pixelsLoading[0];
         pixelsFire = vector<unsigned char>(world->width * world->height * 4, 0);
         pixelsFire_ar = &pixelsFire[0];
+        pixelsEmission = vector<unsigned char>(world->width * world->height * 4, 0);
+        pixelsEmission_ar = &pixelsEmission[0];
         EASY_END_BLOCK;
         EASY_END_BLOCK;
         #pragma endregion
@@ -1801,7 +1813,9 @@ void Game::tick() {
                         UCH_SET_PIXEL(pixels_ar, offset, 0, 0, 0, SDL_ALPHA_TRANSPARENT);
                     } else {
                         Uint32 color = world->tiles[i].color;
+                        Uint32 emit = world->tiles[i].mat->emitColor;
                         UCH_SET_PIXEL(pixels_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, world->tiles[i].mat->alpha);
+                        UCH_SET_PIXEL(pixelsEmission_ar, offset, (emit >> 0) & 0xff, (emit >> 8) & 0xff, (emit >> 16) & 0xff, (emit >> 24) & 0xff);
                     }
                 }
 
@@ -1864,6 +1878,10 @@ void Game::tick() {
                         rotate(&(pixelsFire_ar[0]), &(pixelsFire_ar[world->width * world->height * 4]) - delta, &(pixelsFire_ar[world->width * world->height * 4]));
                         //rotate(pixelsFire_ar.begin(), pixelsFire_ar.end() - delta, pixelsFire_ar.end());
                     }));
+                    results.push_back(updateDirtyPool->push([&](int id) {
+                        rotate(&(pixelsEmission_ar[0]), &(pixelsEmission_ar[world->width * world->height * 4]) - delta, &(pixelsEmission_ar[world->width * world->height * 4]));
+                        //rotate(pixelsEmission_ar.begin(), pixelsEmission_ar.end() - delta, pixelsEmission_ar.end());
+                    }));
                 } else if(delta < 0) {
                     results.push_back(updateDirtyPool->push([&](int id) {
                         rotate(&(pixels_ar[0]), &(pixels_ar[0]) - delta, &(pixels_ar[world->width * world->height * 4]));
@@ -1880,6 +1898,10 @@ void Game::tick() {
                     results.push_back(updateDirtyPool->push([&](int id) {
                         rotate(&(pixelsFire_ar[0]), &(pixelsFire_ar[0]) - delta, &(pixelsFire_ar[world->width * world->height * 4]));
                         //rotate(pixelsFire_ar.begin(), pixelsFire_ar.begin() - delta, pixelsFire_ar.end());
+                    }));
+                    results.push_back(updateDirtyPool->push([&](int id) {
+                        rotate(&(pixelsEmission_ar[0]), &(pixelsEmission_ar[0]) - delta, &(pixelsEmission_ar[world->width * world->height * 4]));
+                        //rotate(pixelsEmission_ar.begin(), pixelsEmission_ar.begin() - delta, pixelsEmission_ar.end());
                     }));
                 }
                 EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
@@ -1904,6 +1926,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                             CLEARPIXEL(pixelsObjects_ar, offset);
                             CLEARPIXEL(pixelsBackground_ar, offset);
                             CLEARPIXEL(pixelsFire_ar, offset);
+                            CLEARPIXEL(pixelsEmission_ar, offset);
                         }
                     }
                 }
@@ -1919,6 +1942,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                             CLEARPIXEL(pixelsObjects_ar, offset);
                             CLEARPIXEL(pixelsBackground_ar, offset);
                             CLEARPIXEL(pixelsFire_ar, offset);
+                            CLEARPIXEL(pixelsEmission_ar, offset);
                         }
                     }
                 }
@@ -2393,6 +2417,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
         //unsigned char* dpixels_ar = (unsigned char*)vdpixels_ar;
         unsigned char* dpixels_ar = pixels_ar;
         unsigned char* dpixelsFire_ar = pixelsFire_ar;
+        unsigned char* dpixelsEmission_ar = pixelsEmission_ar;
 
         for(size_t i = 0; i < world->rigidBodies.size(); i++) {
             RigidBody* cur = world->rigidBodies[i];
@@ -2505,14 +2530,25 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                         dpixelsFire_ar[offset + 0] = 0;        // b
                         dpixelsFire_ar[offset + 1] = 0;        // g
                         dpixelsFire_ar[offset + 2] = 0;        // r
-                        dpixelsFire_ar[offset + 3] = SDL_ALPHA_TRANSPARENT;    // a		
+                        dpixelsFire_ar[offset + 3] = SDL_ALPHA_TRANSPARENT;    // a
+
+                        dpixelsEmission_ar[offset + 0] = 0;        // b
+                        dpixelsEmission_ar[offset + 1] = 0;        // g
+                        dpixelsEmission_ar[offset + 2] = 0;        // r
+                        dpixelsEmission_ar[offset + 3] = SDL_ALPHA_TRANSPARENT;    // a		
                     } else {
                         Uint32 color = world->tiles[i].color;
+                        Uint32 emit = world->tiles[i].mat->emitColor;
                         //float br = world->light[i];
                         dpixels_ar[offset + 2] = ((color >> 0) & 0xff);        // b
                         dpixels_ar[offset + 1] = ((color >> 8) & 0xff);        // g
                         dpixels_ar[offset + 0] = ((color >> 16) & 0xff);        // r
                         dpixels_ar[offset + 3] = world->tiles[i].mat->alpha;    // a
+
+                        dpixelsEmission_ar[offset + 2] = ((emit >> 0) & 0xff);        // b
+                        dpixelsEmission_ar[offset + 1] = ((emit >> 8) & 0xff);        // g
+                        dpixelsEmission_ar[offset + 0] = ((emit >> 16) & 0xff);        // r
+                        dpixelsEmission_ar[offset + 3] = ((emit >> 24) & 0xff);    // a
 
                         if(world->tiles[i].mat->id == Materials::FIRE.id) {
                             dpixelsFire_ar[offset + 2] = ((color >> 0) & 0xff);        // b
@@ -2643,6 +2679,13 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                 texture,
                 NULL,
                 &pixels[0],
+                world->width * 4
+            );
+
+            GPU_UpdateImageBytes(
+                emissionTexture,
+                NULL,
+                &pixelsEmission[0],
                 world->width * 4
             );
         }
@@ -3048,7 +3091,7 @@ void Game::renderLate() {
             }
 
             if(newLightingShader->lastLx != lightTx || newLightingShader->lastLy != lightTy) needToRerenderLighting = true;
-            newLightingShader->update(worldTexture, lightTx, lightTy);
+            newLightingShader->update(worldTexture, emissionTexture, lightTx, lightTy);
             if(newLightingShader->lastQuality != Settings::lightingQuality) {
                 needToRerenderLighting = true;
             }
@@ -3077,13 +3120,17 @@ void Game::renderLate() {
             GPU_Clear(lightingTexture->target);
             GPU_BlitRect(worldTexture, NULL, lightingTexture->target, NULL);
         }
+        if(Settings::draw_shaders) GPU_ActivateShaderProgram(0, NULL);
 
         EASY_END_BLOCK; // lighting shader
 
-        if(Settings::draw_shaders) GPU_ActivateShaderProgram(0, NULL);
 
         GPU_BlitRect(worldTexture, NULL, target, &r1);
-        if(Settings::draw_shaders) GPU_BlitRect(lightingTexture, NULL, target, &r1);
+
+        if(Settings::draw_shaders) {
+            GPU_SetBlendMode(lightingTexture, Settings::draw_light_overlay ? GPU_BLEND_NORMAL : GPU_BLEND_MULTIPLY);
+            GPU_BlitRect(lightingTexture, NULL, target, &r1);
+        }
 
         EASY_END_BLOCK; // draw world
 
@@ -3103,8 +3150,6 @@ void Game::renderLate() {
         EASY_END_BLOCK;
 
         // done light
-
-
 
         GPU_Rect r2 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x*scale), (float)(ofsY + camY + world->tickZone.y*scale), (float)(world->tickZone.w * scale), (float)(world->tickZone.h * scale)};
 

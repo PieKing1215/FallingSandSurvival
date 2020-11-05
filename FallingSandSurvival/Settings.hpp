@@ -14,6 +14,7 @@ public:
     static bool draw_temperature_map;
     static bool draw_shaders;
     static float lightingQuality;
+    static bool draw_light_overlay;
     static bool tick_world;
     static bool tick_box2d;
     static bool tick_temperature;

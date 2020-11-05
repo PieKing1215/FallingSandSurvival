@@ -11,6 +11,7 @@ uniform float maxY = 0.0;
 
 
 uniform sampler2D txrmap;   // texture unit for light map
+uniform sampler2D emitmap;
 uniform vec2 texSize;
 varying vec2 texCoord;
 uniform vec2 t0;
@@ -19,8 +20,22 @@ float light(vec4 col){
     return 1.0 - col.a;
 }
 
+vec4 light2(vec2 coord){
+    vec4 col = texture2D(txrmap, coord);
+    return vec4(1.0 - vec3(col.a), 1.0);
+}
+
+vec4 lightEmit(vec2 coord){
+    vec4 emit = texture2D(emitmap, coord);
+    return emit * emit.a;
+}
+
 float brightnessContrast(float value, float brightness, float contrast){
     return (value - 0.5) * contrast + 0.5 + brightness;
+}
+
+vec4 brightnessContrast2(vec4 value, float brightness, float contrast){
+    return vec4((value.rgb - vec3(0.5)) * contrast + 0.5 + brightness, 1.0);
 }
 
 void main(){
@@ -30,6 +45,7 @@ void main(){
         
         float dark = clamp(1.0 - dst2 * 3.5 * inside, 0.0, 1.0);
         gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0 - dark);
+        gl_FragColor = vec4(vec3(dark), 1.0);
     }else{
         float dst = distance(texCoord, t0);
         float distBr = clamp(1.0 - dst * 3.5 * inside, 0.0, 1.0);
@@ -42,7 +58,9 @@ void main(){
             if(olcol.a > 0){
                 // actual tile
             
-                float lcol = light(texture2D(txrmap, texCoord));
+                vec4 lcol = light2(texCoord);
+                vec4 ecol = lightEmit(texCoord);
+                vec4 emitCol = vec4(0.0);
                 
                 float nDirs = 10.0 + int(16.0 * lightingQuality);
                 float nSteps = 5.0 + int(10.0 * lightingQuality);
@@ -50,25 +68,29 @@ void main(){
                 
                 for(float deg = 0.0; deg < 3.1415927 * 2; deg += (3.1415927 * 2) / nDirs){
                     for(float i = 1.0 / nSteps; i <= 1.0; i += 1.0 / nSteps){
-                        lcol += light(texture2D(txrmap, texCoord + vec2(cos(deg), sin(deg)) * rad * i));		
+                        lcol += light2(texCoord + vec2(cos(deg), sin(deg)) * rad * i);	
+                        ecol += lightEmit(texCoord + vec2(cos(deg), sin(deg)) * rad * i);	
                     }
                 }
                 
-                lcol /= nSteps * nDirs - 15.0;
+                lcol.rgb /= nSteps * nDirs - 15.0;
+                ecol.rgb /= nSteps * nDirs - 15.0;
                 
-                float brr = clamp(brightnessContrast(lcol, 0.2, 0.9) * distBr, 0.0, 1.0);
-                brr = mix(brr, 1.0, distNr);
+                vec4 brr = clamp(brightnessContrast2(lcol, 0.2, 0.9) * distBr, 0.0, 1.0);
+                brr = mix(brr, vec4(1.0), distNr);
+                brr += ecol;
                 //gl_FragColor = mix(vec4(vec3(0.0), 1.0), olcol, brr); // mix orig color
-                //gl_FragColor = vec4(vec3(brr), 1.0); // b/w
-                gl_FragColor = vec4(vec3(0.0), 1.0 - brr); // transparent black
+                gl_FragColor = brr; // b/w
+                //gl_FragColor = vec4(vec3(0.0), 1.0 - brr); // transparent black
             }else{
                 // no tile (background)
             
                 //gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0 - clamp(mix(distBr, 1.0, distNr), 0.0, 1.0));
-                //gl_FragColor = vec4(vec3(clamp(mix(distBr, 1.0, distNr), 0.0, 1.0)), 1.0);
-                gl_FragColor = vec4(vec3(0.0), 1.0 - clamp(mix(distBr, 1.0, distNr), 0.0, 1.0));
+                gl_FragColor = vec4(vec3(clamp(mix(distBr, 1.0, distNr), 0.0, 1.0)), 1.0);
+                //gl_FragColor = vec4(vec3(0.0), 1.0 - clamp(mix(distBr, 1.0, distNr), 0.0, 1.0));
             }
         }
     }
+    gl_FragColor.a = 1.0;
 }
 

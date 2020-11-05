@@ -182,8 +182,9 @@ public:
         GPU_SetUniformf(maxY_loc, maxY);
     }
 
-    void update(GPU_Image* tex, float x, float y) {
+    void update(GPU_Image* tex, GPU_Image* emit, float x, float y) {
         int txrmap_loc = GPU_GetUniformLocation(shader, "txrmap");
+        int emitmap_loc = GPU_GetUniformLocation(shader, "emitmap");
         int txrsize_loc = GPU_GetUniformLocation(shader, "texSize");
         int t0_loc = GPU_GetUniformLocation(shader, "t0");
 
@@ -197,6 +198,7 @@ public:
         GPU_SetUniformfv(txrsize_loc, 2, 1, tres);
 
         GPU_SetShaderImage(tex, txrmap_loc, 1);
+        GPU_SetShaderImage(emit, emitmap_loc, 2);
     }
 };
 
