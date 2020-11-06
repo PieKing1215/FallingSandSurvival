@@ -2457,6 +2457,34 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
         unsigned char* dpixelsFire_ar = pixelsFire_ar;
         unsigned char* dpixelsEmission_ar = pixelsEmission_ar;
 
+        std::vector<std::future<void>> results = {};
+
+        results.push_back(updateDirtyPool->push([&](int id) {
+            EASY_BLOCK("particles");
+            //SDL_SetRenderTarget(renderer, textureParticles);
+            void* particlePixels = pixelsParticles_ar;
+            EASY_BLOCK("memset");
+            memset(particlePixels, 0, world->width * world->height * 4);
+            EASY_END_BLOCK; // memset
+            world->renderParticles((unsigned char**)&particlePixels);
+            world->tickParticles();
+
+            //SDL_SetRenderTarget(renderer, NULL);
+            EASY_END_BLOCK; // particles
+        }));
+
+        if(world->readyToMerge.size() == 0) {
+            results.push_back(updateDirtyPool->push([&](int id) {
+                world->tickObjectBounds();
+            }));
+        }
+
+        EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
+        for(int i = 0; i < results.size(); i++) {
+            results[i].get();
+        }
+        EASY_END_BLOCK;
+
         for(size_t i = 0; i < world->rigidBodies.size(); i++) {
             RigidBody* cur = world->rigidBodies[i];
             if(cur == nullptr) continue;
@@ -2520,34 +2548,9 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
             cur->needsUpdate = true;
         }
 
-        std::vector<std::future<void>> results = {};
-
-        results.push_back(updateDirtyPool->push([&](int id) {
-            EASY_BLOCK("particles");
-            //SDL_SetRenderTarget(renderer, textureParticles);
-            void* particlePixels = pixelsParticles_ar;
-            EASY_BLOCK("memset");
-            memset(particlePixels, 0, world->width * world->height * 4);
-            EASY_END_BLOCK; // memset
-            world->renderParticles((unsigned char**)&particlePixels);
-            world->tickParticles();
-
-            //SDL_SetRenderTarget(renderer, NULL);
-            EASY_END_BLOCK; // particles
-        }));
-
         if(world->readyToMerge.size() == 0) {
-            results.push_back(updateDirtyPool->push([&](int id) {
-                world->tickObjectBounds();
-                if(Settings::tick_box2d) world->tickObjects();
-            }));
+            if(Settings::tick_box2d) world->tickObjects();
         }
-
-        EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
-        for(int i = 0; i < results.size(); i++) {
-            results[i].get();
-        }
-        EASY_END_BLOCK;
 
         if(tickTime % 10 == 0) world->tickObjectsMesh();
 

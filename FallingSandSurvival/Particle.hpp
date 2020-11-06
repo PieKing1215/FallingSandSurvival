@@ -24,6 +24,7 @@ public:
     bool temporary = false;
     int lifetime = 0;
     int fadeTime = 60;
+    unsigned short inObjectState = 0;
     std::function<void()> killCallback = []() {};
     Particle(MaterialInstance tile, float x, float y, float vx, float vy, float ax, float ay);
     Particle(const Particle &part);

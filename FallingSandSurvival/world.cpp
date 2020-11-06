@@ -2346,57 +2346,83 @@ void World::tickParticles() {
                 return true;
             }
 
-            if(!cur->phase && tiles[(int)(cur->x) + (int)(cur->y) * width].mat->physicsType != PhysicsType::AIR && tiles[(int)(cur->x) + (int)(cur->y) * width].mat->physicsType != PhysicsType::OBJECT) {
-                if(cur->temporary) {
-                    cur->killCallback();
-                    delete cur;
-                    return true;
+            if(!cur->phase && tiles[(int)(cur->x) + (int)(cur->y) * width].mat->physicsType != PhysicsType::AIR) {
+                bool allowCollision = true;
+                bool isObject = tiles[(int)(cur->x) + (int)(cur->y) * width].mat->physicsType == PhysicsType::OBJECT;
+
+                switch(cur->inObjectState) {
+                    case 0: // first frame of particle's life
+                        if(isObject) {
+                            cur->inObjectState = 1;
+                        } else {
+                            cur->inObjectState = 2;
+                        }
+                        break;
+                    case 1: // particle spawned in object and was in object last tick
+                        if(!isObject) cur->inObjectState = 2;
+                        break;
                 }
 
-                if(tiles[(int)(lx)+(int)(ly)* width].mat->physicsType != PhysicsType::AIR) {
-                    /*for (int y = 0; y < 40; y++) {
-                        if (tiles[(int)(cur->x) + (int)(cur->y - y) * width].mat->physicsType == PhysicsType::AIR) {
-                            tiles[(int)(cur->x) + (int)(cur->y - y) * width] = cur->tile;
-                            dirty[(int)(cur->x) + (int)(cur->y - y) * width] = true;
-                            break;
-                        }
-                    }*/
-
-                    {
-                        //printf("=========");
-                        int X = 20;
-                        int Y = 20;
-                        int x = 0, y = 0, dx = 0, dy = -1;
-                        int t = max(X, Y);
-                        int maxI = t * t;
-
-                        for(int j = 0; j < maxI; j++) {
-                            if((-X / 2 <= x) && (x <= X / 2) && (-Y / 2 <= y) && (y <= Y / 2)) {
-                                //printf("%d, %d", x, y);
-                                //DO STUFF
-                                if(tiles[(int)(cur->x + x) + (int)(cur->y + y) * width].mat->physicsType == PhysicsType::AIR) {
-                                    tiles[(int)(cur->x + x) + (int)(cur->y + y) * width] = cur->tile;
-                                    dirty[(int)(cur->x + x) + (int)(cur->y + y) * width] = true;
-                                    break;
-                                }
-                            }
-
-                            if((x == y) || ((x < 0) && (x == -y)) || ((x > 0) && (x == 1 - y))) {
-                                t = dx; dx = -dy; dy = t;
-                            }
-                            x += dx; y += dy;
-                        }
+                if(!isObject || cur->inObjectState == 2) {
+                    if(cur->temporary) {
+                        cur->killCallback();
+                        delete cur;
+                        return true;
                     }
 
-                    cur->killCallback();
-                    delete cur;
-                    return true;
-                } else {
-                    tiles[(int)(lx)+(int)(ly)* width] = cur->tile;
-                    dirty[(int)(lx)+(int)(ly)* width] = true;
-                    cur->killCallback();
-                    delete cur;
-                    return true;
+                    if(tiles[(int)(lx)+(int)(ly)*width].mat->physicsType != PhysicsType::AIR) {
+                        /*for (int y = 0; y < 40; y++) {
+                            if (tiles[(int)(cur->x) + (int)(cur->y - y) * width].mat->physicsType == PhysicsType::AIR) {
+                                tiles[(int)(cur->x) + (int)(cur->y - y) * width] = cur->tile;
+                                dirty[(int)(cur->x) + (int)(cur->y - y) * width] = true;
+                                break;
+                            }
+                        }*/
+
+                        bool succeeded = false;
+                        {
+                            //printf("=========");
+                            int X = 32;
+                            int Y = 32;
+                            int x = 0, y = 0, dx = 0, dy = -1;
+                            int t = max(X, Y);
+                            int maxI = t * t;
+
+                            for(int j = 0; j < maxI; j++) {
+                                if((-X / 2 <= x) && (x <= X / 2) && (-Y / 2 <= y) && (y <= Y / 2)) {
+                                    //printf("%d, %d", x, y);
+                                    //DO STUFF
+                                    if(tiles[(int)(cur->x + x) + (int)(cur->y + y) * width].mat->physicsType == PhysicsType::AIR) {
+                                        tiles[(int)(cur->x + x) + (int)(cur->y + y) * width] = cur->tile;
+                                        dirty[(int)(cur->x + x) + (int)(cur->y + y) * width] = true;
+                                        succeeded = true;
+                                        break;
+                                    }
+                                }
+
+                                if((x == y) || ((x < 0) && (x == -y)) || ((x > 0) && (x == 1 - y))) {
+                                    t = dx; dx = -dy; dy = t;
+                                }
+                                x += dx; y += dy;
+                            }
+                        }
+
+                        if(succeeded) {
+                            cur->killCallback();
+                            delete cur;
+                            return true;
+                        } else {
+                            cur->vy = -4;
+                            cur->y -= 16;
+                            return false;
+                        }
+                    } else {
+                        tiles[(int)(lx)+(int)(ly)*width] = cur->tile;
+                        dirty[(int)(lx)+(int)(ly)*width] = true;
+                        cur->killCallback();
+                        delete cur;
+                        return true;
+                    }
                 }
             }
         }
