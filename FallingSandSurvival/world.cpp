@@ -3585,7 +3585,7 @@ WorldMeta WorldMeta::loadWorldMeta(char* worldFileName) {
     rapidjson::Document document;
 
     char* metaFile = new char[255];
-    snprintf(metaFile, 255, "%s/world.txt", worldFileName);
+    snprintf(metaFile, 255, "%s/world.json", worldFileName);
 
     FILE* fp = fopen(metaFile, "rb"); // non-Windows use "r"
 
@@ -3619,7 +3619,7 @@ WorldMeta WorldMeta::loadWorldMeta(char* worldFileName) {
 bool WorldMeta::save(std::string worldFileName) {
 
     char* metaFile = new char[255];
-    snprintf(metaFile, 255, "%s/world.txt", worldFileName.c_str());
+    snprintf(metaFile, 255, "%s/world.json", worldFileName.c_str());
 
     ofstream myfile;
     myfile.open(metaFile);
