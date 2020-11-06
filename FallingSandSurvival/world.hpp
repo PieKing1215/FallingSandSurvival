@@ -68,6 +68,7 @@ public:
     int64_t lastOpenedTime = 0;
 
     static WorldMeta loadWorldMeta(char* worldFileName);
+    bool save(std::string worldFileName);
 };
 
 class World {

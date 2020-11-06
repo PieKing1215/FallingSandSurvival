@@ -27,6 +27,7 @@
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/filereadstream.h"
+#include "rapidjson/stringbuffer.h"
 
 #define BUILD_WITH_EASY_PROFILER
 #include <easy/profiler.h>
@@ -3613,6 +3614,33 @@ WorldMeta WorldMeta::loadWorldMeta(char* worldFileName) {
     }
 
     return meta;
+}
+
+bool WorldMeta::save(std::string worldFileName) {
+
+    char* metaFile = new char[255];
+    snprintf(metaFile, 255, "%s/world.txt", worldFileName.c_str());
+
+    ofstream myfile;
+    myfile.open(metaFile);
+
+    rapidjson::Document document;
+    document.SetObject();
+    rapidjson::Document::AllocatorType& docAlloc = document.GetAllocator();
+
+    document.AddMember("name", rapidjson::Value().SetString(this->worldName.c_str(), docAlloc), docAlloc);
+    document.AddMember("lastOpenedVersion", rapidjson::Value().SetString(this->lastOpenedVersion.c_str(), docAlloc), docAlloc);
+    document.AddMember("lastOpenedTime", rapidjson::Value().SetInt64(this->lastOpenedTime), docAlloc);
+
+    rapidjson::StringBuffer buffer;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+    document.Accept(writer);
+
+    myfile << buffer.GetString();
+
+    myfile.close();
+
+    return false;
 }
 
 World::~World() {

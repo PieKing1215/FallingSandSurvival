@@ -193,9 +193,15 @@ void CreateWorldUI::Draw(Game* game) {
             generator = new MaterialTestGenerator();
         }
 
+        std::string wpStr = game->gameDir.getWorldPath(wn);
+
         EASY_BLOCK("Load world");
         game->world = new World();
-        game->world->init((char*)game->gameDir.getWorldPath(wn).c_str(), (int)ceil(game->WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(game->HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, game->target, &game->audioEngine, game->networkMode, generator);
+        game->world->init((char*)wpStr.c_str(), (int)ceil(game->WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(game->HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, game->target, &game->audioEngine, game->networkMode, generator);
+        game->world->metadata.worldName = std::string(worldNameBuf);
+        game->world->metadata.lastOpenedTime = Time::millis() / 1000;
+        game->world->metadata.lastOpenedVersion = std::string(VERSION);
+        game->world->metadata.save(wpStr);
 
         EASY_BLOCK("Queue chunk loading");
         logInfo("Queueing chunk loading...");
