@@ -2092,8 +2092,8 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                     if(rmat.mat->id == Materials::GENERIC_AIR.id) continue;
 
                     // rotate point
-                    int wx = (int)(tx * c - ty * s + x);
-                    int wy = (int)(tx * s + ty * c + y);
+                    int wx = (int)(tx * c - (ty + 1) * s + x);
+                    int wy = (int)(tx * s + (ty + 1) * c + y);
 
                     for(auto& dir : checkDirs) {
                         int wxd = wx + dir.first;
@@ -2476,8 +2476,8 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                     if(rmat.mat->id == Materials::GENERIC_AIR.id) continue;
 
                     // rotate point
-                    int wx = (int)(tx * c - ty * s + x);
-                    int wy = (int)(tx * s + ty * c + y);
+                    int wx = (int)(tx * c - (ty + 1) * s + x);
+                    int wy = (int)(tx * s + (ty + 1) * c + y);
 
                     bool found = false;
                     for(auto& dir : checkDirs) {
