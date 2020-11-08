@@ -2961,9 +2961,15 @@ void Game::renderEarly() {
         }
         #pragma endregion
 
-        if(Controls::DEBUG_DRAW->get()) {
+        if(Controls::mmouse) {
             int x = (int)((mx - ofsX - camX) / scale);
             int y = (int)((my - ofsY - camY) / scale);
+            GPU_RectangleFilled(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2, y - DebugDrawUI::brushSize / 2, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)), y + (int)(ceil(DebugDrawUI::brushSize / 2.0)), {0xff, 0x40, 0x40, 0x90});
+            GPU_Rectangle(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2, y - DebugDrawUI::brushSize / 2, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, y + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, {0xff, 0x40, 0x40, 0xE0});
+        }else if(Controls::DEBUG_DRAW->get()) {
+            int x = (int)((mx - ofsX - camX) / scale);
+            int y = (int)((my - ofsY - camY) / scale);
+            GPU_RectangleFilled(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2, y - DebugDrawUI::brushSize / 2, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)), y + (int)(ceil(DebugDrawUI::brushSize / 2.0)), {0x00, 0xff, 0xB0, 0x80});
             GPU_Rectangle(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2, y - DebugDrawUI::brushSize / 2, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, y + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, {0x00, 0xff, 0xB0, 0xE0});
         }
 
