@@ -24,7 +24,6 @@
 #include "Background.hpp"
 #include <box2d/b2_distance_joint.h>
 #include "Settings.hpp"
-#include "UI.hpp"
 #include "Controls.hpp"
 #include <chrono>
 #include <thread>

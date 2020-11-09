@@ -217,9 +217,6 @@
     <ClCompile Include="Textures.cpp">
       <Filter>Source Files\vfx</Filter>
     </ClCompile>
-    <ClCompile Include="UI.cpp">
-      <Filter>Source Files\vfx</Filter>
-    </ClCompile>
     <ClCompile Include="PlacedStructure.cpp">
       <Filter>Source Files\world\structures</Filter>
     </ClCompile>
@@ -431,9 +428,6 @@
       <Filter>Source Files\vfx</Filter>
     </ClInclude>
     <ClInclude Include="Textures.hpp">
-      <Filter>Source Files\vfx</Filter>
-    </ClInclude>
-    <ClInclude Include="UI.hpp">
       <Filter>Source Files\vfx</Filter>
     </ClInclude>
     <ClInclude Include="UTime.hpp">

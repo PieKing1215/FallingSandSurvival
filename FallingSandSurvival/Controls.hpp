@@ -65,6 +65,9 @@ public:
     static bool mmouse;
     static bool rmouse;
 
+    static Control* STATS_DISPLAY;
+    static Control* STATS_DISPLAY_DETAILED;
+
     static Control* DEBUG_UI;
     static Control* DEBUG_REFRESH;
     static Control* DEBUG_UPDATE_WORLD_MESH;

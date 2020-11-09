@@ -310,7 +310,6 @@ exit 0</Command>
     <ClCompile Include="Tiles.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="UTime.cpp" />
-    <ClCompile Include="UI.cpp" />
     <ClCompile Include="world.cpp" />
     <ClCompile Include="DefaultGenerator.cpp" />
   </ItemGroup>
@@ -422,7 +421,6 @@ exit 0</Command>
     <ClInclude Include="Structures.hpp" />
     <ClInclude Include="Textures.hpp" />
     <ClInclude Include="Tiles.hpp" />
-    <ClInclude Include="UI.hpp" />
     <ClInclude Include="UIs.hpp" />
     <ClInclude Include="UTime.hpp" />
     <ClInclude Include="world.hpp" />

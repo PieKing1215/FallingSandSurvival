@@ -9,7 +9,6 @@ bool Settings::draw_physics_meshes  = false;
 bool Settings::draw_chunk_state     = false;
 bool Settings::draw_chunk_queue     = false;
 bool Settings::draw_material_info   = false;
-bool Settings::draw_uinode_bounds   = false;
 bool Settings::draw_temperature_map = false;
 
 bool Settings::draw_shaders		    = false;

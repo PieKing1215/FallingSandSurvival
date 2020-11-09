@@ -9,6 +9,10 @@
 
 #include "ProfilerConfig.hpp"
 
+#define ALIGN_LEFT 0
+#define ALIGN_CENTER 1
+#define ALIGN_RIGHT 2
+
 struct DrawTextParams {
     GPU_Image* t1 = nullptr;
     GPU_Image* t2 = nullptr;

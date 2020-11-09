@@ -59,6 +59,19 @@ int Game::init(int argc, char *argv[]) {
     DebugCheatsUI::visible = openDebugUIs;
     DebugDrawUI::visible = openDebugUIs;
     Settings::draw_frame_graph = openDebugUIs;
+    if(!openDebugUIs) {
+        Settings::draw_background = true;
+        Settings::draw_background_grid = false;
+        Settings::draw_load_zones = false;
+        Settings::draw_physics_meshes = false;
+        Settings::draw_chunk_state = false;
+        Settings::draw_chunk_queue = false;
+        Settings::draw_material_info = false;
+        Settings::draw_temperature_map = false;
+
+        //TODO: load video settings from settings file
+
+    }
 
     this->gameDir = GameDir(clArgs->getString("game-dir"));
 
@@ -1498,6 +1511,27 @@ void Game::updateFrameEarly() {
         DebugDrawUI::visible ^= true;
         DebugCheatsUI::visible ^= true;
     }
+
+    if(Settings::draw_frame_graph) {
+        if(Controls::STATS_DISPLAY->get()) {
+            Settings::draw_frame_graph = false;
+            Settings::draw_chunk_queue = false;
+            Settings::draw_chunk_state = false;
+            Settings::draw_material_info = false;
+        }
+    } else {
+        if(Controls::STATS_DISPLAY->get()) {
+            Settings::draw_frame_graph = true;
+
+            if(Controls::STATS_DISPLAY_DETAILED->get()) {
+                Settings::draw_chunk_queue = true;
+                Settings::draw_chunk_state = true;
+                Settings::draw_material_info = true;
+            }
+        }
+    }
+
+    
 
     if(Controls::DEBUG_REFRESH->get()) {
         for(int x = 0; x < world->width; x++) {

@@ -5,7 +5,10 @@ std::vector<KeyControl*> Controls::keyControls = {};
 //KeyControl** Controls::keyControls = new KeyControl*[NUM_CONTROLS];
 bool Controls::initted = false;
 
-Control* Controls::DEBUG_UI                = add(new KeyControl(SDLK_F1, RISING));
+Control* Controls::STATS_DISPLAY          = add(new KeyControl(SDLK_F3, RISING));
+Control* Controls::STATS_DISPLAY_DETAILED = add(new KeyControl(SDLK_LSHIFT, MOMENTARY));
+
+Control* Controls::DEBUG_UI                = add(new KeyControl(SDLK_F4, RISING));
 Control* Controls::DEBUG_REFRESH           = add(new KeyControl(SDLK_KP_0, RISING));
 Control* Controls::DEBUG_UPDATE_WORLD_MESH = add(new KeyControl(SDLK_KP_1, RISING));
 Control* Controls::DEBUG_TICK			   = add(new KeyControl(SDLK_KP_2, RISING));
