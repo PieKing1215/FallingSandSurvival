@@ -867,8 +867,6 @@ int Game::run(int argc, char *argv[]) {
                             lastDrawMY = y;
                         }
 
-                        logDebug("{0:d} {1:d} {2:d} {3:d}", lastDrawMX, lastDrawMY, x, y);
-
                         world->forLine(lastDrawMX, lastDrawMY, x, y, [&](int index) {
                             int lineX = index % world->width;
                             int lineY = index / world->width;
@@ -1857,192 +1855,11 @@ void Game::tick() {
             }
         }
     } else {
-        // check chunk loading
-        #pragma region
-        EASY_BLOCK("chunk loading");
+
         int lastReadyToMergeSize = (int)world->readyToMerge.size();
 
-        // if need to load chunks
-        if((abs(accLoadX) > CHUNK_W / 2 || abs(accLoadY) > CHUNK_H / 2)) {
-            while(world->toLoad.size() > 0) {
-                // tick chunkloading
-                world->frame();
-            }
-
-            //iterate
-            #pragma region
-            EASY_BLOCK("iterate");
-            for(int i = 0; i < world->width * world->height; i++) {
-                const unsigned int offset = i * 4;
-
-                #define UCH_SET_PIXEL(pix_ar, ofs, c_r, c_g, c_b, c_a) \
-				pix_ar[ofs + 0] = c_b;\
-				pix_ar[ofs + 1] = c_g;\
-				pix_ar[ofs + 2] = c_r;\
-				pix_ar[ofs + 3] = c_a;
-
-                if(world->dirty[i]) {
-                    if(world->tiles[i].mat->physicsType == PhysicsType::AIR) {
-                        UCH_SET_PIXEL(pixels_ar, offset, 0, 0, 0, SDL_ALPHA_TRANSPARENT);
-                    } else {
-                        Uint32 color = world->tiles[i].color;
-                        Uint32 emit = world->tiles[i].mat->emitColor;
-                        UCH_SET_PIXEL(pixels_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, world->tiles[i].mat->alpha);
-                        UCH_SET_PIXEL(pixelsEmission_ar, offset, (emit >> 0) & 0xff, (emit >> 8) & 0xff, (emit >> 16) & 0xff, (emit >> 24) & 0xff);
-                    }
-                }
-
-                if(world->layer2Dirty[i]) {
-                    if(world->layer2[i].mat->physicsType == PhysicsType::AIR) {
-                        if(Settings::draw_background_grid) {
-                            Uint32 color = ((i) % 2) == 0 ? 0x888888 : 0x444444;
-                            UCH_SET_PIXEL(pixelsLayer2_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, SDL_ALPHA_OPAQUE);
-                        } else {
-                            UCH_SET_PIXEL(pixelsLayer2_ar, offset, 0, 0, 0, SDL_ALPHA_TRANSPARENT);
-                        }
-                        continue;
-                    }
-                    Uint32 color = world->layer2[i].color;
-                    UCH_SET_PIXEL(pixelsLayer2_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, world->layer2[i].mat->alpha);
-                }
-
-                if(world->backgroundDirty[i]) {
-                    Uint32 color = world->background[i];
-                    UCH_SET_PIXEL(pixelsBackground_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, (color >> 24) & 0xff);
-                }
-                #undef UCH_SET_PIXEL
-            }
-            EASY_END_BLOCK;
-            #pragma endregion
-
-            EASY_BLOCK("memset");
-            memset(world->dirty, false, world->width * world->height);
-            memset(world->layer2Dirty, false, world->width * world->height);
-            memset(world->backgroundDirty, false, world->width * world->height);
-            EASY_END_BLOCK;
-
-            EASY_BLOCK("loop");
-            while((abs(accLoadX) > CHUNK_W / 2 || abs(accLoadY) > CHUNK_H / 2)) {
-                int subX = std::fmax(std::fmin(accLoadX, CHUNK_W / 2), -CHUNK_W / 2);
-                if(abs(subX) < CHUNK_W / 2) subX = 0;
-                int subY = std::fmax(std::fmin(accLoadY, CHUNK_H / 2), -CHUNK_H / 2);
-                if(abs(subY) < CHUNK_H / 2) subY = 0;
-
-                world->loadZone.x += subX;
-                world->loadZone.y += subY;
-
-                int delta = 4 * (subX + subY * world->width);
-                EASY_BLOCK("rotate");
-                std::vector<std::future<void>> results = {};
-                if(delta > 0) {
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixels_ar[0]), &(pixels_ar[world->width * world->height * 4]) - delta, &(pixels_ar[world->width * world->height * 4]));
-                        //rotate(pixels.begin(), pixels.end() - delta, pixels.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsLayer2_ar[0]), &(pixelsLayer2_ar[world->width * world->height * 4]) - delta, &(pixelsLayer2_ar[world->width * world->height * 4]));
-                        //rotate(pixelsLayer2.begin(), pixelsLayer2.end() - delta, pixelsLayer2.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsBackground_ar[0]), &(pixelsBackground_ar[world->width * world->height * 4]) - delta, &(pixelsBackground_ar[world->width * world->height * 4]));
-                        //rotate(pixelsBackground.begin(), pixelsBackground.end() - delta, pixelsBackground.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsFire_ar[0]), &(pixelsFire_ar[world->width * world->height * 4]) - delta, &(pixelsFire_ar[world->width * world->height * 4]));
-                        //rotate(pixelsFire_ar.begin(), pixelsFire_ar.end() - delta, pixelsFire_ar.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsEmission_ar[0]), &(pixelsEmission_ar[world->width * world->height * 4]) - delta, &(pixelsEmission_ar[world->width * world->height * 4]));
-                        //rotate(pixelsEmission_ar.begin(), pixelsEmission_ar.end() - delta, pixelsEmission_ar.end());
-                    }));
-                } else if(delta < 0) {
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixels_ar[0]), &(pixels_ar[0]) - delta, &(pixels_ar[world->width * world->height * 4]));
-                        //rotate(pixels.begin(), pixels.begin() - delta, pixels.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsLayer2_ar[0]), &(pixelsLayer2_ar[0]) - delta, &(pixelsLayer2_ar[world->width * world->height * 4]));
-                        //rotate(pixelsLayer2.begin(), pixelsLayer2.begin() - delta, pixelsLayer2.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsBackground_ar[0]), &(pixelsBackground_ar[0]) - delta, &(pixelsBackground_ar[world->width * world->height * 4]));
-                        //rotate(pixelsBackground.begin(), pixelsBackground.begin() - delta, pixelsBackground.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsFire_ar[0]), &(pixelsFire_ar[0]) - delta, &(pixelsFire_ar[world->width * world->height * 4]));
-                        //rotate(pixelsFire_ar.begin(), pixelsFire_ar.begin() - delta, pixelsFire_ar.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsEmission_ar[0]), &(pixelsEmission_ar[0]) - delta, &(pixelsEmission_ar[world->width * world->height * 4]));
-                        //rotate(pixelsEmission_ar.begin(), pixelsEmission_ar.begin() - delta, pixelsEmission_ar.end());
-                    }));
-                }
-                EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
-                for(auto& v : results) {
-                    v.get();
-                }
-                EASY_END_BLOCK; // wait for threads
-
-                EASY_END_BLOCK; // rotate
-
-                #define CLEARPIXEL(pixels, ofs) \
-pixels[ofs + 0] = pixels[ofs + 1] = pixels[ofs + 2] = 0xff; \
-pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
-
-                EASY_BLOCK("CLEARPIXEL X");
-                for(int x = 0; x < abs(subX); x++) {
-                    for(int y = 0; y < world->height; y++) {
-                        const unsigned int offset = (world->width * 4 * y) + x * 4;
-                        if(offset < world->width * world->height * 4) {
-                            CLEARPIXEL(pixels_ar, offset);
-                            CLEARPIXEL(pixelsLayer2_ar, offset);
-                            CLEARPIXEL(pixelsObjects_ar, offset);
-                            CLEARPIXEL(pixelsBackground_ar, offset);
-                            CLEARPIXEL(pixelsFire_ar, offset);
-                            CLEARPIXEL(pixelsEmission_ar, offset);
-                        }
-                    }
-                }
-                EASY_END_BLOCK;
-
-                EASY_BLOCK("CLEARPIXEL Y");
-                for(int y = 0; y < abs(subY); y++) {
-                    for(int x = 0; x < world->width; x++) {
-                        const unsigned int offset = (world->width * 4 * y) + x * 4;
-                        if(offset < world->width * world->height * 4) {
-                            CLEARPIXEL(pixels_ar, offset);
-                            CLEARPIXEL(pixelsLayer2_ar, offset);
-                            CLEARPIXEL(pixelsObjects_ar, offset);
-                            CLEARPIXEL(pixelsBackground_ar, offset);
-                            CLEARPIXEL(pixelsFire_ar, offset);
-                            CLEARPIXEL(pixelsEmission_ar, offset);
-                        }
-                    }
-                }
-                EASY_END_BLOCK;
-
-                #undef CLEARPIXEL
-
-                accLoadX -= subX;
-                accLoadY -= subY;
-
-                ofsX -= subX * scale;
-                ofsY -= subY * scale;
-            }
-
-            EASY_END_BLOCK;
-
-            world->tickChunks();
-            world->updateWorldMesh();
-            world->dirty[0] = true;
-            world->layer2Dirty[0] = true;
-            world->backgroundDirty[0] = true;
-
-        } else {
-            world->frame();
-        }
-        EASY_END_BLOCK;
-        #pragma endregion
+        // check chunk loading
+        tickChunkLoading();
 
         if(world->needToTickGeneration) world->tickChunkGeneration();
 
@@ -2217,264 +2034,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
         }
 
         // player movement
-        #pragma region
-        if(world->player) {
-            if(Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) {
-                if(world->player->ground) {
-                    world->player->vy = -4;
-                    audioEngine.PlayEvent("event:/Jump");
-                }
-            }
-
-            world->player->vy += (float)(((Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) ? (world->player->vy > -1 ? -0.8 : -0.35) : 0) + (Controls::PLAYER_DOWN->get() ? 0.1 : 0));
-            if(Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) {
-                audioEngine.SetEventParameter("event:/Fly", "Intensity", 1);
-                for(int i = 0; i < 4; i++) {
-                    Particle* p = new Particle(Tiles::createLava(), (float)(world->player->x + world->loadZone.x + world->player->hw / 2 + rand() % 5 - 2 + world->player->vx), (float)(world->player->y + world->loadZone.y + world->player->hh + world->player->vy), (float)((rand() % 10 - 5) / 10.0f + world->player->vx / 2.0f), (float)((rand() % 10) / 10.0f + 1 + world->player->vy / 2.0f), 0, (float)0.025);
-                    p->temporary = true;
-                    p->lifetime = 120;
-                    world->addParticle(p);
-                }
-            } else {
-                audioEngine.SetEventParameter("event:/Fly", "Intensity", 0);
-            }
-
-            if(world->player->vy > 0) {
-                audioEngine.SetEventParameter("event:/Wind", "Wind", (float)(world->player->vy / 12.0));
-            } else {
-                audioEngine.SetEventParameter("event:/Wind", "Wind", 0);
-            }
-
-            world->player->vx += (float)((Controls::PLAYER_LEFT->get() ? (world->player->vx > 0 ? -0.4 : -0.2) : 0) + (Controls::PLAYER_RIGHT->get() ? (world->player->vx < 0 ? 0.4 : 0.2) : 0));
-            if(!Controls::PLAYER_LEFT->get() && !Controls::PLAYER_RIGHT->get()) world->player->vx *= (float)(world->player->ground ? 0.85 : 0.96);
-            if(world->player->vx > 4.5) world->player->vx = 4.5;
-            if(world->player->vx < -4.5) world->player->vx = -4.5;
-        } else {
-            if(state == INGAME) {
-                freeCamX += (float)((Controls::PLAYER_LEFT->get() ? -5 : 0) + (Controls::PLAYER_RIGHT->get() ? 5 : 0));
-                freeCamY += (float)((Controls::PLAYER_UP->get() ? -5 : 0) + (Controls::PLAYER_DOWN->get() ? 5 : 0));
-            } else {
-
-            }
-        }
-        #pragma endregion
-
-        #pragma region
-        if(world->player) {
-            desCamX = (float)(-(mx - (WIDTH / 2)) / 4);
-            desCamY = (float)(-(my - (HEIGHT / 2)) / 4);
-
-            world->player->holdAngle = (float)(atan2(desCamY, desCamX) * 180 / (float)W_PI);
-
-            desCamX = 0;
-            desCamY = 0;
-        } else {
-            desCamX = 0;
-            desCamY = 0;
-        }
-        #pragma endregion
-
-        #pragma region
-        if(world->player) {
-            if(world->player->heldItem) {
-                if(world->player->heldItem->getFlag(ItemFlags::VACUUM)) {
-                    if(world->player->holdVacuum) {
-
-                        int wcx = (int)((WIDTH / 2 - ofsX - camX) / scale);
-                        int wcy = (int)((HEIGHT / 2 - ofsY - camY) / scale);
-
-                        int wmx = (int)((mx - ofsX - camX) / scale);
-                        int wmy = (int)((my - ofsY - camY) / scale);
-
-                        int mdx = wmx - wcx;
-                        int mdy = wmy - wcy;
-
-                        int distSq = mdx * mdx + mdy * mdy;
-                        if(distSq <= 256 * 256) {
-
-                            int sind = -1;
-                            bool inObject = true;
-                            world->forLine(wcx, wcy, wmx, wmy, [&](int ind) {
-                                if(world->tiles[ind].mat->physicsType == PhysicsType::OBJECT) {
-                                    if(!inObject) {
-                                        sind = ind;
-                                        return true;
-                                    }
-                                } else {
-                                    inObject = false;
-                                }
-
-                                if(world->tiles[ind].mat->physicsType == PhysicsType::SOLID || world->tiles[ind].mat->physicsType == PhysicsType::SAND || world->tiles[ind].mat->physicsType == PhysicsType::SOUP) {
-                                    sind = ind;
-                                    return true;
-                                }
-                                return false;
-                            });
-
-                            int x = sind == -1 ? wmx : sind % world->width;
-                            int y = sind == -1 ? wmy : sind / world->width;
-
-                            std::function<void(MaterialInstance, int, int)> makeParticle = [&](MaterialInstance tile, int xPos, int yPos) {
-                                Particle* par = new Particle(tile, xPos, yPos, 0, 0, 0, (float)0.01f);
-                                par->vx = (rand() % 10 - 5) / 5.0f * 1.0f;
-                                par->vy = (rand() % 10 - 5) / 5.0f * 1.0f;
-                                par->ax = -par->vx / 10.0f;
-                                par->ay = -par->vy / 10.0f;
-                                if(par->ay == 0 && par->ax == 0) par->ay = 0.01f;
-
-                                //par->targetX = world->player->x + world->player->hw / 2 + world->loadZone.x;
-                                //par->targetY = world->player->y + world->player->hh / 2 + world->loadZone.y;
-                                //par->targetForce = 0.35f;
-
-                                par->lifetime = 6;
-
-                                par->phase = true;
-
-                                world->player->heldItem->vacuumParticles.push_back(par);
-
-                                par->killCallback = [&]() {
-                                    auto v = world->player->heldItem->vacuumParticles;
-                                    v.erase(std::remove(v.begin(), v.end(), par), v.end());
-                                };
-
-                                world->addParticle(par);
-                            };
-
-                            int rad = 5;
-                            int clipRadSq = rad * rad;
-                            clipRadSq += rand() % clipRadSq / 4;
-                            for(int xx = -rad; xx <= rad; xx++) {
-                                for(int yy = -rad; yy <= rad; yy++) {
-                                    if(xx*xx + yy*yy > clipRadSq) continue;
-                                    if((yy == -rad || yy == rad) && (xx == -rad || xx == rad)) {
-                                        continue;
-                                    }
-
-                                    MaterialInstance tile = world->tiles[(x + xx) + (y + yy) * world->width];
-                                    if(tile.mat->physicsType == PhysicsType::SOLID || tile.mat->physicsType == PhysicsType::SAND || tile.mat->physicsType == PhysicsType::SOUP) {
-                                        makeParticle(tile, x + xx, y + yy);
-                                        world->tiles[(x + xx) + (y + yy) * world->width] = Tiles::NOTHING;
-                                        //world->tiles[(x + xx) + (y + yy) * world->width] = Tiles::createFire();
-                                        world->dirty[(x + xx) + (y + yy) * world->width] = true;
-                                    }
-
-
-                                }
-                            }
-
-                            world->particles.erase(std::remove_if(world->particles.begin(), world->particles.end(), [&](Particle* cur) {
-                                if(cur->targetForce == 0 && !cur->phase) {
-                                    int rad = 5;
-                                    for(int xx = -rad; xx <= rad; xx++) {
-                                        for(int yy = -rad; yy <= rad; yy++) {
-                                            if((yy == -rad || yy == rad) && (xx == -rad || x == rad)) continue;
-
-                                            if(((int)(cur->x) == (x + xx)) && ((int)(cur->y) == (y + yy))) {
-
-                                                cur->vx = (rand() % 10 - 5) / 5.0f * 1.0f;
-                                                cur->vy = (rand() % 10 - 5) / 5.0f * 1.0f;
-                                                cur->ax = -cur->vx / 10.0f;
-                                                cur->ay = -cur->vy / 10.0f;
-                                                if(cur->ay == 0 && cur->ax == 0) cur->ay = 0.01f;
-
-                                                //par->targetX = world->player->x + world->player->hw / 2 + world->loadZone.x;
-                                                //par->targetY = world->player->y + world->player->hh / 2 + world->loadZone.y;
-                                                //par->targetForce = 0.35f;
-
-                                                cur->lifetime = 6;
-
-                                                cur->phase = true;
-
-                                                world->player->heldItem->vacuumParticles.push_back(cur);
-
-                                                cur->killCallback = [&]() {
-                                                    auto v = world->player->heldItem->vacuumParticles;
-                                                    v.erase(std::remove(v.begin(), v.end(), cur), v.end());
-                                                };
-
-                                                return false;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                return false;
-                            }), world->particles.end());
-
-                            vector<RigidBody*> rbs = world->rigidBodies;
-
-                            for(size_t i = 0; i < rbs.size(); i++) {
-                                RigidBody* cur = rbs[i];
-                                if(cur->body->IsEnabled()) {
-                                    float s = sin(-cur->body->GetAngle());
-                                    float c = cos(-cur->body->GetAngle());
-                                    bool upd = false;
-                                    for(int xx = -rad; xx <= rad; xx++) {
-                                        for(int yy = -rad; yy <= rad; yy++) {
-                                            if((yy == -rad || yy == rad) && (xx == -rad || x == rad)) continue;
-                                            // rotate point
-
-                                            float tx = x + xx - cur->body->GetPosition().x;
-                                            float ty = y + yy - cur->body->GetPosition().y;
-
-                                            int ntx = (int)(tx * c - ty * s);
-                                            int nty = (int)(tx * s + ty * c);
-
-                                            if(ntx >= 0 && nty >= 0 && ntx < cur->surface->w && nty < cur->surface->h) {
-                                                Uint32 pixel = PIXEL(cur->surface, ntx, nty);
-                                                if(((pixel >> 24) & 0xff) != 0x00) {
-                                                    PIXEL(cur->surface, ntx, nty) = 0x00000000;
-                                                    upd = true;
-
-                                                    makeParticle(MaterialInstance(&Materials::GENERIC_SOLID, pixel), (x + xx), (y + yy));
-                                                }
-
-                                            }
-                                        }
-                                    }
-
-                                    if(upd) {
-                                        GPU_FreeImage(cur->texture);
-                                        cur->texture = GPU_CopyImageFromSurface(cur->surface);
-                                        GPU_SetImageFilter(cur->texture, GPU_FILTER_NEAREST);
-                                        //world->updateRigidBodyHitbox(cur);
-                                        cur->needsUpdate = true;
-                                    }
-                                }
-                            }
-
-                        }
-                    }
-
-                    if(world->player->heldItem->vacuumParticles.size() > 0) {
-                        world->player->heldItem->vacuumParticles.erase(std::remove_if(world->player->heldItem->vacuumParticles.begin(), world->player->heldItem->vacuumParticles.end(), [&](Particle* cur) {
-
-                            if(cur->lifetime <= 0) {
-                                cur->targetForce = 0.45f;
-                                cur->targetX = world->player->x + world->player->hw / 2 + world->loadZone.x;
-                                cur->targetY = world->player->y + world->player->hh / 2 + world->loadZone.y;
-                                cur->ax = 0;
-                                cur->ay = 0.01f;
-                            }
-
-                            float tdx = cur->targetX - cur->x;
-                            float tdy = cur->targetY - cur->y;
-
-                            if(tdx * tdx + tdy * tdy < 10 * 10) {
-                                cur->temporary = true;
-                                cur->lifetime = 0;
-                                //logDebug("vacuum {}", cur->tile.mat->name.c_str());
-                                return true;
-                            }
-
-                            return false;
-                        }), world->player->heldItem->vacuumParticles.end());
-                    }
-
-                }
-            }
-        }
-        #pragma endregion
+        tickPlayer();
 
         // update particles, tickObjects, update dirty
         // TODO: this is not entirely thread safe since tickParticles changes World::tiles and World::dirty
@@ -2814,6 +2374,454 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
 
         EASY_END_BLOCK;
     }
+}
+
+void Game::tickChunkLoading() {
+    EASY_FUNCTION(GAME_PROFILER_COLOR);
+
+    // if need to load chunks
+    if((abs(accLoadX) > CHUNK_W / 2 || abs(accLoadY) > CHUNK_H / 2)) {
+        while(world->toLoad.size() > 0) {
+            // tick chunkloading
+            world->frame();
+        }
+
+        //iterate
+        #pragma region
+        EASY_BLOCK("iterate");
+        for(int i = 0; i < world->width * world->height; i++) {
+            const unsigned int offset = i * 4;
+
+            #define UCH_SET_PIXEL(pix_ar, ofs, c_r, c_g, c_b, c_a) \
+				pix_ar[ofs + 0] = c_b;\
+				pix_ar[ofs + 1] = c_g;\
+				pix_ar[ofs + 2] = c_r;\
+				pix_ar[ofs + 3] = c_a;
+
+            if(world->dirty[i]) {
+                if(world->tiles[i].mat->physicsType == PhysicsType::AIR) {
+                    UCH_SET_PIXEL(pixels_ar, offset, 0, 0, 0, SDL_ALPHA_TRANSPARENT);
+                } else {
+                    Uint32 color = world->tiles[i].color;
+                    Uint32 emit = world->tiles[i].mat->emitColor;
+                    UCH_SET_PIXEL(pixels_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, world->tiles[i].mat->alpha);
+                    UCH_SET_PIXEL(pixelsEmission_ar, offset, (emit >> 0) & 0xff, (emit >> 8) & 0xff, (emit >> 16) & 0xff, (emit >> 24) & 0xff);
+                }
+            }
+
+            if(world->layer2Dirty[i]) {
+                if(world->layer2[i].mat->physicsType == PhysicsType::AIR) {
+                    if(Settings::draw_background_grid) {
+                        Uint32 color = ((i) % 2) == 0 ? 0x888888 : 0x444444;
+                        UCH_SET_PIXEL(pixelsLayer2_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, SDL_ALPHA_OPAQUE);
+                    } else {
+                        UCH_SET_PIXEL(pixelsLayer2_ar, offset, 0, 0, 0, SDL_ALPHA_TRANSPARENT);
+                    }
+                    continue;
+                }
+                Uint32 color = world->layer2[i].color;
+                UCH_SET_PIXEL(pixelsLayer2_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, world->layer2[i].mat->alpha);
+            }
+
+            if(world->backgroundDirty[i]) {
+                Uint32 color = world->background[i];
+                UCH_SET_PIXEL(pixelsBackground_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, (color >> 24) & 0xff);
+            }
+            #undef UCH_SET_PIXEL
+        }
+        EASY_END_BLOCK;
+        #pragma endregion
+
+        EASY_BLOCK("memset");
+        memset(world->dirty, false, world->width * world->height);
+        memset(world->layer2Dirty, false, world->width * world->height);
+        memset(world->backgroundDirty, false, world->width * world->height);
+        EASY_END_BLOCK;
+
+        EASY_BLOCK("loop");
+        while((abs(accLoadX) > CHUNK_W / 2 || abs(accLoadY) > CHUNK_H / 2)) {
+            int subX = std::fmax(std::fmin(accLoadX, CHUNK_W / 2), -CHUNK_W / 2);
+            if(abs(subX) < CHUNK_W / 2) subX = 0;
+            int subY = std::fmax(std::fmin(accLoadY, CHUNK_H / 2), -CHUNK_H / 2);
+            if(abs(subY) < CHUNK_H / 2) subY = 0;
+
+            world->loadZone.x += subX;
+            world->loadZone.y += subY;
+
+            int delta = 4 * (subX + subY * world->width);
+            EASY_BLOCK("rotate");
+            std::vector<std::future<void>> results = {};
+            if(delta > 0) {
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixels_ar[0]), &(pixels_ar[world->width * world->height * 4]) - delta, &(pixels_ar[world->width * world->height * 4]));
+                    //rotate(pixels.begin(), pixels.end() - delta, pixels.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsLayer2_ar[0]), &(pixelsLayer2_ar[world->width * world->height * 4]) - delta, &(pixelsLayer2_ar[world->width * world->height * 4]));
+                    //rotate(pixelsLayer2.begin(), pixelsLayer2.end() - delta, pixelsLayer2.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsBackground_ar[0]), &(pixelsBackground_ar[world->width * world->height * 4]) - delta, &(pixelsBackground_ar[world->width * world->height * 4]));
+                    //rotate(pixelsBackground.begin(), pixelsBackground.end() - delta, pixelsBackground.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsFire_ar[0]), &(pixelsFire_ar[world->width * world->height * 4]) - delta, &(pixelsFire_ar[world->width * world->height * 4]));
+                    //rotate(pixelsFire_ar.begin(), pixelsFire_ar.end() - delta, pixelsFire_ar.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsEmission_ar[0]), &(pixelsEmission_ar[world->width * world->height * 4]) - delta, &(pixelsEmission_ar[world->width * world->height * 4]));
+                    //rotate(pixelsEmission_ar.begin(), pixelsEmission_ar.end() - delta, pixelsEmission_ar.end());
+                }));
+            } else if(delta < 0) {
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixels_ar[0]), &(pixels_ar[0]) - delta, &(pixels_ar[world->width * world->height * 4]));
+                    //rotate(pixels.begin(), pixels.begin() - delta, pixels.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsLayer2_ar[0]), &(pixelsLayer2_ar[0]) - delta, &(pixelsLayer2_ar[world->width * world->height * 4]));
+                    //rotate(pixelsLayer2.begin(), pixelsLayer2.begin() - delta, pixelsLayer2.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsBackground_ar[0]), &(pixelsBackground_ar[0]) - delta, &(pixelsBackground_ar[world->width * world->height * 4]));
+                    //rotate(pixelsBackground.begin(), pixelsBackground.begin() - delta, pixelsBackground.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsFire_ar[0]), &(pixelsFire_ar[0]) - delta, &(pixelsFire_ar[world->width * world->height * 4]));
+                    //rotate(pixelsFire_ar.begin(), pixelsFire_ar.begin() - delta, pixelsFire_ar.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsEmission_ar[0]), &(pixelsEmission_ar[0]) - delta, &(pixelsEmission_ar[world->width * world->height * 4]));
+                    //rotate(pixelsEmission_ar.begin(), pixelsEmission_ar.begin() - delta, pixelsEmission_ar.end());
+                }));
+            }
+            EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
+            for(auto& v : results) {
+                v.get();
+            }
+            EASY_END_BLOCK; // wait for threads
+
+            EASY_END_BLOCK; // rotate
+
+            #define CLEARPIXEL(pixels, ofs) \
+pixels[ofs + 0] = pixels[ofs + 1] = pixels[ofs + 2] = 0xff; \
+pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
+
+            EASY_BLOCK("CLEARPIXEL X");
+            for(int x = 0; x < abs(subX); x++) {
+                for(int y = 0; y < world->height; y++) {
+                    const unsigned int offset = (world->width * 4 * y) + x * 4;
+                    if(offset < world->width * world->height * 4) {
+                        CLEARPIXEL(pixels_ar, offset);
+                        CLEARPIXEL(pixelsLayer2_ar, offset);
+                        CLEARPIXEL(pixelsObjects_ar, offset);
+                        CLEARPIXEL(pixelsBackground_ar, offset);
+                        CLEARPIXEL(pixelsFire_ar, offset);
+                        CLEARPIXEL(pixelsEmission_ar, offset);
+                    }
+                }
+            }
+            EASY_END_BLOCK;
+
+            EASY_BLOCK("CLEARPIXEL Y");
+            for(int y = 0; y < abs(subY); y++) {
+                for(int x = 0; x < world->width; x++) {
+                    const unsigned int offset = (world->width * 4 * y) + x * 4;
+                    if(offset < world->width * world->height * 4) {
+                        CLEARPIXEL(pixels_ar, offset);
+                        CLEARPIXEL(pixelsLayer2_ar, offset);
+                        CLEARPIXEL(pixelsObjects_ar, offset);
+                        CLEARPIXEL(pixelsBackground_ar, offset);
+                        CLEARPIXEL(pixelsFire_ar, offset);
+                        CLEARPIXEL(pixelsEmission_ar, offset);
+                    }
+                }
+            }
+            EASY_END_BLOCK;
+
+            #undef CLEARPIXEL
+
+            accLoadX -= subX;
+            accLoadY -= subY;
+
+            ofsX -= subX * scale;
+            ofsY -= subY * scale;
+        }
+
+        EASY_END_BLOCK;
+
+        world->tickChunks();
+        world->updateWorldMesh();
+        world->dirty[0] = true;
+        world->layer2Dirty[0] = true;
+        world->backgroundDirty[0] = true;
+
+    } else {
+        world->frame();
+    }
+}
+
+void Game::tickPlayer() {
+    EASY_FUNCTION(GAME_PROFILER_COLOR);
+
+    #pragma region
+    if(world->player) {
+        if(Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) {
+            if(world->player->ground) {
+                world->player->vy = -4;
+                audioEngine.PlayEvent("event:/Jump");
+            }
+        }
+
+        world->player->vy += (float)(((Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) ? (world->player->vy > -1 ? -0.8 : -0.35) : 0) + (Controls::PLAYER_DOWN->get() ? 0.1 : 0));
+        if(Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) {
+            audioEngine.SetEventParameter("event:/Fly", "Intensity", 1);
+            for(int i = 0; i < 4; i++) {
+                Particle* p = new Particle(Tiles::createLava(), (float)(world->player->x + world->loadZone.x + world->player->hw / 2 + rand() % 5 - 2 + world->player->vx), (float)(world->player->y + world->loadZone.y + world->player->hh + world->player->vy), (float)((rand() % 10 - 5) / 10.0f + world->player->vx / 2.0f), (float)((rand() % 10) / 10.0f + 1 + world->player->vy / 2.0f), 0, (float)0.025);
+                p->temporary = true;
+                p->lifetime = 120;
+                world->addParticle(p);
+            }
+        } else {
+            audioEngine.SetEventParameter("event:/Fly", "Intensity", 0);
+        }
+
+        if(world->player->vy > 0) {
+            audioEngine.SetEventParameter("event:/Wind", "Wind", (float)(world->player->vy / 12.0));
+        } else {
+            audioEngine.SetEventParameter("event:/Wind", "Wind", 0);
+        }
+
+        world->player->vx += (float)((Controls::PLAYER_LEFT->get() ? (world->player->vx > 0 ? -0.4 : -0.2) : 0) + (Controls::PLAYER_RIGHT->get() ? (world->player->vx < 0 ? 0.4 : 0.2) : 0));
+        if(!Controls::PLAYER_LEFT->get() && !Controls::PLAYER_RIGHT->get()) world->player->vx *= (float)(world->player->ground ? 0.85 : 0.96);
+        if(world->player->vx > 4.5) world->player->vx = 4.5;
+        if(world->player->vx < -4.5) world->player->vx = -4.5;
+    } else {
+        if(state == INGAME) {
+            freeCamX += (float)((Controls::PLAYER_LEFT->get() ? -5 : 0) + (Controls::PLAYER_RIGHT->get() ? 5 : 0));
+            freeCamY += (float)((Controls::PLAYER_UP->get() ? -5 : 0) + (Controls::PLAYER_DOWN->get() ? 5 : 0));
+        } else {
+
+        }
+    }
+    #pragma endregion
+
+    #pragma region
+    if(world->player) {
+        desCamX = (float)(-(mx - (WIDTH / 2)) / 4);
+        desCamY = (float)(-(my - (HEIGHT / 2)) / 4);
+
+        world->player->holdAngle = (float)(atan2(desCamY, desCamX) * 180 / (float)W_PI);
+
+        desCamX = 0;
+        desCamY = 0;
+    } else {
+        desCamX = 0;
+        desCamY = 0;
+    }
+    #pragma endregion
+
+    #pragma region
+    if(world->player) {
+        if(world->player->heldItem) {
+            if(world->player->heldItem->getFlag(ItemFlags::VACUUM)) {
+                if(world->player->holdVacuum) {
+
+                    int wcx = (int)((WIDTH / 2 - ofsX - camX) / scale);
+                    int wcy = (int)((HEIGHT / 2 - ofsY - camY) / scale);
+
+                    int wmx = (int)((mx - ofsX - camX) / scale);
+                    int wmy = (int)((my - ofsY - camY) / scale);
+
+                    int mdx = wmx - wcx;
+                    int mdy = wmy - wcy;
+
+                    int distSq = mdx * mdx + mdy * mdy;
+                    if(distSq <= 256 * 256) {
+
+                        int sind = -1;
+                        bool inObject = true;
+                        world->forLine(wcx, wcy, wmx, wmy, [&](int ind) {
+                            if(world->tiles[ind].mat->physicsType == PhysicsType::OBJECT) {
+                                if(!inObject) {
+                                    sind = ind;
+                                    return true;
+                                }
+                            } else {
+                                inObject = false;
+                            }
+
+                            if(world->tiles[ind].mat->physicsType == PhysicsType::SOLID || world->tiles[ind].mat->physicsType == PhysicsType::SAND || world->tiles[ind].mat->physicsType == PhysicsType::SOUP) {
+                                sind = ind;
+                                return true;
+                            }
+                            return false;
+                        });
+
+                        int x = sind == -1 ? wmx : sind % world->width;
+                        int y = sind == -1 ? wmy : sind / world->width;
+
+                        std::function<void(MaterialInstance, int, int)> makeParticle = [&](MaterialInstance tile, int xPos, int yPos) {
+                            Particle* par = new Particle(tile, xPos, yPos, 0, 0, 0, (float)0.01f);
+                            par->vx = (rand() % 10 - 5) / 5.0f * 1.0f;
+                            par->vy = (rand() % 10 - 5) / 5.0f * 1.0f;
+                            par->ax = -par->vx / 10.0f;
+                            par->ay = -par->vy / 10.0f;
+                            if(par->ay == 0 && par->ax == 0) par->ay = 0.01f;
+
+                            //par->targetX = world->player->x + world->player->hw / 2 + world->loadZone.x;
+                            //par->targetY = world->player->y + world->player->hh / 2 + world->loadZone.y;
+                            //par->targetForce = 0.35f;
+
+                            par->lifetime = 6;
+
+                            par->phase = true;
+
+                            world->player->heldItem->vacuumParticles.push_back(par);
+
+                            par->killCallback = [&]() {
+                                auto v = world->player->heldItem->vacuumParticles;
+                                v.erase(std::remove(v.begin(), v.end(), par), v.end());
+                            };
+
+                            world->addParticle(par);
+                        };
+
+                        int rad = 5;
+                        int clipRadSq = rad * rad;
+                        clipRadSq += rand() % clipRadSq / 4;
+                        for(int xx = -rad; xx <= rad; xx++) {
+                            for(int yy = -rad; yy <= rad; yy++) {
+                                if(xx * xx + yy * yy > clipRadSq) continue;
+                                if((yy == -rad || yy == rad) && (xx == -rad || xx == rad)) {
+                                    continue;
+                                }
+
+                                MaterialInstance tile = world->tiles[(x + xx) + (y + yy) * world->width];
+                                if(tile.mat->physicsType == PhysicsType::SOLID || tile.mat->physicsType == PhysicsType::SAND || tile.mat->physicsType == PhysicsType::SOUP) {
+                                    makeParticle(tile, x + xx, y + yy);
+                                    world->tiles[(x + xx) + (y + yy) * world->width] = Tiles::NOTHING;
+                                    //world->tiles[(x + xx) + (y + yy) * world->width] = Tiles::createFire();
+                                    world->dirty[(x + xx) + (y + yy) * world->width] = true;
+                                }
+
+
+                            }
+                        }
+
+                        world->particles.erase(std::remove_if(world->particles.begin(), world->particles.end(), [&](Particle* cur) {
+                            if(cur->targetForce == 0 && !cur->phase) {
+                                int rad = 5;
+                                for(int xx = -rad; xx <= rad; xx++) {
+                                    for(int yy = -rad; yy <= rad; yy++) {
+                                        if((yy == -rad || yy == rad) && (xx == -rad || x == rad)) continue;
+
+                                        if(((int)(cur->x) == (x + xx)) && ((int)(cur->y) == (y + yy))) {
+
+                                            cur->vx = (rand() % 10 - 5) / 5.0f * 1.0f;
+                                            cur->vy = (rand() % 10 - 5) / 5.0f * 1.0f;
+                                            cur->ax = -cur->vx / 10.0f;
+                                            cur->ay = -cur->vy / 10.0f;
+                                            if(cur->ay == 0 && cur->ax == 0) cur->ay = 0.01f;
+
+                                            //par->targetX = world->player->x + world->player->hw / 2 + world->loadZone.x;
+                                            //par->targetY = world->player->y + world->player->hh / 2 + world->loadZone.y;
+                                            //par->targetForce = 0.35f;
+
+                                            cur->lifetime = 6;
+
+                                            cur->phase = true;
+
+                                            world->player->heldItem->vacuumParticles.push_back(cur);
+
+                                            cur->killCallback = [&]() {
+                                                auto v = world->player->heldItem->vacuumParticles;
+                                                v.erase(std::remove(v.begin(), v.end(), cur), v.end());
+                                            };
+
+                                            return false;
+                                        }
+                                    }
+                                }
+                            }
+
+                            return false;
+                        }), world->particles.end());
+
+                        vector<RigidBody*> rbs = world->rigidBodies;
+
+                        for(size_t i = 0; i < rbs.size(); i++) {
+                            RigidBody* cur = rbs[i];
+                            if(cur->body->IsEnabled()) {
+                                float s = sin(-cur->body->GetAngle());
+                                float c = cos(-cur->body->GetAngle());
+                                bool upd = false;
+                                for(int xx = -rad; xx <= rad; xx++) {
+                                    for(int yy = -rad; yy <= rad; yy++) {
+                                        if((yy == -rad || yy == rad) && (xx == -rad || x == rad)) continue;
+                                        // rotate point
+
+                                        float tx = x + xx - cur->body->GetPosition().x;
+                                        float ty = y + yy - cur->body->GetPosition().y;
+
+                                        int ntx = (int)(tx * c - ty * s);
+                                        int nty = (int)(tx * s + ty * c);
+
+                                        if(ntx >= 0 && nty >= 0 && ntx < cur->surface->w && nty < cur->surface->h) {
+                                            Uint32 pixel = PIXEL(cur->surface, ntx, nty);
+                                            if(((pixel >> 24) & 0xff) != 0x00) {
+                                                PIXEL(cur->surface, ntx, nty) = 0x00000000;
+                                                upd = true;
+
+                                                makeParticle(MaterialInstance(&Materials::GENERIC_SOLID, pixel), (x + xx), (y + yy));
+                                            }
+
+                                        }
+                                    }
+                                }
+
+                                if(upd) {
+                                    GPU_FreeImage(cur->texture);
+                                    cur->texture = GPU_CopyImageFromSurface(cur->surface);
+                                    GPU_SetImageFilter(cur->texture, GPU_FILTER_NEAREST);
+                                    //world->updateRigidBodyHitbox(cur);
+                                    cur->needsUpdate = true;
+                                }
+                            }
+                        }
+
+                    }
+                }
+
+                if(world->player->heldItem->vacuumParticles.size() > 0) {
+                    world->player->heldItem->vacuumParticles.erase(std::remove_if(world->player->heldItem->vacuumParticles.begin(), world->player->heldItem->vacuumParticles.end(), [&](Particle* cur) {
+
+                        if(cur->lifetime <= 0) {
+                            cur->targetForce = 0.45f;
+                            cur->targetX = world->player->x + world->player->hw / 2 + world->loadZone.x;
+                            cur->targetY = world->player->y + world->player->hh / 2 + world->loadZone.y;
+                            cur->ax = 0;
+                            cur->ay = 0.01f;
+                        }
+
+                        float tdx = cur->targetX - cur->x;
+                        float tdy = cur->targetY - cur->y;
+
+                        if(tdx * tdx + tdy * tdy < 10 * 10) {
+                            cur->temporary = true;
+                            cur->lifetime = 0;
+                            //logDebug("vacuum {}", cur->tile.mat->name.c_str());
+                            return true;
+                        }
+
+                        return false;
+                    }), world->player->heldItem->vacuumParticles.end());
+                }
+
+            }
+        }
+    }
+    #pragma endregion
+
 }
 
 void Game::updateFrameLate() {
@@ -3246,392 +3254,399 @@ void Game::renderLate() {
 
         // done light
 
-        GPU_Rect r2 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x*scale), (float)(ofsY + camY + world->tickZone.y*scale), (float)(world->tickZone.w * scale), (float)(world->tickZone.h * scale)};
+        renderOverlays();
 
-        if(Settings::draw_temperature_map) {
-            GPU_SetBlendMode(temperatureMap, GPU_BLEND_NORMAL);
-            GPU_BlitRect(temperatureMap, NULL, target, &r1);
-        }
-        EASY_END_BLOCK; // draw world textures
+    }
+}
 
-        if(Settings::draw_load_zones) {
-            GPU_Rect r2m = GPU_Rect {(float)(ofsX + camX + world->meshZone.x*scale),
-                (float)(ofsY + camY + world->meshZone.y*scale),
-                (float)(world->meshZone.w * scale),
-                (float)(world->meshZone.h * scale)};
+void Game::renderOverlays() {
+    EASY_FUNCTION(GAME_PROFILER_COLOR);
 
-            GPU_Rectangle2(target, r2m, {0x00, 0xff, 0xff, 0xff});
-            GPU_Rectangle2(target, r2, {0xff, 0x00, 0x00, 0xff});
-        }
+    GPU_Rect r1 = GPU_Rect {(float)(ofsX + camX), (float)(ofsY + camY), (float)(world->width * scale), (float)(world->height * scale)};
+    GPU_Rect r2 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x * scale), (float)(ofsY + camY + world->tickZone.y * scale), (float)(world->tickZone.w * scale), (float)(world->tickZone.h * scale)};
 
-        if(Settings::draw_load_zones) {
-            EASY_BLOCK("draw load zones", RENDER_PROFILER_COLOR);
-            SDL_Color col = {0xff, 0x00, 0x00, 0x20};
-            GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
+    if(Settings::draw_temperature_map) {
+        GPU_SetBlendMode(temperatureMap, GPU_BLEND_NORMAL);
+        GPU_BlitRect(temperatureMap, NULL, target, &r1);
+    }
+    EASY_END_BLOCK; // draw world textures
 
-            GPU_Rect r3 = GPU_Rect {(float)(0), (float)(0), (float)((ofsX + camX + world->tickZone.x*scale)), (float)(HEIGHT)};
-            GPU_Rectangle2(target, r3, col);
+    if(Settings::draw_load_zones) {
+        GPU_Rect r2m = GPU_Rect {(float)(ofsX + camX + world->meshZone.x * scale),
+            (float)(ofsY + camY + world->meshZone.y * scale),
+            (float)(world->meshZone.w * scale),
+            (float)(world->meshZone.h * scale)};
 
-            GPU_Rect r4 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x*scale + world->tickZone.w * scale), (float)(0), (float)((WIDTH)-(ofsX + camX + world->tickZone.x*scale + world->tickZone.w * scale)), (float)(HEIGHT)};
-            GPU_Rectangle2(target, r3, col);
+        GPU_Rectangle2(target, r2m, {0x00, 0xff, 0xff, 0xff});
+        GPU_Rectangle2(target, r2, {0xff, 0x00, 0x00, 0xff});
+    }
 
-            GPU_Rect r5 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x*scale), (float)(0), (float)(world->tickZone.w * scale), (float)(ofsY + camY + world->tickZone.y*scale)};
-            GPU_Rectangle2(target, r3, col);
+    if(Settings::draw_load_zones) {
+        EASY_BLOCK("draw load zones", RENDER_PROFILER_COLOR);
+        SDL_Color col = {0xff, 0x00, 0x00, 0x20};
+        GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
 
-            GPU_Rect r6 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x*scale), (float)(ofsY + camY + world->tickZone.y*scale + world->tickZone.h * scale), (float)(world->tickZone.w * scale), (float)(HEIGHT - (ofsY + camY + world->tickZone.y*scale + world->tickZone.h * scale))};
-            GPU_Rectangle2(target, r6, col);
+        GPU_Rect r3 = GPU_Rect {(float)(0), (float)(0), (float)((ofsX + camX + world->tickZone.x * scale)), (float)(HEIGHT)};
+        GPU_Rectangle2(target, r3, col);
 
-            col = {0x00, 0xff, 0x00, 0xff};
-            GPU_Rect r7 = GPU_Rect {(float)(ofsX + camX + world->width / 2 * scale - (WIDTH / 3 * scale / 2)), (float)(ofsY + camY + world->height / 2 * scale - (HEIGHT / 3 * scale / 2)), (float)(WIDTH / 3 * scale), (float)(HEIGHT / 3 * scale)};
-            GPU_Rectangle2(target, r7, col);
+        GPU_Rect r4 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x * scale + world->tickZone.w * scale), (float)(0), (float)((WIDTH)-(ofsX + camX + world->tickZone.x * scale + world->tickZone.w * scale)), (float)(HEIGHT)};
+        GPU_Rectangle2(target, r3, col);
 
-            EASY_END_BLOCK; // draw load zones
-        }
+        GPU_Rect r5 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x * scale), (float)(0), (float)(world->tickZone.w * scale), (float)(ofsY + camY + world->tickZone.y * scale)};
+        GPU_Rectangle2(target, r3, col);
 
-        if(Settings::draw_physics_meshes) {
-            EASY_BLOCK("draw physics meshes", RENDER_PROFILER_COLOR);
-            for(size_t i = 0; i < world->rigidBodies.size(); i++) {
-                RigidBody cur = *world->rigidBodies[i];
+        GPU_Rect r6 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x * scale), (float)(ofsY + camY + world->tickZone.y * scale + world->tickZone.h * scale), (float)(world->tickZone.w * scale), (float)(HEIGHT - (ofsY + camY + world->tickZone.y * scale + world->tickZone.h * scale))};
+        GPU_Rectangle2(target, r6, col);
 
-                float x = cur.body->GetPosition().x;
-                float y = cur.body->GetPosition().y;
-                x = ((x)* scale + ofsX + camX);
-                y = ((y)* scale + ofsY + camY);
+        col = {0x00, 0xff, 0x00, 0xff};
+        GPU_Rect r7 = GPU_Rect {(float)(ofsX + camX + world->width / 2 * scale - (WIDTH / 3 * scale / 2)), (float)(ofsY + camY + world->height / 2 * scale - (HEIGHT / 3 * scale / 2)), (float)(WIDTH / 3 * scale), (float)(HEIGHT / 3 * scale)};
+        GPU_Rectangle2(target, r7, col);
 
-                /*SDL_Rect* r = new SDL_Rect{ (int)x, (int)y, cur.surface->w * scale, cur.surface->h * scale };
-                SDL_RenderCopyEx(renderer, cur.texture, NULL, r, cur.body->GetAngle() * 180 / M_PI, new SDL_Point{ 0, 0 }, SDL_RendererFlip::SDL_FLIP_NONE);
-                delete r;*/
+        EASY_END_BLOCK; // draw load zones
+    }
 
-                Uint32 color = 0x0000ff;
+    if(Settings::draw_physics_meshes) {
+        EASY_BLOCK("draw physics meshes", RENDER_PROFILER_COLOR);
+        for(size_t i = 0; i < world->rigidBodies.size(); i++) {
+            RigidBody cur = *world->rigidBodies[i];
 
-                SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
+            float x = cur.body->GetPosition().x;
+            float y = cur.body->GetPosition().y;
+            x = ((x)*scale + ofsX + camX);
+            y = ((y)*scale + ofsY + camY);
 
-                b2Fixture* fix = cur.body->GetFixtureList();
-                while(fix) {
-                    b2Shape* shape = fix->GetShape();
+            /*SDL_Rect* r = new SDL_Rect{ (int)x, (int)y, cur.surface->w * scale, cur.surface->h * scale };
+            SDL_RenderCopyEx(renderer, cur.texture, NULL, r, cur.body->GetAngle() * 180 / M_PI, new SDL_Point{ 0, 0 }, SDL_RendererFlip::SDL_FLIP_NONE);
+            delete r;*/
 
-                    switch(shape->GetType()) {
-                    case b2Shape::Type::e_polygon:
-                        b2PolygonShape* poly = (b2PolygonShape*)shape;
-                        b2Vec2* verts = poly->m_vertices;
+            Uint32 color = 0x0000ff;
 
-                        Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
+            SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
 
-                        break;
-                    }
+            b2Fixture* fix = cur.body->GetFixtureList();
+            while(fix) {
+                b2Shape* shape = fix->GetShape();
 
-                    fix = fix->GetNext();
-                }
-            }
+                switch(shape->GetType()) {
+                case b2Shape::Type::e_polygon:
+                    b2PolygonShape* poly = (b2PolygonShape*)shape;
+                    b2Vec2* verts = poly->m_vertices;
 
-            if(world->player) {
-                RigidBody cur = *world->player->rb;
+                    Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
 
-                float x = cur.body->GetPosition().x;
-                float y = cur.body->GetPosition().y;
-                x = ((x)* scale + ofsX + camX);
-                y = ((y)* scale + ofsY + camY);
-
-                Uint32 color = 0x0000ff;
-
-                SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
-
-                b2Fixture* fix = cur.body->GetFixtureList();
-                while(fix) {
-                    b2Shape* shape = fix->GetShape();
-                    switch(shape->GetType()) {
-                    case b2Shape::Type::e_polygon:
-                        b2PolygonShape* poly = (b2PolygonShape*)shape;
-                        b2Vec2* verts = poly->m_vertices;
-
-                        Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
-
-                        break;
-                    }
-
-                    fix = fix->GetNext();
-                }
-            }
-
-            for(size_t i = 0; i < world->worldRigidBodies.size(); i++) {
-                RigidBody cur = *world->worldRigidBodies[i];
-
-                float x = cur.body->GetPosition().x;
-                float y = cur.body->GetPosition().y;
-                x = ((x)* scale + ofsX + camX);
-                y = ((y)* scale + ofsY + camY);
-
-                Uint32 color = 0x00ff00;
-
-                SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
-
-                b2Fixture* fix = cur.body->GetFixtureList();
-                while(fix) {
-                    b2Shape* shape = fix->GetShape();
-                    switch(shape->GetType()) {
-                    case b2Shape::Type::e_polygon:
-                        b2PolygonShape* poly = (b2PolygonShape*)shape;
-                        b2Vec2* verts = poly->m_vertices;
-
-                        Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
-
-                        break;
-                    }
-
-                    fix = fix->GetNext();
+                    break;
                 }
 
-                /*color = 0xff0000;
-                SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff);
-                SDL_RenderDrawPoint(renderer, x, y);
-                color = 0x00ff00;
-                SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff);
-                SDL_RenderDrawPoint(renderer, cur.body->GetLocalCenter().x * scale + ofsX, cur.body->GetLocalCenter().y * scale + ofsY);*/
+                fix = fix->GetNext();
             }
-
-            int minChX = (int)floor((world->meshZone.x - world->loadZone.x) / CHUNK_W);
-            int minChY = (int)floor((world->meshZone.y - world->loadZone.y) / CHUNK_H);
-            int maxChX = (int)ceil((world->meshZone.x + world->meshZone.w - world->loadZone.x) / CHUNK_W);
-            int maxChY = (int)ceil((world->meshZone.y + world->meshZone.h - world->loadZone.y) / CHUNK_H);
-
-            /*minChX = 0;
-            minChY = 0;
-            maxChX = 4;
-            maxChY = 4;*/
-
-            for(int cx = minChX; cx <= maxChX; cx++) {
-                for(int cy = minChY; cy <= maxChY; cy++) {
-                    Chunk* ch = world->getChunk(cx, cy);
-                    SDL_Color col = {255, 0, 0, 255};
-
-                    float x = ((ch->x * CHUNK_W + world->loadZone.x)* scale + ofsX + camX);
-                    float y = ((ch->y * CHUNK_H + world->loadZone.y)* scale + ofsY + camY);
-
-                    GPU_Rectangle(target, x, y, x + CHUNK_W * scale, y + CHUNK_H * scale, {0, 0, 0, 255});
-
-                    for(int i = 0; i < ch->polys.size(); i++) {
-                        Drawing::drawPolygon(target, col, ch->polys[i].m_vertices, (int)x, (int)y, scale, ch->polys[i].m_count, 0/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
-                    }
-
-
-                }
-            }
-
-            EASY_END_BLOCK; // draw physics meshes
         }
 
-        if(Settings::draw_material_info) {
-            EASY_BLOCK("draw material info", RENDER_PROFILER_COLOR);
-            int msx = (int)((mx - ofsX - camX) / scale);
-            int msy = (int)((my - ofsY - camY) / scale);
+        if(world->player) {
+            RigidBody cur = *world->player->rb;
 
-            if(msx >= 0 && msy >= 0 && msx < world->width && msy < world->height) {
-                MaterialInstance tile = world->tiles[msx + msy * world->width];
-                Drawing::drawText(target, tile.mat->name.c_str(), font16, 2, 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
-                int ln = 0;
-                if(tile.mat->interact) {
-                    for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
-                        if(tile.mat->nInteractions[i] > 0) {
-                            char buff2[40];
-                            snprintf(buff2, sizeof(buff2), "    %s", Materials::MATERIALS[i]->name.c_str());
-                            Drawing::drawText(target, buff2, font16, 2, 2 + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
+            float x = cur.body->GetPosition().x;
+            float y = cur.body->GetPosition().y;
+            x = ((x)*scale + ofsX + camX);
+            y = ((y)*scale + ofsY + camY);
 
-                            for(int j = 0; j < tile.mat->nInteractions[i]; j++) {
-                                MaterialInteraction inter = tile.mat->interactions[i][j];
-                                char buff1[40];
-                                if(inter.type == INTERACT_TRANSFORM_MATERIAL) {
-                                    snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "TRANSFORM", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
-                                } else if(inter.type == INTERACT_SPAWN_MATERIAL) {
-                                    snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "SPAWN", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
-                                }
-                                Drawing::drawText(target, buff1, font16, 2, 2 + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
+            Uint32 color = 0x0000ff;
+
+            SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
+
+            b2Fixture* fix = cur.body->GetFixtureList();
+            while(fix) {
+                b2Shape* shape = fix->GetShape();
+                switch(shape->GetType()) {
+                case b2Shape::Type::e_polygon:
+                    b2PolygonShape* poly = (b2PolygonShape*)shape;
+                    b2Vec2* verts = poly->m_vertices;
+
+                    Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
+
+                    break;
+                }
+
+                fix = fix->GetNext();
+            }
+        }
+
+        for(size_t i = 0; i < world->worldRigidBodies.size(); i++) {
+            RigidBody cur = *world->worldRigidBodies[i];
+
+            float x = cur.body->GetPosition().x;
+            float y = cur.body->GetPosition().y;
+            x = ((x)*scale + ofsX + camX);
+            y = ((y)*scale + ofsY + camY);
+
+            Uint32 color = 0x00ff00;
+
+            SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
+
+            b2Fixture* fix = cur.body->GetFixtureList();
+            while(fix) {
+                b2Shape* shape = fix->GetShape();
+                switch(shape->GetType()) {
+                case b2Shape::Type::e_polygon:
+                    b2PolygonShape* poly = (b2PolygonShape*)shape;
+                    b2Vec2* verts = poly->m_vertices;
+
+                    Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
+
+                    break;
+                }
+
+                fix = fix->GetNext();
+            }
+
+            /*color = 0xff0000;
+            SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff);
+            SDL_RenderDrawPoint(renderer, x, y);
+            color = 0x00ff00;
+            SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff);
+            SDL_RenderDrawPoint(renderer, cur.body->GetLocalCenter().x * scale + ofsX, cur.body->GetLocalCenter().y * scale + ofsY);*/
+        }
+
+        int minChX = (int)floor((world->meshZone.x - world->loadZone.x) / CHUNK_W);
+        int minChY = (int)floor((world->meshZone.y - world->loadZone.y) / CHUNK_H);
+        int maxChX = (int)ceil((world->meshZone.x + world->meshZone.w - world->loadZone.x) / CHUNK_W);
+        int maxChY = (int)ceil((world->meshZone.y + world->meshZone.h - world->loadZone.y) / CHUNK_H);
+
+        /*minChX = 0;
+        minChY = 0;
+        maxChX = 4;
+        maxChY = 4;*/
+
+        for(int cx = minChX; cx <= maxChX; cx++) {
+            for(int cy = minChY; cy <= maxChY; cy++) {
+                Chunk* ch = world->getChunk(cx, cy);
+                SDL_Color col = {255, 0, 0, 255};
+
+                float x = ((ch->x * CHUNK_W + world->loadZone.x) * scale + ofsX + camX);
+                float y = ((ch->y * CHUNK_H + world->loadZone.y) * scale + ofsY + camY);
+
+                GPU_Rectangle(target, x, y, x + CHUNK_W * scale, y + CHUNK_H * scale, {0, 0, 0, 255});
+
+                for(int i = 0; i < ch->polys.size(); i++) {
+                    Drawing::drawPolygon(target, col, ch->polys[i].m_vertices, (int)x, (int)y, scale, ch->polys[i].m_count, 0/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
+                }
+
+
+            }
+        }
+
+        EASY_END_BLOCK; // draw physics meshes
+    }
+
+    if(Settings::draw_material_info) {
+        EASY_BLOCK("draw material info", RENDER_PROFILER_COLOR);
+        int msx = (int)((mx - ofsX - camX) / scale);
+        int msy = (int)((my - ofsY - camY) / scale);
+
+        if(msx >= 0 && msy >= 0 && msx < world->width && msy < world->height) {
+            MaterialInstance tile = world->tiles[msx + msy * world->width];
+            Drawing::drawText(target, tile.mat->name.c_str(), font16, 2, 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
+            int ln = 0;
+            if(tile.mat->interact) {
+                for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
+                    if(tile.mat->nInteractions[i] > 0) {
+                        char buff2[40];
+                        snprintf(buff2, sizeof(buff2), "    %s", Materials::MATERIALS[i]->name.c_str());
+                        Drawing::drawText(target, buff2, font16, 2, 2 + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
+
+                        for(int j = 0; j < tile.mat->nInteractions[i]; j++) {
+                            MaterialInteraction inter = tile.mat->interactions[i][j];
+                            char buff1[40];
+                            if(inter.type == INTERACT_TRANSFORM_MATERIAL) {
+                                snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "TRANSFORM", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
+                            } else if(inter.type == INTERACT_SPAWN_MATERIAL) {
+                                snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "SPAWN", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
                             }
+                            Drawing::drawText(target, buff1, font16, 2, 2 + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
                         }
                     }
                 }
             }
-
-            EASY_END_BLOCK; // draw material info
         }
 
-        EASY_BLOCK("draw fps", RENDER_PROFILER_COLOR);
-        if(dt_fps.w == -1) {
-            char buffFps[20];
-            snprintf(buffFps, sizeof(buffFps), "%d FPS", fps);
-            if(dt_fps.t1 != nullptr) GPU_FreeImage(dt_fps.t1);
-            if(dt_fps.t2 != nullptr) GPU_FreeImage(dt_fps.t2);
-            dt_fps = Drawing::drawTextParams(target, buffFps, font16, WIDTH - 4, 2, 0xff, 0xff, 0xff, ALIGN_RIGHT);
-        }
-
-        Drawing::drawText(target, dt_fps, WIDTH - 4, 2, ALIGN_RIGHT);
-        EASY_END_BLOCK; // draw fps
-
-        EASY_BLOCK("draw feels like fps", RENDER_PROFILER_COLOR);
-        if(dt_feelsLikeFps.w == -1) {
-            char buffFps[22];
-            snprintf(buffFps, sizeof(buffFps), "Feels Like: %d FPS", feelsLikeFps);
-            if(dt_feelsLikeFps.t1 != nullptr) GPU_FreeImage(dt_feelsLikeFps.t1);
-            if(dt_feelsLikeFps.t2 != nullptr) GPU_FreeImage(dt_feelsLikeFps.t2);
-            dt_feelsLikeFps = Drawing::drawTextParams(target, buffFps, font16, WIDTH - 4, 2, 0xff, 0xff, 0xff, ALIGN_RIGHT);
-        }
-
-        Drawing::drawText(target, dt_feelsLikeFps, WIDTH - 4, 2 + 14, ALIGN_RIGHT);
-        EASY_END_BLOCK; // draw feels like fps
-
-        if(Settings::draw_chunk_state) {
-            EASY_BLOCK("draw chunk state", RENDER_PROFILER_COLOR);
-            GPU_Rect r = {0 , 0, 10, 10};
-            for(auto& p : world->chunkCache) {
-                if(p.first == INT_MIN) continue;
-                int cx = p.first;
-                for(auto& p2 : p.second) {
-                    if(p2.first == INT_MIN) continue;
-                    int cy = p2.first;
-                    Chunk* m = p2.second;
-                    r.x = WIDTH / 2 + m->x * 10;
-                    r.y = HEIGHT / 2 + m->y * 10;
-                    SDL_Color col;
-                    if(m->generationPhase == -1) {
-                        col = {0x60, 0x60, 0x60, 0xff};
-                    } else if(m->generationPhase == 0) {
-                        col = {0xff, 0x00, 0x00, 0xff};
-                    } else if(m->generationPhase == 1) {
-                        col = {0x00, 0xff, 0x00, 0xff};
-                    } else if(m->generationPhase == 2) {
-                        col = {0x00, 0x00, 0xff, 0xff};
-                    } else if(m->generationPhase == 3) {
-                        col = {0xff, 0xff, 0x00, 0xff};
-                    } else if(m->generationPhase == 4) {
-                        col = {0xff, 0x00, 0xff, 0xff};
-                    } else if(m->generationPhase == 5) {
-                        col = {0x00, 0xff, 0xff, 0xff};
-                    } else {}
-                    GPU_Rectangle2(target, r, col);
-                }
-            }
-            EASY_END_BLOCK; // draw chunk state
-        }
-
-        if(Settings::draw_chunk_queue) {
-            EASY_BLOCK("draw chunk queue", RENDER_PROFILER_COLOR);
-            int dbgIndex = 1;
-
-            char buff1[32];
-            snprintf(buff1, sizeof(buff1), "world->readyToReadyToMerge (%d)", (int)world->readyToReadyToMerge.size());
-            std::string buffAsStdStr1 = buff1;
-            Drawing::drawText(target, buffAsStdStr1.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
-            for(size_t i = 0; i < world->readyToReadyToMerge.size(); i++) {
-                char buff[10];
-                snprintf(buff, sizeof(buff), "    #%d", (int)i);
-                std::string buffAsStdStr = buff;
-                Drawing::drawText(target, buffAsStdStr.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
-            }
-            char buff2[30];
-            snprintf(buff2, sizeof(buff2), "world->readyToMerge (%d)", (int)world->readyToMerge.size());
-            std::string buffAsStdStr2 = buff2;
-            Drawing::drawText(target, buffAsStdStr2.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
-            for(size_t i = 0; i < world->readyToMerge.size(); i++) {
-                char buff[20];
-                snprintf(buff, sizeof(buff), "    #%d (%d, %d)", (int)i, world->readyToMerge[i]->x, world->readyToMerge[i]->y);
-                std::string buffAsStdStr = buff;
-                Drawing::drawText(target, buffAsStdStr.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
-            }
-
-            EASY_END_BLOCK; // draw chunk queue
-        }
-
-        if(Settings::draw_frame_graph) {
-            EASY_BLOCK("draw frame graph", RENDER_PROFILER_COLOR);
-            for(int i = 0; i <= 4; i++) {
-                if(dt_frameGraph[i].w == -1) {
-                    char buff[20];
-                    snprintf(buff, sizeof(buff), "%d", i * 25);
-                    std::string buffAsStdStr = buff;
-                    if(dt_frameGraph[i].t1 != nullptr) GPU_FreeImage(dt_frameGraph[i].t1);
-                    if(dt_frameGraph[i].t2 != nullptr) GPU_FreeImage(dt_frameGraph[i].t2);
-                    dt_frameGraph[i] = Drawing::drawTextParams(target, buffAsStdStr.c_str(), font14, WIDTH - 20, HEIGHT - 15 - (i * 25) - 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
-                }
-
-                Drawing::drawText(target, dt_frameGraph[i], WIDTH - 20, HEIGHT - 15 - (i * 25) - 2, ALIGN_LEFT);
-                GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (i * 25), WIDTH - 25, HEIGHT - 10 - (i * 25), {0xff, 0xff, 0xff, 0xff});
-            }
-            /*for (int i = 0; i <= 100; i += 25) {
-                char buff[20];
-                snprintf(buff, sizeof(buff), "%d", i);
-                std::string buffAsStdStr = buff;
-                Drawing::drawText(renderer, buffAsStdStr.c_str(), font14, WIDTH - 20, HEIGHT - 15 - i - 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
-                SDL_RenderDrawLine(renderer, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - i, WIDTH - 25, HEIGHT - 10 - i);
-            }*/
-
-            for(int i = 0; i < frameTimeNum; i++) {
-                int h = frameTime[i];
-
-                SDL_Color col;
-                if(h <= (int)(1000 / 144.0)) {
-                    col = {0x00, 0xff, 0x00, 0xff};
-                } else if(h <= (int)(1000 / 60.0)) {
-                    col = {0xa0, 0xe0, 0x00, 0xff};
-                } else if(h <= (int)(1000 / 30.0)) {
-                    col = {0xff, 0xff, 0x00, 0xff};
-                } else if(h <= (int)(1000 / 15.0)) {
-                    col = {0xff, 0x80, 0x00, 0xff};
-                } else {
-                    col = {0xff, 0x00, 0x00, 0xff};
-                }
-
-                GPU_Line(target, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10 - h, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10, col);
-                //SDL_RenderDrawLine(renderer, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10 - h, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10);
-            }
-
-            GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (int)(1000.0 / fps), WIDTH - 25, HEIGHT - 10 - (int)(1000.0 / fps), {0x00, 0xff, 0xff, 0xff});
-            GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (int)(1000.0 / feelsLikeFps), WIDTH - 25, HEIGHT - 10 - (int)(1000.0 / feelsLikeFps), {0xff, 0x00, 0xff, 0xff});
-
-            EASY_END_BLOCK; // draw frame graph
-        }
-
-        GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
-
-        EASY_BLOCK("draw version info", RENDER_PROFILER_COLOR);
-        #ifdef DEVELOPMENT_BUILD
-        if(dt_versionInfo1.w == -1) {
-            char buffDevBuild[40];
-            snprintf(buffDevBuild, sizeof(buffDevBuild), "Development Build");
-            if(dt_versionInfo1.t1 != nullptr) GPU_FreeImage(dt_versionInfo1.t1);
-            if(dt_versionInfo1.t2 != nullptr) GPU_FreeImage(dt_versionInfo1.t2);
-            dt_versionInfo1 = Drawing::drawTextParams(target, buffDevBuild, font16, 4, HEIGHT - 32 - 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
-
-            char buffVersion[40];
-            snprintf(buffVersion, sizeof(buffVersion), "Version %s - dev", VERSION);
-            if(dt_versionInfo2.t1 != nullptr) GPU_FreeImage(dt_versionInfo2.t1);
-            if(dt_versionInfo2.t2 != nullptr) GPU_FreeImage(dt_versionInfo2.t2);
-            dt_versionInfo2 = Drawing::drawTextParams(target, buffVersion, font16, 4, HEIGHT - 32, 0xff, 0xff, 0xff, ALIGN_LEFT);
-
-            char buffBuildDate[40];
-            snprintf(buffBuildDate, sizeof(buffBuildDate), "%s : %s", __DATE__, __TIME__);
-            if(dt_versionInfo3.t1 != nullptr) GPU_FreeImage(dt_versionInfo3.t1);
-            if(dt_versionInfo3.t2 != nullptr) GPU_FreeImage(dt_versionInfo3.t2);
-            dt_versionInfo3 = Drawing::drawTextParams(target, buffBuildDate, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
-        }
-
-        Drawing::drawText(target, dt_versionInfo1, 4, HEIGHT - 32 - 13, ALIGN_LEFT);
-        Drawing::drawText(target, dt_versionInfo2, 4, HEIGHT - 32, ALIGN_LEFT);
-        Drawing::drawText(target, dt_versionInfo3, 4, HEIGHT - 32 + 13, ALIGN_LEFT);
-        #elif defined ALPHA_BUILD
-        char buffDevBuild[40];
-        snprintf(buffDevBuild, sizeof(buffDevBuild), "Alpha Build");
-        Drawing::drawText(target, buffDevBuild, font16, 4, HEIGHT - 32, 0xff, 0xff, 0xff, ALIGN_LEFT);
-
-        char buffVersion[40];
-        snprintf(buffVersion, sizeof(buffVersion), "Version %s - alpha", VERSION);
-        Drawing::drawText(target, buffVersion, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
-        #else
-        char buffVersion[40];
-        snprintf(buffVersion, sizeof(buffVersion), "Version %s", VERSION);
-        Drawing::drawText(target, buffVersion, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
-        #endif
-        EASY_END_BLOCK; // draw version info
-
+        EASY_END_BLOCK; // draw material info
     }
+
+    EASY_BLOCK("draw fps", RENDER_PROFILER_COLOR);
+    if(dt_fps.w == -1) {
+        char buffFps[20];
+        snprintf(buffFps, sizeof(buffFps), "%d FPS", fps);
+        if(dt_fps.t1 != nullptr) GPU_FreeImage(dt_fps.t1);
+        if(dt_fps.t2 != nullptr) GPU_FreeImage(dt_fps.t2);
+        dt_fps = Drawing::drawTextParams(target, buffFps, font16, WIDTH - 4, 2, 0xff, 0xff, 0xff, ALIGN_RIGHT);
+    }
+
+    Drawing::drawText(target, dt_fps, WIDTH - 4, 2, ALIGN_RIGHT);
+    EASY_END_BLOCK; // draw fps
+
+    EASY_BLOCK("draw feels like fps", RENDER_PROFILER_COLOR);
+    if(dt_feelsLikeFps.w == -1) {
+        char buffFps[22];
+        snprintf(buffFps, sizeof(buffFps), "Feels Like: %d FPS", feelsLikeFps);
+        if(dt_feelsLikeFps.t1 != nullptr) GPU_FreeImage(dt_feelsLikeFps.t1);
+        if(dt_feelsLikeFps.t2 != nullptr) GPU_FreeImage(dt_feelsLikeFps.t2);
+        dt_feelsLikeFps = Drawing::drawTextParams(target, buffFps, font16, WIDTH - 4, 2, 0xff, 0xff, 0xff, ALIGN_RIGHT);
+    }
+
+    Drawing::drawText(target, dt_feelsLikeFps, WIDTH - 4, 2 + 14, ALIGN_RIGHT);
+    EASY_END_BLOCK; // draw feels like fps
+
+    if(Settings::draw_chunk_state) {
+        EASY_BLOCK("draw chunk state", RENDER_PROFILER_COLOR);
+        GPU_Rect r = {0 , 0, 10, 10};
+        for(auto& p : world->chunkCache) {
+            if(p.first == INT_MIN) continue;
+            int cx = p.first;
+            for(auto& p2 : p.second) {
+                if(p2.first == INT_MIN) continue;
+                int cy = p2.first;
+                Chunk* m = p2.second;
+                r.x = WIDTH / 2 + m->x * 10;
+                r.y = HEIGHT / 2 + m->y * 10;
+                SDL_Color col;
+                if(m->generationPhase == -1) {
+                    col = {0x60, 0x60, 0x60, 0xff};
+                } else if(m->generationPhase == 0) {
+                    col = {0xff, 0x00, 0x00, 0xff};
+                } else if(m->generationPhase == 1) {
+                    col = {0x00, 0xff, 0x00, 0xff};
+                } else if(m->generationPhase == 2) {
+                    col = {0x00, 0x00, 0xff, 0xff};
+                } else if(m->generationPhase == 3) {
+                    col = {0xff, 0xff, 0x00, 0xff};
+                } else if(m->generationPhase == 4) {
+                    col = {0xff, 0x00, 0xff, 0xff};
+                } else if(m->generationPhase == 5) {
+                    col = {0x00, 0xff, 0xff, 0xff};
+                } else {}
+                GPU_Rectangle2(target, r, col);
+            }
+        }
+        EASY_END_BLOCK; // draw chunk state
+    }
+
+    if(Settings::draw_chunk_queue) {
+        EASY_BLOCK("draw chunk queue", RENDER_PROFILER_COLOR);
+        int dbgIndex = 1;
+
+        char buff1[32];
+        snprintf(buff1, sizeof(buff1), "world->readyToReadyToMerge (%d)", (int)world->readyToReadyToMerge.size());
+        std::string buffAsStdStr1 = buff1;
+        Drawing::drawText(target, buffAsStdStr1.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
+        for(size_t i = 0; i < world->readyToReadyToMerge.size(); i++) {
+            char buff[10];
+            snprintf(buff, sizeof(buff), "    #%d", (int)i);
+            std::string buffAsStdStr = buff;
+            Drawing::drawText(target, buffAsStdStr.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
+        }
+        char buff2[30];
+        snprintf(buff2, sizeof(buff2), "world->readyToMerge (%d)", (int)world->readyToMerge.size());
+        std::string buffAsStdStr2 = buff2;
+        Drawing::drawText(target, buffAsStdStr2.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
+        for(size_t i = 0; i < world->readyToMerge.size(); i++) {
+            char buff[20];
+            snprintf(buff, sizeof(buff), "    #%d (%d, %d)", (int)i, world->readyToMerge[i]->x, world->readyToMerge[i]->y);
+            std::string buffAsStdStr = buff;
+            Drawing::drawText(target, buffAsStdStr.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
+        }
+
+        EASY_END_BLOCK; // draw chunk queue
+    }
+
+    if(Settings::draw_frame_graph) {
+        EASY_BLOCK("draw frame graph", RENDER_PROFILER_COLOR);
+        for(int i = 0; i <= 4; i++) {
+            if(dt_frameGraph[i].w == -1) {
+                char buff[20];
+                snprintf(buff, sizeof(buff), "%d", i * 25);
+                std::string buffAsStdStr = buff;
+                if(dt_frameGraph[i].t1 != nullptr) GPU_FreeImage(dt_frameGraph[i].t1);
+                if(dt_frameGraph[i].t2 != nullptr) GPU_FreeImage(dt_frameGraph[i].t2);
+                dt_frameGraph[i] = Drawing::drawTextParams(target, buffAsStdStr.c_str(), font14, WIDTH - 20, HEIGHT - 15 - (i * 25) - 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
+            }
+
+            Drawing::drawText(target, dt_frameGraph[i], WIDTH - 20, HEIGHT - 15 - (i * 25) - 2, ALIGN_LEFT);
+            GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (i * 25), WIDTH - 25, HEIGHT - 10 - (i * 25), {0xff, 0xff, 0xff, 0xff});
+        }
+        /*for (int i = 0; i <= 100; i += 25) {
+            char buff[20];
+            snprintf(buff, sizeof(buff), "%d", i);
+            std::string buffAsStdStr = buff;
+            Drawing::drawText(renderer, buffAsStdStr.c_str(), font14, WIDTH - 20, HEIGHT - 15 - i - 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
+            SDL_RenderDrawLine(renderer, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - i, WIDTH - 25, HEIGHT - 10 - i);
+        }*/
+
+        for(int i = 0; i < frameTimeNum; i++) {
+            int h = frameTime[i];
+
+            SDL_Color col;
+            if(h <= (int)(1000 / 144.0)) {
+                col = {0x00, 0xff, 0x00, 0xff};
+            } else if(h <= (int)(1000 / 60.0)) {
+                col = {0xa0, 0xe0, 0x00, 0xff};
+            } else if(h <= (int)(1000 / 30.0)) {
+                col = {0xff, 0xff, 0x00, 0xff};
+            } else if(h <= (int)(1000 / 15.0)) {
+                col = {0xff, 0x80, 0x00, 0xff};
+            } else {
+                col = {0xff, 0x00, 0x00, 0xff};
+            }
+
+            GPU_Line(target, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10 - h, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10, col);
+            //SDL_RenderDrawLine(renderer, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10 - h, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10);
+        }
+
+        GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (int)(1000.0 / fps), WIDTH - 25, HEIGHT - 10 - (int)(1000.0 / fps), {0x00, 0xff, 0xff, 0xff});
+        GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (int)(1000.0 / feelsLikeFps), WIDTH - 25, HEIGHT - 10 - (int)(1000.0 / feelsLikeFps), {0xff, 0x00, 0xff, 0xff});
+
+        EASY_END_BLOCK; // draw frame graph
+    }
+
+    GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
+
+    EASY_BLOCK("draw version info", RENDER_PROFILER_COLOR);
+    #ifdef DEVELOPMENT_BUILD
+    if(dt_versionInfo1.w == -1) {
+        char buffDevBuild[40];
+        snprintf(buffDevBuild, sizeof(buffDevBuild), "Development Build");
+        if(dt_versionInfo1.t1 != nullptr) GPU_FreeImage(dt_versionInfo1.t1);
+        if(dt_versionInfo1.t2 != nullptr) GPU_FreeImage(dt_versionInfo1.t2);
+        dt_versionInfo1 = Drawing::drawTextParams(target, buffDevBuild, font16, 4, HEIGHT - 32 - 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
+
+        char buffVersion[40];
+        snprintf(buffVersion, sizeof(buffVersion), "Version %s - dev", VERSION);
+        if(dt_versionInfo2.t1 != nullptr) GPU_FreeImage(dt_versionInfo2.t1);
+        if(dt_versionInfo2.t2 != nullptr) GPU_FreeImage(dt_versionInfo2.t2);
+        dt_versionInfo2 = Drawing::drawTextParams(target, buffVersion, font16, 4, HEIGHT - 32, 0xff, 0xff, 0xff, ALIGN_LEFT);
+
+        char buffBuildDate[40];
+        snprintf(buffBuildDate, sizeof(buffBuildDate), "%s : %s", __DATE__, __TIME__);
+        if(dt_versionInfo3.t1 != nullptr) GPU_FreeImage(dt_versionInfo3.t1);
+        if(dt_versionInfo3.t2 != nullptr) GPU_FreeImage(dt_versionInfo3.t2);
+        dt_versionInfo3 = Drawing::drawTextParams(target, buffBuildDate, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
+    }
+
+    Drawing::drawText(target, dt_versionInfo1, 4, HEIGHT - 32 - 13, ALIGN_LEFT);
+    Drawing::drawText(target, dt_versionInfo2, 4, HEIGHT - 32, ALIGN_LEFT);
+    Drawing::drawText(target, dt_versionInfo3, 4, HEIGHT - 32 + 13, ALIGN_LEFT);
+    #elif defined ALPHA_BUILD
+    char buffDevBuild[40];
+    snprintf(buffDevBuild, sizeof(buffDevBuild), "Alpha Build");
+    Drawing::drawText(target, buffDevBuild, font16, 4, HEIGHT - 32, 0xff, 0xff, 0xff, ALIGN_LEFT);
+
+    char buffVersion[40];
+    snprintf(buffVersion, sizeof(buffVersion), "Version %s - alpha", VERSION);
+    Drawing::drawText(target, buffVersion, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
+    #else
+    char buffVersion[40];
+    snprintf(buffVersion, sizeof(buffVersion), "Version %s", VERSION);
+    Drawing::drawText(target, buffVersion, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
+    #endif
+    EASY_END_BLOCK; // draw version info
 }
 
 void Game::renderTemperatureMap(World* world) {

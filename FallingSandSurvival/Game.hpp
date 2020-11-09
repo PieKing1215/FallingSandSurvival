@@ -221,7 +221,10 @@ public:
 
     void updateFrameEarly();
     void tick();
+    void tickChunkLoading();
+    void tickPlayer();
     void updateFrameLate();
+    void renderOverlays();
 
     void renderEarly();
     void renderLate();
