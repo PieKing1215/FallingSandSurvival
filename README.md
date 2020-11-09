@@ -56,7 +56,7 @@ See [SETUP.txt](../dev/SETUP.txt)
 ## Licensing
 
 ### Code
-All original code files are licensed under the [BSD 3-Clause License](LICENSE.md).
+All original code files are licensed under the [BSD 3-Clause License](LICENSE).
 
 ### Assets
 All art assets (everything in FallingSandSurvival/assets/) are licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License](https://creativecommons.org/licenses/by-nc/4.0/).
