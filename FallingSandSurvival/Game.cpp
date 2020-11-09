@@ -54,14 +54,15 @@ int Game::init(int argc, char *argv[]) {
 
     logInfo("Starting game...");
 
-    EASY_BLOCK("wait for client/server choice");
-    char ch = getchar();
-    EASY_END_BLOCK;
+    bool openDebugUIs = clArgs->getBool("debug");
+    DebugUI::visible = openDebugUIs;
+    DebugCheatsUI::visible = openDebugUIs;
+    DebugDrawUI::visible = openDebugUIs;
+    Settings::draw_frame_graph = openDebugUIs;
 
-    // TODO: commandline option
-    this->gameDir = GameDir("gamedir/");
+    this->gameDir = GameDir(clArgs->getString("game-dir"));
 
-    networkMode = ch == 's' ? NetworkMode::SERVER : NetworkMode::HOST;
+    networkMode = clArgs->getBool("server") ? NetworkMode::SERVER : NetworkMode::HOST;
     if(argc >= 2) {
         if(strstr(argv[1], "server")) {
             networkMode = NetworkMode::SERVER;

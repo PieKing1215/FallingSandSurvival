@@ -475,6 +475,9 @@
     <ClInclude Include="GameDir.hpp">
       <Filter>Source Files\util</Filter>
     </ClInclude>
+    <ClInclude Include="CLArgs.hpp">
+      <Filter>Source Files\util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

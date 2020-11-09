@@ -46,6 +46,8 @@
 
 #include "GameDir.hpp"
 
+#include "CLArgs.hpp"
+
 enum GameState {
     MAIN_MENU,
     LOADING,
@@ -54,6 +56,8 @@ enum GameState {
 
 class Game {
 public:
+
+    CLArgs* clArgs;
 
     GameState state = LOADING;
     GameState stateAfterLoad = MAIN_MENU;

@@ -319,6 +319,7 @@ exit 0</Command>
     <ClInclude Include="Biome.hpp" />
     <ClInclude Include="Chunk.hpp" />
     <ClInclude Include="ChunkReadyToMerge.hpp" />
+    <ClInclude Include="CLArgs.hpp" />
     <ClInclude Include="Controls.hpp" />
     <ClCompile Include="CreateWorldUI.cpp" />
     <ClCompile Include="DebugCheatsUI.cpp" />
