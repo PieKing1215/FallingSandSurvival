@@ -50,10 +50,8 @@ See [SETUP.txt](../dev/SETUP.txt)
 ## More Images<br>
 ![](../media/preview_2.gif)<br>
 *Containers and temperature (2/10/20)*<br><br>
-![](../media/preview_3.gif)<br>
-*Chisel tool (WIP) (2/27/20)*<br><br>
-![](../media/preview_shader.png)<br>
-*Experimental raycasted lighting shader (4/22/20)*
+<img src="../media/preview_lighting.png" height="auto" width="600"><br>
+*New lighting shader (11/9/20)*<br>
 
 ## Licensing
 
