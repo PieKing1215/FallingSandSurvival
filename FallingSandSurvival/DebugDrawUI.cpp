@@ -38,9 +38,11 @@ void DebugDrawUI::Draw(Game* game) {
 
 	if(!visible) return;
 
-    int nRows = ceil(Materials::MATERIALS.size() / 5.0);
+    int width = 5;
 
-    ImGui::SetNextWindowSize(ImVec2(40 * 5 + 16 - 4, 70 + nRows * 40));
+    int nRows = ceil(Materials::MATERIALS.size() / (float)width);
+
+    ImGui::SetNextWindowSize(ImVec2(40 * width + 16 + 20, 70 + 5 * 40));
     ImGui::SetNextWindowPos(ImVec2(15, 25), ImGuiCond_FirstUseEver);
 	if(!ImGui::Begin("Debug Draw", NULL, ImGuiWindowFlags_NoResize)) {
 		ImGui::End();
@@ -51,9 +53,13 @@ void DebugDrawUI::Draw(Game* game) {
     ImGui::Text("Selected: %s", a.c_str());
     ImGui::Text("Brush Size: %d", brushSize);
 
+    ImGui::Separator();
+
+    ImGui::BeginChild("MaterialList", ImVec2(0, 0), false);
+    ImGui::Indent(5);
     for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
-        int x = (int)(i % 5);
-        int y = (int)(i / 5);
+        int x = (int)(i % width);
+        int y = (int)(i / width);
 
         if(x > 0)
             ImGui::SameLine();
@@ -102,6 +108,9 @@ void DebugDrawUI::Draw(Game* game) {
             selectedMaterial = mat;
         };*/
     }
+
+    ImGui::Unindent(5);
+    ImGui::EndChild();
 
 	ImGui::End();
 }
