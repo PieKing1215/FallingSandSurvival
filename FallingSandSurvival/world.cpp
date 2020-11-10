@@ -2663,7 +2663,7 @@ void World::tickChunkGeneration() {
             if(p2.first == INT_MIN) continue;
             Chunk* m = p2.second;
 
-            if(abs(m->x - cenX) > 15 || abs(m->y - cenY) > 15) {
+            if(abs(m->x - cenX) >= CHUNK_UNLOAD_DIST || abs(m->y - cenY) >= CHUNK_UNLOAD_DIST) {
                 unloadChunk(m);
                 continue;
             }

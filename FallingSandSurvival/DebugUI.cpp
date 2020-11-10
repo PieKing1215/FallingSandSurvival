@@ -24,6 +24,14 @@ void DebugUI::Draw(Game* game) {
 
     ImGui::Checkbox("Draw Frame Graph"    , &Settings::draw_frame_graph);
 
+    ImGui::Checkbox("Draw Debug Stats", &Settings::draw_debug_stats);
+    ImGui::Checkbox("Draw Chunk States", &Settings::draw_chunk_state);
+    ImGui::Checkbox("Draw Load Zones"     , &Settings::draw_load_zones);
+    ImGui::Checkbox("Draw Physics Meshes" , &Settings::draw_physics_meshes);
+    ImGui::Checkbox("Draw Material Info"  , &Settings::draw_material_info);
+    ImGui::Checkbox("Draw Temperature Map", &Settings::draw_temperature_map);
+    ImGui::Checkbox("Draw Shaders"        , &Settings::draw_shaders);
+
     if(ImGui::Checkbox("Draw Background", &Settings::draw_background)) {
         for(int x = 0; x < game->world->width; x++) {
             for(int y = 0; y < game->world->height; y++) {
@@ -41,14 +49,6 @@ void DebugUI::Draw(Game* game) {
             }
         }
     }
-
-    ImGui::Checkbox("Draw Load Zones"     , &Settings::draw_load_zones);
-    ImGui::Checkbox("Draw Physics Meshes" , &Settings::draw_physics_meshes);
-    ImGui::Checkbox("Draw Chunk States"    , &Settings::draw_chunk_state);
-    ImGui::Checkbox("Draw Chunk Queue"    , &Settings::draw_chunk_queue);
-    ImGui::Checkbox("Draw Material Info"  , &Settings::draw_material_info);
-    ImGui::Checkbox("Draw Temperature Map", &Settings::draw_temperature_map);
-    ImGui::Checkbox("Draw Shaders"        , &Settings::draw_shaders);
 
     if(Settings::draw_shaders) {
         ImGui::SetNextItemWidth(80);

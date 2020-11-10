@@ -7,7 +7,7 @@ bool Settings::draw_background_grid = false;
 bool Settings::draw_load_zones      = true;
 bool Settings::draw_physics_meshes  = false;
 bool Settings::draw_chunk_state     = false;
-bool Settings::draw_chunk_queue     = false;
+bool Settings::draw_debug_stats     = false;
 bool Settings::draw_material_info   = false;
 bool Settings::draw_temperature_map = false;
 

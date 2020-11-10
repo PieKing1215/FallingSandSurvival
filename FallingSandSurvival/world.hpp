@@ -43,6 +43,8 @@
 
 #include "ProfilerConfig.hpp"
 
+#define CHUNK_UNLOAD_DIST 16
+
 class Populator;
 class WorldGenerator;
 class Player;

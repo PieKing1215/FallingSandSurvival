@@ -8,7 +8,7 @@ public:
     static bool draw_load_zones;
     static bool draw_physics_meshes;
     static bool draw_chunk_state;
-    static bool draw_chunk_queue;
+    static bool draw_debug_stats;
     static bool draw_material_info;
     static bool draw_uinode_bounds;
     static bool draw_temperature_map;

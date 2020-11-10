@@ -65,7 +65,7 @@ int Game::init(int argc, char *argv[]) {
         Settings::draw_load_zones = false;
         Settings::draw_physics_meshes = false;
         Settings::draw_chunk_state = false;
-        Settings::draw_chunk_queue = false;
+        Settings::draw_debug_stats = false;
         Settings::draw_material_info = false;
         Settings::draw_temperature_map = false;
 
@@ -1513,16 +1513,16 @@ void Game::updateFrameEarly() {
     if(Settings::draw_frame_graph) {
         if(Controls::STATS_DISPLAY->get()) {
             Settings::draw_frame_graph = false;
-            Settings::draw_chunk_queue = false;
+            Settings::draw_debug_stats = false;
             Settings::draw_chunk_state = false;
             Settings::draw_material_info = false;
         }
     } else {
         if(Controls::STATS_DISPLAY->get()) {
             Settings::draw_frame_graph = true;
+            Settings::draw_debug_stats = true;
 
             if(Controls::STATS_DISPLAY_DETAILED->get()) {
-                Settings::draw_chunk_queue = true;
                 Settings::draw_chunk_state = true;
                 Settings::draw_material_info = true;
             }
@@ -3497,7 +3497,22 @@ void Game::renderOverlays() {
 
     if(Settings::draw_chunk_state) {
         EASY_BLOCK("draw chunk state", RENDER_PROFILER_COLOR);
-        GPU_Rect r = {0 , 0, 10, 10};
+        int chSize = 10;
+
+        int centerX = WIDTH / 2;
+        int centerY = CHUNK_UNLOAD_DIST * chSize + 10;
+
+
+        int pposX = plPosX;
+        int pposY = plPosY;
+        int pchx = (int)((pposX / CHUNK_W) * chSize);
+        int pchy = (int)((pposY / CHUNK_H) * chSize);
+        int pchxf = (int)(((float)pposX / CHUNK_W) * chSize);
+        int pchyf = (int)(((float)pposY / CHUNK_H) * chSize);
+
+        GPU_Rectangle(target, centerX - chSize * CHUNK_UNLOAD_DIST + chSize, centerY - chSize * CHUNK_UNLOAD_DIST + chSize, centerX + chSize * CHUNK_UNLOAD_DIST + chSize, centerY + chSize * CHUNK_UNLOAD_DIST + chSize, {0xcc, 0xcc, 0xcc, 0xff});
+
+        GPU_Rect r = {0 , 0, (float)chSize, (float)chSize};
         for(auto& p : world->chunkCache) {
             if(p.first == INT_MIN) continue;
             int cx = p.first;
@@ -3505,8 +3520,8 @@ void Game::renderOverlays() {
                 if(p2.first == INT_MIN) continue;
                 int cy = p2.first;
                 Chunk* m = p2.second;
-                r.x = WIDTH / 2 + m->x * 10;
-                r.y = HEIGHT / 2 + m->y * 10;
+                r.x = centerX + m->x * chSize - pchx;
+                r.y = centerY + m->y * chSize - pchy;
                 SDL_Color col;
                 if(m->generationPhase == -1) {
                     col = {0x60, 0x60, 0x60, 0xff};
@@ -3526,32 +3541,125 @@ void Game::renderOverlays() {
                 GPU_Rectangle2(target, r, col);
             }
         }
+
+        int loadx = (int)(((float)-world->loadZone.x / CHUNK_W) * chSize);
+        int loady = (int)(((float)-world->loadZone.y / CHUNK_H) * chSize);
+
+        int loadx2 = (int)(((float)(-world->loadZone.x + world->loadZone.w) / CHUNK_W) * chSize);
+        int loady2 = (int)(((float)(-world->loadZone.y + world->loadZone.h) / CHUNK_H) * chSize);
+        GPU_Rectangle(target, centerX - pchx + loadx, centerY - pchy + loady, centerX - pchx + loadx2, centerY - pchy + loady2, {0x00, 0xff, 0xff, 0xff});
+
+        GPU_Rectangle(target, centerX - pchx + pchxf, centerY - pchy + pchyf, centerX + 1 - pchx + pchxf, centerY + 1 - pchy + pchyf, {0x00, 0xff, 0x00, 0xff});
+
         EASY_END_BLOCK; // draw chunk state
     }
 
-    if(Settings::draw_chunk_queue) {
+    if(Settings::draw_debug_stats) {
         EASY_BLOCK("draw chunk queue", RENDER_PROFILER_COLOR);
         int dbgIndex = 1;
 
+        int lineHeight = 16;
+
         char buff1[32];
+        std::string buffAsStdStr1;
+
+        snprintf(buff1, sizeof(buff1), "XY: %.2f / %.2f", plPosX, plPosY);
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+
+        snprintf(buff1, sizeof(buff1), "V: %.3f / %.3f", world->player ? world->player->vx : 0, world->player ? world->player->vy : 0);
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+        
+        snprintf(buff1, sizeof(buff1), "Particles: %d", (int)world->particles.size());
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+
+        snprintf(buff1, sizeof(buff1), "Entities: %d", (int)world->entities.size());
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+
+        int rbCt = 0;
+        for(auto& r : world->rigidBodies) {
+            if(r->body->IsEnabled()) rbCt++;
+        }
+
+        snprintf(buff1, sizeof(buff1), "RigidBodies: %d/%d O, %d W", rbCt, (int)world->rigidBodies.size(), (int)world->worldRigidBodies.size());
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+
+        int rbTriACt = 0;
+        int rbTriCt = 0;
+        for(size_t i = 0; i < world->rigidBodies.size(); i++) {
+            RigidBody cur = *world->rigidBodies[i];
+
+            b2Fixture* fix = cur.body->GetFixtureList();
+            while(fix) {
+                b2Shape* shape = fix->GetShape();
+
+                switch(shape->GetType()) {
+                case b2Shape::Type::e_polygon:
+                    rbTriCt++;
+                    if(cur.body->IsEnabled()) rbTriACt++;
+                    break;
+                }
+
+                fix = fix->GetNext();
+            }
+        }
+
+        int rbTriWCt = 0;
+
+        int minChX = (int)floor((world->meshZone.x - world->loadZone.x) / CHUNK_W);
+        int minChY = (int)floor((world->meshZone.y - world->loadZone.y) / CHUNK_H);
+        int maxChX = (int)ceil((world->meshZone.x + world->meshZone.w - world->loadZone.x) / CHUNK_W);
+        int maxChY = (int)ceil((world->meshZone.y + world->meshZone.h - world->loadZone.y) / CHUNK_H);
+
+        for(int cx = minChX; cx <= maxChX; cx++) {
+            for(int cy = minChY; cy <= maxChY; cy++) {
+                Chunk* ch = world->getChunk(cx, cy);
+                for(int i = 0; i < ch->polys.size(); i++) {
+                    rbTriWCt++;
+                }
+            }
+        }
+
+        snprintf(buff1, sizeof(buff1), "Tris: %d/%d O, %d W", rbTriACt, rbTriCt, rbTriWCt);
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+
+        int chCt = 0;
+        for(auto& p : world->chunkCache) {
+            if(p.first == INT_MIN) continue;
+            int cx = p.first;
+            for(auto& p2 : p.second) {
+                if(p2.first == INT_MIN) continue;
+                chCt++;
+            }
+        }
+
+        snprintf(buff1, sizeof(buff1), "Cached Chunks: %d", chCt);
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+
         snprintf(buff1, sizeof(buff1), "world->readyToReadyToMerge (%d)", (int)world->readyToReadyToMerge.size());
-        std::string buffAsStdStr1 = buff1;
-        Drawing::drawText(target, buffAsStdStr1.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
         for(size_t i = 0; i < world->readyToReadyToMerge.size(); i++) {
             char buff[10];
             snprintf(buff, sizeof(buff), "    #%d", (int)i);
             std::string buffAsStdStr = buff;
-            Drawing::drawText(target, buffAsStdStr.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
+            Drawing::drawTextBG(target, buffAsStdStr.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
         }
         char buff2[30];
         snprintf(buff2, sizeof(buff2), "world->readyToMerge (%d)", (int)world->readyToMerge.size());
         std::string buffAsStdStr2 = buff2;
-        Drawing::drawText(target, buffAsStdStr2.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
+        Drawing::drawTextBG(target, buffAsStdStr2.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
         for(size_t i = 0; i < world->readyToMerge.size(); i++) {
             char buff[20];
             snprintf(buff, sizeof(buff), "    #%d (%d, %d)", (int)i, world->readyToMerge[i]->x, world->readyToMerge[i]->y);
             std::string buffAsStdStr = buff;
-            Drawing::drawText(target, buffAsStdStr.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
+            Drawing::drawTextBG(target, buffAsStdStr.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
         }
 
         EASY_END_BLOCK; // draw chunk queue

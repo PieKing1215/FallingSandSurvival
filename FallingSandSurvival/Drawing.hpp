@@ -39,6 +39,14 @@ public:
         TTF_Font* font, int x, int y,
         uint8_t fR, uint8_t fG, uint8_t fB, bool shadow, int align);
 
+    static void drawTextBG(GPU_Target* renderer, const char* string,
+        TTF_Font* font, int x, int y,
+        uint8_t fR, uint8_t fG, uint8_t fB, SDL_Color bgCol, int align);
+
+    static void drawTextBG(GPU_Target* renderer, const char* string,
+        TTF_Font* font, int x, int y,
+        uint8_t fR, uint8_t fG, uint8_t fB, SDL_Color bgCol, bool shadow, int align);
+
     static void drawText(GPU_Target* renderer, DrawTextParams pm, int x, int y, int align);
 
     static void drawText(GPU_Target* renderer, DrawTextParams pm, int x, int y, bool shadow, int align);
