@@ -1350,6 +1350,80 @@ int Game::run(int argc, char *argv[]) {
                 ImGui::End();
             }
 
+            if(Settings::draw_material_info && !ImGui::GetIO().WantCaptureMouse) {
+                EASY_BLOCK("draw material info", RENDER_PROFILER_COLOR);
+                int msx = (int)((mx - ofsX - camX) / scale);
+                int msy = (int)((my - ofsY - camY) / scale);
+
+                MaterialInstance tile;
+
+                if(msx >= 0 && msy >= 0 && msx < world->width && msy < world->height) {
+                    tile = world->tiles[msx + msy * world->width];
+                    //Drawing::drawText(target, tile.mat->name.c_str(), font16, mx + 14, my, 0xff, 0xff, 0xff, ALIGN_LEFT);
+
+                    if(tile.mat->id == Materials::GENERIC_AIR.id) {
+                        vector<RigidBody*> rbs = world->rigidBodies;
+
+                        for(size_t i = 0; i < rbs.size(); i++) {
+                            RigidBody* cur = rbs[i];
+                            if(cur->body->IsEnabled()) {
+                                float s = sin(-cur->body->GetAngle());
+                                float c = cos(-cur->body->GetAngle());
+                                bool upd = false;
+
+                                float tx = msx - cur->body->GetPosition().x;
+                                float ty = msy - cur->body->GetPosition().y;
+
+                                int ntx = (int)(tx * c - ty * s);
+                                int nty = (int)(tx * s + ty * c);
+
+                                if(ntx >= 0 && nty >= 0 && ntx < cur->surface->w && nty < cur->surface->h) {
+                                    tile = cur->tiles[ntx + nty * cur->matWidth];
+                                }
+                            }
+                        }
+                    }
+
+                    if(tile.mat->id != Materials::GENERIC_AIR.id) {
+
+                        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.11f, 0.11f, 0.11f, 0.4f));
+                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.00f, 1.00f, 1.00f, 0.2f));
+                        ImGui::BeginTooltip();
+                        ImGui::Text("%s", tile.mat->name.c_str());
+
+                        int ln = 0;
+                        if(tile.mat->interact) {
+                            for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
+                                if(tile.mat->nInteractions[i] > 0) {
+                                    char buff2[40];
+                                    snprintf(buff2, sizeof(buff2), "    %s", Materials::MATERIALS[i]->name.c_str());
+                                    //Drawing::drawText(target, buff2, font16, mx + 14, my + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
+                                    ImGui::Text("%s", buff2);
+
+                                    for(int j = 0; j < tile.mat->nInteractions[i]; j++) {
+                                        MaterialInteraction inter = tile.mat->interactions[i][j];
+                                        char buff1[40];
+                                        if(inter.type == INTERACT_TRANSFORM_MATERIAL) {
+                                            snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "TRANSFORM", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
+                                        } else if(inter.type == INTERACT_SPAWN_MATERIAL) {
+                                            snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "SPAWN", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
+                                        }
+                                        //Drawing::drawText(target, buff1, font16, mx + 14, my + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
+                                        ImGui::Text("%s", buff1);
+                                    }
+                                }
+                            }
+                        }
+
+                        ImGui::EndTooltip();
+                        ImGui::PopStyleColor();
+                        ImGui::PopStyleColor();
+                    }
+                }
+
+                EASY_END_BLOCK; // draw material info
+            }
+
             EASY_BLOCK("ImGui::Render()", UI_PROFILER_COLOR);
             ImGui::Render();
             EASY_END_BLOCK;
@@ -3435,40 +3509,6 @@ void Game::renderOverlays() {
         }
 
         EASY_END_BLOCK; // draw physics meshes
-    }
-
-    if(Settings::draw_material_info) {
-        EASY_BLOCK("draw material info", RENDER_PROFILER_COLOR);
-        int msx = (int)((mx - ofsX - camX) / scale);
-        int msy = (int)((my - ofsY - camY) / scale);
-
-        if(msx >= 0 && msy >= 0 && msx < world->width && msy < world->height) {
-            MaterialInstance tile = world->tiles[msx + msy * world->width];
-            Drawing::drawText(target, tile.mat->name.c_str(), font16, 2, 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
-            int ln = 0;
-            if(tile.mat->interact) {
-                for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
-                    if(tile.mat->nInteractions[i] > 0) {
-                        char buff2[40];
-                        snprintf(buff2, sizeof(buff2), "    %s", Materials::MATERIALS[i]->name.c_str());
-                        Drawing::drawText(target, buff2, font16, 2, 2 + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
-
-                        for(int j = 0; j < tile.mat->nInteractions[i]; j++) {
-                            MaterialInteraction inter = tile.mat->interactions[i][j];
-                            char buff1[40];
-                            if(inter.type == INTERACT_TRANSFORM_MATERIAL) {
-                                snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "TRANSFORM", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
-                            } else if(inter.type == INTERACT_SPAWN_MATERIAL) {
-                                snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "SPAWN", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
-                            }
-                            Drawing::drawText(target, buff1, font16, 2, 2 + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
-                        }
-                    }
-                }
-            }
-        }
-
-        EASY_END_BLOCK; // draw material info
     }
 
     EASY_BLOCK("draw fps", RENDER_PROFILER_COLOR);
