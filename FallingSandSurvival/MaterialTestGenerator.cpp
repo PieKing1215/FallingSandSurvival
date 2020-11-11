@@ -19,7 +19,7 @@ class MaterialTestGenerator : public WorldGenerator {
 
         while(true) {
             mat = Materials::MATERIALS[rand() % Materials::MATERIALS.size()];
-            if(mat->id >= 29 && (mat->physicsType == PhysicsType::SAND || mat->physicsType == PhysicsType::SOUP)) break;
+            if(mat->id >= 31 && (mat->physicsType == PhysicsType::SAND || mat->physicsType == PhysicsType::SOUP)) break;
         }
 
         for(int x = 0; x < CHUNK_W; x++) {

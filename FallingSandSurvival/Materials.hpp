@@ -43,6 +43,8 @@ public:
     static Material STEAM;
     static Material SOFT_DIRT_SAND;
     static Material FIRE;
+    static Material FLAT_COBBLE_STONE;
+    static Material FLAT_COBBLE_DIRT;
 
     static void init();
 

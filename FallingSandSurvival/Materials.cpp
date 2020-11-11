@@ -42,6 +42,9 @@ Material Materials::SOFT_DIRT_SAND     = Material(nMaterials++, "Soft Dirt Sand"
 
 Material Materials::FIRE               = Material(nMaterials++, "Fire", PhysicsType::PASSABLE, 255, 20, 1, 0, 0);
 
+Material Materials::FLAT_COBBLE_STONE  = Material(nMaterials++, "Flat Cobblestone", PhysicsType::SOLID, 1, 0);
+Material Materials::FLAT_COBBLE_DIRT   = Material(nMaterials++, "Flat Hard Ground", PhysicsType::SOLID, 1, 0);
+
 std::vector<Material*> Materials::MATERIALS;
 Material** Materials::MATERIALS_ARRAY;
 void Materials::init() {
@@ -95,6 +98,8 @@ void Materials::init() {
     REGISTER(STEAM);
     REGISTER(SOFT_DIRT_SAND);
     REGISTER(FIRE);
+    REGISTER(FLAT_COBBLE_STONE);
+    REGISTER(FLAT_COBBLE_DIRT);
 
     Material* randMats = new Material[10];
     for(int i = 0; i < 10; i++) {

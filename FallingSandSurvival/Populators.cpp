@@ -181,9 +181,42 @@ public:
 
                 MaterialInstance prop = chunk[x + y * CHUNK_W];
                 if(prop.mat->id == Materials::SMOOTH_STONE.id) {
-                    int dist = 2 + (world->noise.GetNoise(px * 4, py * 4, 3323) + 1) / 2 * 10;
+                    int dist = 8 + (world->noise.GetNoise(px * 4, py * 4, 3323) + 1) / 2 * 12;
+                    int dist2 = 2 + (world->noise.GetNoise(px * 4, py * 4, 3323) + 1) / 2 * 12;
                     for(int dx = -dist; dx <= dist; dx++) {
                         for(int dy = -dist; dy <= dist; dy++) {
+                            int chx = 1;
+                            int chy = 1;
+                            int dxx = dx;
+                            int dyy = dy;
+                            if(x + dx < 0) {
+                                chx--;
+                                dxx += CHUNK_W;
+                            } else if(x + dx >= CHUNK_W) {
+                                chx++;
+                                dxx -= CHUNK_W;
+                            }
+
+
+                            if(y + dy < 0) {
+                                chy--;
+                                dyy += CHUNK_H;
+                            } else if(y + dy >= CHUNK_H) {
+                                chy++;
+                                dyy -= CHUNK_H;
+                            }
+                            //if (x + dx >= 0 && x + dx < CHUNK_W && y + dy >= 0 && y + dy < CHUNK_H) {
+                            if(area[chx + chy * 3].tiles[(x + dxx) + (y + dyy) * CHUNK_W].mat->physicsType == PhysicsType::AIR || (area[chx + chy * 3].tiles[(x + dxx) + (y + dyy) * CHUNK_W].mat->physicsType == PhysicsType::SAND && area[chx + chy * 3].tiles[(x + dxx) + (y + dyy) * CHUNK_W].mat->id != Materials::SOFT_DIRT.id)) {
+                                chunk[x + y * CHUNK_W] = Tiles::create(&Materials::FLAT_COBBLE_STONE, px, py);
+                                goto checkFlat;
+                            }
+                            //}
+                        }
+                    }
+
+checkFlat: {}
+                    for(int dx = -dist2; dx <= dist2; dx++) {
+                        for(int dy = -dist2; dy <= dist2; dy++) {
                             int chx = 1;
                             int chy = 1;
                             int dxx = dx;
@@ -213,7 +246,8 @@ public:
                         }
                     }
                 } else if(prop.mat->id == Materials::SMOOTH_DIRT.id) {
-                    int dist = 2 + (world->noise.GetNoise(px * 4, py * 4, 3323) + 1) / 2 * 10;
+                    int dist = 8 + (world->noise.GetNoise(px * 4, py * 4, 3323) + 1) / 2 * 12;
+                    int dist2 = 2 + (world->noise.GetNoise(px * 4, py * 4, 3323) + 1) / 2 * 12;
                     for(int dx = -dist; dx <= dist; dx++) {
                         for(int dy = -dist; dy <= dist; dy++) {
                             int chx = (int)floor((x + dx) / (float)CHUNK_W) + 1;
@@ -222,6 +256,21 @@ public:
                             int dyy = (CHUNK_H + ((y + dy) % CHUNK_H)) % CHUNK_H;
                             //if (x + dx >= 0 && x + dx < CHUNK_W && y + dy >= 0 && y + dy < CHUNK_H) {
                             if(area[chx + chy * 3].tiles[(dxx)+(dyy)* CHUNK_W].mat->physicsType == PhysicsType::AIR || (area[chx + chy * 3].tiles[(dxx)+(dyy)* CHUNK_W].mat->physicsType == PhysicsType::SAND && area[chx + chy * 3].tiles[(dxx)+(dyy)* CHUNK_W].mat->id != Materials::SOFT_DIRT.id)) {
+                                chunk[x + y * CHUNK_W] = Tiles::create(&Materials::FLAT_COBBLE_DIRT, px, py);
+                                goto checkFlat2;
+                            }
+                            //}
+                        }
+                    }
+checkFlat2: {}
+                    for(int dx = -dist2; dx <= dist2; dx++) {
+                        for(int dy = -dist2; dy <= dist2; dy++) {
+                            int chx = (int)floor((x + dx) / (float)CHUNK_W) + 1;
+                            int chy = (int)floor((y + dy) / (float)CHUNK_H) + 1;
+                            int dxx = (CHUNK_W + ((x + dx) % CHUNK_W)) % CHUNK_W;
+                            int dyy = (CHUNK_H + ((y + dy) % CHUNK_H)) % CHUNK_H;
+                            //if (x + dx >= 0 && x + dx < CHUNK_W && y + dy >= 0 && y + dy < CHUNK_H) {
+                            if(area[chx + chy * 3].tiles[(dxx)+(dyy)*CHUNK_W].mat->physicsType == PhysicsType::AIR || (area[chx + chy * 3].tiles[(dxx)+(dyy)*CHUNK_W].mat->physicsType == PhysicsType::SAND && area[chx + chy * 3].tiles[(dxx)+(dyy)*CHUNK_W].mat->id != Materials::SOFT_DIRT.id)) {
                                 chunk[x + y * CHUNK_W] = Tiles::createCobbleDirt(px, py);
                                 goto nextTile;
                             }
