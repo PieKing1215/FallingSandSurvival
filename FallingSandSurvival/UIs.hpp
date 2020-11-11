@@ -39,6 +39,8 @@ class MainMenuUI {
 public:
 	static bool visible;
 
+	static int state;
+
 	static bool setup;
 
 	static GPU_Image* title;
@@ -57,14 +59,19 @@ public:
 
 	static void Draw(Game* game);
 
+	static void DrawMainMenu(Game* game);
+
+	static void DrawSingleplayer(Game* game);
+	static void DrawMultiplayer(Game* game);
+
+	static void DrawCreateWorld(Game* game);
+
 };
 
 class CreateWorldUI {
 public:
-	static bool visible;
-	static bool wasVisible;
-
 	static bool setup;
+	static char worldNameBuf[32];
 
 	static GPU_Image* materialTestWorld;
 	static GPU_Image* defaultWorld;
@@ -76,6 +83,7 @@ public:
 	static int selIndex;
 
 	static void Setup();
+	static void Reset(Game* game);
 
 	static void Draw(Game* game);
 

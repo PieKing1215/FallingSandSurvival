@@ -799,7 +799,7 @@ int Game::run(int argc, char *argv[]) {
 
     // game loop
     EASY_EVENT("Start of Game Loop", profiler::colors::Magenta);
-    while(true) {
+    while(this->running) {
         EASY_BLOCK("frame");
         now = Time::millis();
         deltaTime = now - lastTime;
@@ -1334,7 +1334,6 @@ int Game::run(int argc, char *argv[]) {
             DebugDrawUI::Draw(this);
             DebugCheatsUI::Draw(this);
             MainMenuUI::Draw(this);
-            CreateWorldUI::Draw(this);
             //ImGui::ShowDemoWindow();
 
             if(DebugUI::visible) {

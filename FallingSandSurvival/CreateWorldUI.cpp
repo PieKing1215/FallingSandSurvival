@@ -8,8 +8,7 @@
 #include <easy/profiler.h>
 #include "ProfilerConfig.hpp"
 
-bool CreateWorldUI::visible = false;
-bool CreateWorldUI::wasVisible = false;
+char CreateWorldUI::worldNameBuf[32] = "";
 bool CreateWorldUI::setup   = false;
 GPU_Image* CreateWorldUI::materialTestWorld = nullptr;
 GPU_Image* CreateWorldUI::defaultWorld = nullptr;
@@ -37,25 +36,8 @@ void CreateWorldUI::Draw(Game* game) {
     EASY_FUNCTION(UI_PROFILER_COLOR);
 
 	if(!setup) Setup();
-	if(!visible) return;
 
     int createWorldWidth = 350;
-    static char worldNameBuf[128] = "";
-
-    if(visible && !wasVisible) {
-        ImGui::SetNextWindowPos(MainMenuUI::pos);
-        strcpy_s(worldNameBuf, "New World");
-        inputChanged(std::string(worldNameBuf), game);
-    } else {
-        ImGui::SetNextWindowPos(ImVec2(game->WIDTH / 2 - 200, game->HEIGHT / 2 - 250), ImGuiCond_FirstUseEver);
-    }
-
-    ImGui::SetNextWindowSize(ImVec2(400, 350));
-	if(!ImGui::Begin("Create World", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
-		ImGui::End();
-        wasVisible = visible;
-		return;
-	}
 
     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
     ImGui::SetCursorPosX(ImGui::GetWindowWidth() / 2 - ImGui::CalcTextSize("Create World").x / 2);
@@ -151,8 +133,7 @@ void CreateWorldUI::Draw(Game* game) {
 
     ImGui::SetCursorPos(ImVec2(8, 350 - 20 - 8));
     if(ImGui::Button("Back", ImVec2(60, 20))) {
-        MainMenuUI::visible = true;
-        visible = false;
+        MainMenuUI::state = 2;
     }
 
     if(!createWorldButtonEnabled) {
@@ -173,7 +154,6 @@ void CreateWorldUI::Draw(Game* game) {
 
         logInfo("Creating world named \"{}\" at \"{}\"", worldTitle, game->gameDir.getWorldPath(wn));
         MainMenuUI::visible = false;
-        visible = false;
         game->state = LOADING;
         game->stateAfterLoad = INGAME;
 
@@ -218,15 +198,6 @@ void CreateWorldUI::Draw(Game* game) {
         ImGui::PopItemFlag();
         ImGui::PopStyleVar();
     }
-
-	ImGui::End();
-
-    if(visible && !wasVisible) {
-        strcpy_s(worldNameBuf, "New World");
-        inputChanged(std::string(worldNameBuf), game);
-    }
-
-    wasVisible = visible;
 }
 
 void CreateWorldUI::inputChanged(std::string text, Game* game) {
@@ -263,4 +234,9 @@ void CreateWorldUI::inputChanged(std::string text, Game* game) {
 
 
     worldFolderLabel = "Saved in: " + newWorldFolderName;
+}
+
+void CreateWorldUI::Reset(Game* game) {
+    strcpy_s(worldNameBuf, "New World");
+    inputChanged(std::string(worldNameBuf), game);
 }
