@@ -147,8 +147,8 @@ public:
 
                     if(n2 + n + ndetail < std::fmin(0.95, (py) / 1000.0)) {
                         double nlav = world->noise.GetPerlin(px / 4.0, py / 4.0, 7018);
-                        if(nlav > 0.7) {
-                            chunk[x + y * CHUNK_W] = rand() % 3 == 0 ? (ch.y > 5 ? Tiles::createLava() : Tiles::createWater()) : Tiles::NOTHING;
+                        if(nlav > 0.45) {
+                            chunk[x + y * CHUNK_W] = rand() % 3 == 0 ? (ch.y > 15 ? Tiles::createLava() : Tiles::createWater()) : Tiles::NOTHING;
                         } else {
                             chunk[x + y * CHUNK_W] = Tiles::NOTHING;
                         }
