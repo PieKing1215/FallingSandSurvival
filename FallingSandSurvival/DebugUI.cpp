@@ -30,7 +30,17 @@ void DebugUI::Draw(Game* game) {
     ImGui::Checkbox("Draw Physics Meshes" , &Settings::draw_physics_meshes);
     ImGui::Checkbox("Draw Material Info"  , &Settings::draw_material_info);
     ImGui::Checkbox("Draw Temperature Map", &Settings::draw_temperature_map);
-    ImGui::Checkbox("Draw Shaders"        , &Settings::draw_shaders);
+
+    ImGui::Checkbox("Draw Shaders", &Settings::draw_shaders);
+    if(Settings::draw_shaders) {
+        ImGui::SetNextItemWidth(80);
+        ImGui::Indent(10.0f);
+        ImGui::SliderFloat("Light Quality", &Settings::lightingQuality, 0.0, 1.0, "", 0);
+        ImGui::Checkbox("Light Overlay", &Settings::draw_light_overlay);
+        ImGui::Checkbox("Simple Lighting", &Settings::simpleLighting);
+        ImGui::Checkbox("Lighting Emission", &Settings::lightingEmission);
+        ImGui::Unindent(10.0f);
+    }
 
     if(ImGui::Checkbox("Draw Background", &Settings::draw_background)) {
         for(int x = 0; x < game->world->width; x++) {
@@ -48,16 +58,6 @@ void DebugUI::Draw(Game* game) {
                 game->world->layer2Dirty[x + y * game->world->width] = true;
             }
         }
-    }
-
-    if(Settings::draw_shaders) {
-        ImGui::SetNextItemWidth(80);
-        ImGui::Indent(10.0f);
-        ImGui::SliderFloat("Light Quality", &Settings::lightingQuality, 0.0, 1.0, "", 0);
-        ImGui::Checkbox("Light Overlay", &Settings::draw_light_overlay);
-        ImGui::Checkbox("Simple Lighting", &Settings::simpleLighting);
-        ImGui::Checkbox("Lighting Emission", &Settings::lightingEmission);
-        ImGui::Unindent(10.0f);
     }
 
     ImGui::Checkbox("Tick World"          , &Settings::tick_world);
