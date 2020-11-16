@@ -49,7 +49,7 @@ See [SETUP.txt](../dev/SETUP.txt)
 
 ## More Images<br>
 ![](../media/preview_2.gif)<br>
-*Containers and temperature (2/10/20)*<br><br>
+*Containers and temperature (2/10/20) (re-recorded 11/16/20)*<br><br>
 <img src="../media/preview_lighting.png" height="auto" width="600"><br>
 *New lighting shader (11/9/20)*<br>
 
