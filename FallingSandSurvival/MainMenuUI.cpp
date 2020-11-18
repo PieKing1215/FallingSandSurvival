@@ -251,9 +251,11 @@ void MainMenuUI::DrawSingleplayer(Game* game) {
                 game->fadeInLength = 250;
                 game->fadeInWaitFrames = 4;
 
+                #if BUILD_WITH_DISCORD
                 DiscordIntegration::setStart(Time::millis());
                 DiscordIntegration::setActivityState("Playing Singleplayer");
                 DiscordIntegration::flushActivity();
+                #endif
             };
         }
         ImGui::PopStyleVar();

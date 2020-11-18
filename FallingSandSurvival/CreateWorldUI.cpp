@@ -205,9 +205,11 @@ void CreateWorldUI::Draw(Game* game) {
         EASY_END_BLOCK;
         EASY_END_BLOCK;
 
+        #if BUILD_WITH_DISCORD
         DiscordIntegration::setStart(Time::millis());
         DiscordIntegration::setActivityState("Playing Singleplayer");
         DiscordIntegration::flushActivity();
+        #endif
     }
     ImGui::PopStyleVar();
     ImGui::SetCursorPos(ImVec2(selPos.x + 150 / 2 - ImGui::CalcTextSize("Create").x / 2, selPos.y));
