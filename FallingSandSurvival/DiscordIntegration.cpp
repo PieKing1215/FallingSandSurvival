@@ -8,6 +8,8 @@
 #include <easy/profiler.h>
 
 bool DiscordIntegration::discordAPI = false;
+
+#if BUILD_WITH_DISCORD
 discord::Core* DiscordIntegration::core {};
 discord::Activity DiscordIntegration::fullActivity {};
 
@@ -95,3 +97,5 @@ void DiscordIntegration::flushActivity() {
         logInfo("[DISCORD] UpdateActivity returned: {} ({})", result, DiscordUtils::resultToString(result));
     });
 }
+
+#endif
