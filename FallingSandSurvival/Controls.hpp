@@ -89,6 +89,8 @@ public:
     static Control* PLAYER_LEFT;
     static Control* PLAYER_RIGHT;
 
+    static Control* PAUSE;
+
     static std::vector<KeyControl*> keyControls;
     //static KeyControl** keyControls;
     static bool initted;

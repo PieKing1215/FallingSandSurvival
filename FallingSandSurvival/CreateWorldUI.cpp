@@ -4,6 +4,8 @@
 #include "MaterialTestGenerator.cpp"
 #define timegm _mkgmtime
 
+#include "DiscordIntegration.hpp"
+
 #define BUILD_WITH_EASY_PROFILER
 #include <easy/profiler.h>
 #include "ProfilerConfig.hpp"
@@ -131,18 +133,28 @@ void CreateWorldUI::Draw(Game* game) {
 
     ImGui::PopID();
 
-    ImGui::SetCursorPos(ImVec2(8, 350 - 20 - 8));
-    if(ImGui::Button("Back", ImVec2(60, 20))) {
+    ImGui::SetCursorPos(ImVec2(20, 360 - 52));
+    selPos = ImGui::GetCursorPos();
+    ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    if(ImGui::Button("##back", ImVec2(150, 36))) {
         MainMenuUI::state = 2;
     }
+    ImGui::PopStyleVar();
+    ImGui::SetCursorPos(ImVec2(selPos.x + 150 / 2 - ImGui::CalcTextSize("Back").x / 2, selPos.y));
+    ImGui::Text("Back");
+    ImGui::PopFont();
 
     if(!createWorldButtonEnabled) {
         ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
     }
 
-    ImGui::SetCursorPos(ImVec2(400 - 60 - 8, 350 - 20 - 8));
-    if(ImGui::Button("Create", ImVec2(60, 20))) {
+    ImGui::SetCursorPos(ImVec2(400 - 170, 360 - 52));
+    selPos = ImGui::GetCursorPos();
+    ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    if(ImGui::Button("##create", ImVec2(150, 36))) {
         std::string pref = "Saved in: ";
 
         std::string worldName = worldFolderLabel.substr(pref.length());
@@ -177,7 +189,7 @@ void CreateWorldUI::Draw(Game* game) {
 
         EASY_BLOCK("Load world");
         game->world = new World();
-        game->world->init((char*)wpStr.c_str(), (int)ceil(game->WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(game->HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, game->target, &game->audioEngine, game->networkMode, generator);
+        game->world->init(wpStr, (int)ceil(Game::MAX_WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(Game::MAX_HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, game->target, &game->audioEngine, game->networkMode, generator);
         game->world->metadata.worldName = std::string(worldNameBuf);
         game->world->metadata.lastOpenedTime = Time::millis() / 1000;
         game->world->metadata.lastOpenedVersion = std::string(VERSION);
@@ -192,7 +204,15 @@ void CreateWorldUI::Draw(Game* game) {
         }
         EASY_END_BLOCK;
         EASY_END_BLOCK;
+
+        DiscordIntegration::setStart(Time::millis());
+        DiscordIntegration::setActivityState("Playing Singleplayer");
+        DiscordIntegration::flushActivity();
     }
+    ImGui::PopStyleVar();
+    ImGui::SetCursorPos(ImVec2(selPos.x + 150 / 2 - ImGui::CalcTextSize("Create").x / 2, selPos.y));
+    ImGui::Text("Create");
+    ImGui::PopFont();
 
     if(!createWorldButtonEnabled) {
         ImGui::PopItemFlag();

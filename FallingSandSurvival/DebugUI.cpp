@@ -22,14 +22,17 @@ void DebugUI::Draw(Game* game) {
         return;
     }
 
-    ImGui::Checkbox("Draw Frame Graph"    , &Settings::draw_frame_graph);
+    ImGui::Checkbox("Draw Frame Graph"      , &Settings::draw_frame_graph);
 
-    ImGui::Checkbox("Draw Debug Stats", &Settings::draw_debug_stats);
-    ImGui::Checkbox("Draw Chunk States", &Settings::draw_chunk_state);
-    ImGui::Checkbox("Draw Load Zones"     , &Settings::draw_load_zones);
-    ImGui::Checkbox("Draw Physics Meshes" , &Settings::draw_physics_meshes);
-    ImGui::Checkbox("Draw Material Info"  , &Settings::draw_material_info);
-    ImGui::Checkbox("Draw Temperature Map", &Settings::draw_temperature_map);
+    ImGui::Checkbox("Draw Debug Stats"      , &Settings::draw_debug_stats);
+    ImGui::Checkbox("Draw Chunk States"     , &Settings::draw_chunk_state);
+    ImGui::Checkbox("Draw Load Zones"       , &Settings::draw_load_zones);
+    ImGui::Checkbox("Draw Physics Meshes"   , &Settings::draw_physics_meshes);
+    ImGui::Checkbox("Draw Material Info"    , &Settings::draw_material_info);
+    ImGui::Indent(10.0f);
+    ImGui::Checkbox("Detailed Material Info", &Settings::draw_detailed_material_info);
+    ImGui::Unindent(10.0f);
+    ImGui::Checkbox("Draw Temperature Map"  , &Settings::draw_temperature_map);
 
     ImGui::Checkbox("Draw Shaders", &Settings::draw_shaders);
     if(Settings::draw_shaders) {

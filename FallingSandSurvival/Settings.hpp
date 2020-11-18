@@ -10,6 +10,7 @@ public:
     static bool draw_chunk_state;
     static bool draw_debug_stats;
     static bool draw_material_info;
+    static bool draw_detailed_material_info;
     static bool draw_uinode_bounds;
     static bool draw_temperature_map;
 

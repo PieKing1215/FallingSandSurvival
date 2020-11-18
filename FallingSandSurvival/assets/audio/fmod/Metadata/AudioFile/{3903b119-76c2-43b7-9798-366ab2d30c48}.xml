@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.00.00">
+	<object class="AudioFile" id="{3903b119-76c2-43b7-9798-366ab2d30c48}">
+		<property name="assetPath">
+			<value>water2.ogg</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>96</value>
+		</property>
+		<property name="channelCount">
+			<value>2</value>
+		</property>
+		<property name="length">
+			<value>27.679489583333332</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{471c6646-f45e-4bb8-be79-d84235f52fb2}</destination>
+		</relationship>
+	</object>
+</objects>

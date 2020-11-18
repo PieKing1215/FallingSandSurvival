@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.00.00">
+	<object class="AudioFile" id="{74701d76-2ed2-4bce-a42b-0a54cb56e192}">
+		<property name="assetPath">
+			<value>gui_tab.wav</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>22.0499992</value>
+		</property>
+		<property name="channelCount">
+			<value>1</value>
+		</property>
+		<property name="length">
+			<value>0.14535147392290249</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{471c6646-f45e-4bb8-be79-d84235f52fb2}</destination>
+		</relationship>
+	</object>
+</objects>

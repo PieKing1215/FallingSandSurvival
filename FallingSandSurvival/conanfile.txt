@@ -12,6 +12,7 @@ easy_profiler/2.1.0
 spdlog/1.8.0
 imgui/1.79
 cxxopts/2.2.1
+lz4/1.9.2
 
 [generators]
 visual_studio

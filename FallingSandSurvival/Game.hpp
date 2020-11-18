@@ -53,8 +53,17 @@ enum GameState {
     INGAME
 };
 
+enum DisplayMode {
+    WINDOWED,
+    BORDERLESS,
+    FULLSCREEN
+};
+
 class Game {
 public:
+
+    static const int MAX_WIDTH = 1920;
+    static const int MAX_HEIGHT = 1080;
 
     CLArgs* clArgs;
 
@@ -64,11 +73,6 @@ public:
     Client* client = nullptr;
     Server* server = nullptr;
 
-    bool discordAPI = false;
-    #if BUILD_WITH_DISCORD
-    discord::Core* core {};
-    #endif
-
     bool steamAPI = false;
     #if BUILD_WITH_STEAM
     void SteamHookMessages();
@@ -76,8 +80,10 @@ public:
 
     CAudioEngine audioEngine;
 
-    const int WIDTH = 1200;
-    const int HEIGHT = 800;
+    int WIDTH = 1200;
+    int HEIGHT = 800;
+
+    void handleWindowSizeChange(int newWidth, int newHeight);
 
     int scale = 4;
 
@@ -107,6 +113,10 @@ public:
 
     GPU_Target* realTarget = nullptr;
     GPU_Target* target = nullptr;
+
+    void setDisplayMode(DisplayMode mode);
+    void setVSync(bool vsync);
+    void setMinimizeOnLostFocus(bool minimize);
 
     GPU_Image* backgroundImage = nullptr;
 
@@ -156,6 +166,9 @@ public:
     int ent_prevLoadZoneY = 0;
     ctpl::thread_pool* updateDirtyPool = nullptr;
     ctpl::thread_pool* rotateVectorsPool = nullptr;
+
+    uint16_t* movingTiles;
+    void updateMaterialSounds();
 
     int tickTime = 0;
 
@@ -233,5 +246,7 @@ public:
 
     int getAimSolidSurface(int dist);
     int getAimSurface(int dist);
+
+    void quitToMainMenu();
 
 };

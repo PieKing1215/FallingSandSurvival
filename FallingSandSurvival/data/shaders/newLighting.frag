@@ -44,17 +44,18 @@ vec4 brightnessContrast2(vec4 value, float brightness, float contrast){
 void main(){
     if(texCoord.x < (minX / texSize.x) || texCoord.x > (maxX / texSize.x) || texCoord.y < (minY / texSize.y) || texCoord.y > (maxY / texSize.y)){
         // only basic lighting outside visible area
-        float dst2 = distance(vec2(texCoord.x, texCoord.y), t0);
+        float dst2 = distance(texCoord * texSize * vec2(0.75, 1.0), t0 * texSize * vec2(0.75, 1.0)) / 3000.0;
         
         float dark = clamp(1.0 - dst2 * 3.5 * inside, 0.0, 1.0);
         gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0 - dark);
         gl_FragColor = vec4(vec3(dark), 1.0);
     }else{
-        float dst = distance(texCoord, t0);
-        float distBr = clamp(1.0 - dst * 3.5 * inside, 0.0, 1.0);
-        if(distBr == 0.0){
-            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        float dst = distance(texCoord * texSize * vec2(0.75, 1.0), t0 * texSize * vec2(0.75, 1.0)) / 3000.0;
+        float distBr = 1.0 - dst * 3.5 * inside;
+        if(distBr <= -1.0){
+            gl_FragColor = vec4(0.5, 0.0, 0.0, 1.0);
         }else{
+            distBr = clamp(distBr, 0.0, 1.0);
             vec4 olcol = texture2D(txrmap, texCoord);
             float distNr = 1.0 - clamp(dst * 10.0, 0.0, 1.0);
             distNr *= 1.0;

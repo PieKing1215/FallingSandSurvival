@@ -69,15 +69,16 @@ public:
     std::string lastOpenedVersion;
     int64_t lastOpenedTime = 0;
 
-    static WorldMeta loadWorldMeta(char* worldFileName);
+    static WorldMeta loadWorldMeta(std::string worldFileName);
     bool save(std::string worldFileName);
 };
 
 class World {
 public:
 
-    char* worldName = nullptr;
+    std::string worldName = "";
     WorldMeta metadata {};
+    bool noSaveLoad = false;
 
     GPU_Target* target = nullptr;
 
@@ -87,8 +88,8 @@ public:
     std::vector<Particle *> particles;
     uint16_t width = 0;
     uint16_t height = 0;
-    void init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* renderer, CAudioEngine* audioEngine, int netMode, WorldGenerator* generator);
-    void init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* renderer, CAudioEngine* audioEngine, int netMode);
+    void init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* renderer, CAudioEngine* audioEngine, int netMode, WorldGenerator* generator);
+    void init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* renderer, CAudioEngine* audioEngine, int netMode);
     MaterialInstance getTile(int x, int y);
     void setTile(int x, int y, MaterialInstance type);
     MaterialInstance getTileLayer2(int x, int y);
@@ -101,6 +102,7 @@ public:
     GPU_Image* fireTex = nullptr;
     bool* tickVisited1 = nullptr;
     bool* tickVisited2 = nullptr;
+
     void tick();
 
     void tickTemperature();
@@ -144,11 +146,14 @@ public:
     std::vector<RigidBody*> worldRigidBodies;
 
     std::vector<LoadChunkParams> toLoad;
-    std::vector<std::shared_future<Chunk*>> readyToReadyToMerge;
+    ctpl::thread_pool* loadChunkPool = nullptr;
+    std::vector<std::future<Chunk*>> readyToReadyToMerge;
     std::deque<Chunk*> readyToMerge;
     void queueLoadChunk(int cx, int cy, bool populate, bool render);
     Chunk* loadChunk(Chunk*, bool populate, bool render);
     void unloadChunk(Chunk* ch);
+    void writeChunkToDisk(Chunk* ch);
+    void chunkSaveCache(Chunk* ch);
     WorldGenerator* gen = nullptr;
     void generateChunk(Chunk* ch);
     Biome* getBiomeAt(int x, int y);

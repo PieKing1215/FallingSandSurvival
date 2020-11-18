@@ -18,10 +18,18 @@
 #define BUILD_WITH_EASY_PROFILER
 #include <easy/profiler.h>
 
+#include "DiscordIntegration.hpp"
 
 #define timegm _mkgmtime
 
 #define W_PI 3.14159265358979323846
+
+void Game::updateMaterialSounds() {
+    uint16_t waterCt = min(movingTiles[Materials::WATER.id], (uint16_t)5000);
+    float water = (float)waterCt / 3000;
+    //logDebug("{} / {} = {}", waterCt, 3000, water);
+    audioEngine.SetEventParameter("event:/World/WaterFlow", "FlowIntensity", water);
+}
 
 int Game::init(int argc, char *argv[]) {
     //EASY_PROFILER_ENABLE;
@@ -66,7 +74,7 @@ int Game::init(int argc, char *argv[]) {
         Settings::draw_physics_meshes = false;
         Settings::draw_chunk_state = false;
         Settings::draw_debug_stats = false;
-        Settings::draw_material_info = false;
+        Settings::draw_detailed_material_info = false;
         Settings::draw_temperature_map = false;
 
         //TODO: load video settings from settings file
@@ -153,18 +161,25 @@ int Game::init(int argc, char *argv[]) {
             EASY_END_BLOCK;
 
             EASY_BLOCK("load events");
-            audioEngine.LoadEvent("event:/Title");
-            audioEngine.LoadEvent("event:/Jump");
-            audioEngine.LoadEvent("event:/Fly");
-            audioEngine.LoadEvent("event:/Wind");
-            audioEngine.LoadEvent("event:/Impact");
-            audioEngine.LoadEvent("event:/Sand");
+            audioEngine.LoadEvent("event:/Music/Title");
+
+            audioEngine.LoadEvent("event:/Player/Jump");
+            audioEngine.LoadEvent("event:/Player/Fly");
+            audioEngine.LoadEvent("event:/Player/Wind");
+            audioEngine.LoadEvent("event:/Player/Impact");
+
+            audioEngine.LoadEvent("event:/World/Sand");
+            audioEngine.LoadEvent("event:/World/WaterFlow");
+
+            audioEngine.LoadEvent("event:/GUI/GUI_Hover");
+            audioEngine.LoadEvent("event:/GUI/GUI_Slider");
             EASY_END_BLOCK;
 
             EASY_BLOCK("play events");
-            audioEngine.PlayEvent("event:/Fly");
-            audioEngine.PlayEvent("event:/Wind");
-            audioEngine.PlayEvent("event:/Sand");
+            audioEngine.PlayEvent("event:/Player/Fly");
+            audioEngine.PlayEvent("event:/Player/Wind");
+            audioEngine.PlayEvent("event:/World/Sand");
+            audioEngine.PlayEvent("event:/World/WaterFlow");
             EASY_END_BLOCK;
 
             EASY_END_BLOCK; // init fmod
@@ -368,7 +383,7 @@ int Game::init(int argc, char *argv[]) {
         initFmodThread.join();
         EASY_END_BLOCK;
         EASY_BLOCK("play audio");
-        audioEngine.PlayEvent("event:/Title");
+        audioEngine.PlayEvent("event:/Music/Title");
         audioEngine.Update();
         EASY_END_BLOCK;
         EASY_END_BLOCK;
@@ -399,41 +414,11 @@ int Game::init(int argc, char *argv[]) {
         #pragma region
         logInfo("Initializing Discord Game SDK...");
         EASY_BLOCK("init discord", DISCORD_PROFILER_COLOR);
-        EASY_BLOCK("discord::Core::Create", DISCORD_PROFILER_COLOR);
-        auto result = discord::Core::Create(DISCORD_CLIENTID, DiscordCreateFlags_NoRequireDiscord, &core);
-        EASY_END_BLOCK;
-        if(discordAPI = (result == discord::Result::Ok)) {
-            logInfo("discord::Core::Create successful.");
-            EASY_BLOCK("SetLogHook", DISCORD_PROFILER_COLOR);
-            core->SetLogHook(discord::LogLevel::Debug, [](auto level, const char* txt) {
-                switch(level) {
-                case discord::LogLevel::Info:
-                    logInfo("[DISCORD SDK] {}", txt);
-                    break;
-                case discord::LogLevel::Debug:
-                    logDebug("[DISCORD SDK] {}", txt);
-                    break;
-                case discord::LogLevel::Warn:
-                    logWarn("[DISCORD SDK] {}", txt);
-                    break;
-                case discord::LogLevel::Error:
-                    logError("[DISCORD SDK] {}", txt);
-                    break;
-                }
-            });
-            EASY_END_BLOCK;
+        if(DiscordIntegration::init()) {
             EASY_BLOCK("set activity", DISCORD_PROFILER_COLOR);
-            discord::Activity activity {};
-            activity.SetDetails("In world: \"chunks\"");
-            activity.GetAssets().SetLargeImage("largeicon");
-            activity.GetAssets().SetLargeText("Falling Sand Survival");
-            activity.SetType(discord::ActivityType::Playing);
-            core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {
-                logInfo("[DISCORD] UpdateActivity returned {0:d}", result);
-            });
+            DiscordIntegration::setActivityState("On Main Menu");
+            DiscordIntegration::flushActivity();
             EASY_END_BLOCK;
-        } else {
-            logError("discord::Core::Create failed.");
         }
         EASY_END_BLOCK;
         #pragma endregion
@@ -465,12 +450,15 @@ int Game::init(int argc, char *argv[]) {
     EASY_END_BLOCK;
     #pragma endregion
 
+    movingTiles = new uint16_t[Materials::nMaterials];
+
     // init the world
     #pragma region
     EASY_BLOCK("init world");
     logInfo("Initializing world...");
     world = new World();
-    world->init((char*)gameDir.getWorldPath("mainMenu").c_str(), (int)ceil(WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode);
+    world->noSaveLoad = true;
+    world->init(gameDir.getWorldPath("mainMenu"), (int)ceil(MAX_WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(MAX_HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode);
     EASY_END_BLOCK;
     #pragma endregion
 
@@ -737,6 +725,327 @@ int Game::init(int argc, char *argv[]) {
     return this->run(argc, argv);
 }
 
+
+void Game::handleWindowSizeChange(int newWidth, int newHeight) {
+    int prevWidth = WIDTH;
+    int prevHeight = HEIGHT;
+
+    WIDTH = newWidth;
+    HEIGHT = newHeight;
+
+    GPU_FreeImage(loadingTexture);
+    GPU_FreeImage(texture);
+    GPU_FreeImage(worldTexture);
+    GPU_FreeImage(lightingTexture);
+    GPU_FreeImage(emissionTexture);
+    GPU_FreeImage(textureFire);
+    GPU_FreeImage(texture2Fire);
+    GPU_FreeImage(textureLayer2);
+    GPU_FreeImage(textureBackground);
+    GPU_FreeImage(textureObjects);
+    GPU_FreeImage(textureObjectsLQ);
+    GPU_FreeImage(textureObjectsBack);
+    GPU_FreeImage(textureParticles);
+    GPU_FreeImage(textureEntities);
+    GPU_FreeImage(textureEntitiesLQ);
+    GPU_FreeImage(temperatureMap);
+    GPU_FreeImage(backgroundImage);
+
+    // create textures
+    #pragma region
+    EASY_BLOCK("create textures");
+    logInfo("Creating world textures...");
+    loadingOnColor = 0xFFFFFFFF;
+    loadingOffColor = 0x000000FF;
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    loadingTexture = GPU_CreateImage(
+        loadingScreenW = (WIDTH / 20), loadingScreenH = (HEIGHT / 20),
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(loadingTexture, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    texture = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(texture, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    worldTexture = GPU_CreateImage(
+        world->width * Settings::hd_objects_size, world->height * Settings::hd_objects_size,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(worldTexture, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(worldTexture);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    lightingTexture = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(lightingTexture, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(lightingTexture);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    emissionTexture = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(emissionTexture, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureFire = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureFire, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    texture2Fire = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(texture2Fire, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(texture2Fire);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureLayer2 = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureLayer2, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureBackground = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureBackground, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureObjects = GPU_CreateImage(
+        world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureObjects, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureObjectsLQ = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureObjectsLQ, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureObjectsBack = GPU_CreateImage(
+        world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureObjectsBack, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(textureObjects);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(textureObjectsLQ);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(textureObjectsBack);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureParticles = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureParticles, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureEntities = GPU_CreateImage(
+        world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(textureEntities);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureEntities, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureEntitiesLQ = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(textureEntitiesLQ);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureEntitiesLQ, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    temperatureMap = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(temperatureMap, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    backgroundImage = GPU_CreateImage(
+        WIDTH, HEIGHT,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(backgroundImage, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(backgroundImage);
+    EASY_END_BLOCK;
+
+    // create texture pixel buffers
+    EASY_BLOCK("create texture pixel buffers");
+    pixels = vector<unsigned char>(world->width * world->height * 4, 0);
+    pixels_ar = &pixels[0];
+    pixelsLayer2 = vector<unsigned char>(world->width * world->height * 4, 0);
+    pixelsLayer2_ar = &pixelsLayer2[0];
+    pixelsBackground = vector<unsigned char>(world->width * world->height * 4, 0);
+    pixelsBackground_ar = &pixelsBackground[0];
+    pixelsObjects = vector<unsigned char>(world->width * world->height * 4, SDL_ALPHA_TRANSPARENT);
+    pixelsObjects_ar = &pixelsObjects[0];
+    pixelsTemp = vector<unsigned char>(world->width * world->height * 4, SDL_ALPHA_TRANSPARENT);
+    pixelsTemp_ar = &pixelsTemp[0];
+    pixelsParticles = vector<unsigned char>(world->width * world->height * 4, SDL_ALPHA_TRANSPARENT);
+    pixelsParticles_ar = &pixelsParticles[0];
+    pixelsLoading = vector<unsigned char>(loadingTexture->w * loadingTexture->h * 4, SDL_ALPHA_TRANSPARENT);
+    pixelsLoading_ar = &pixelsLoading[0];
+    pixelsFire = vector<unsigned char>(world->width * world->height * 4, 0);
+    pixelsFire_ar = &pixelsFire[0];
+    pixelsEmission = vector<unsigned char>(world->width * world->height * 4, 0);
+    pixelsEmission_ar = &pixelsEmission[0];
+    EASY_END_BLOCK;
+    EASY_END_BLOCK;
+    #pragma endregion
+
+    accLoadX -= (newWidth - prevWidth) / 2 / scale;
+    accLoadY -= (newHeight - prevHeight) / 2 / scale;
+
+    tickChunkLoading();
+
+    for(int x = 0; x < world->width; x++) {
+        for(int y = 0; y < world->height; y++) {
+            world->dirty[x + y * world->width] = true;
+            world->layer2Dirty[x + y * world->width] = true;
+            world->backgroundDirty[x + y * world->width] = true;
+        }
+    }
+
+}
+
+void Game::setDisplayMode(DisplayMode mode) {
+    switch(mode) {
+    case DisplayMode::WINDOWED:
+        SDL_SetWindowDisplayMode(window, NULL);
+        SDL_SetWindowFullscreen(window, 0);
+        OptionsUI::item_current_idx = 0;
+        break;
+    case DisplayMode::BORDERLESS:
+        SDL_SetWindowDisplayMode(window, NULL);
+        SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+        OptionsUI::item_current_idx = 1;
+        break;
+    case DisplayMode::FULLSCREEN:
+        SDL_MaximizeWindow(window);
+
+        int w;
+        int h;
+        SDL_GetWindowSize(window, &w, &h);
+
+        SDL_DisplayMode disp;
+        SDL_GetWindowDisplayMode(window, &disp);
+
+        disp.w = w;
+        disp.h = h;
+
+        SDL_SetWindowDisplayMode(window, &disp);
+        SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+        OptionsUI::item_current_idx = 2;
+        break;
+    }
+
+    int w;
+    int h;
+    SDL_GetWindowSize(window, &w, &h);
+
+    GPU_SetWindowResolution(w, h);
+    GPU_ResetProjection(realTarget);
+
+    handleWindowSizeChange(w, h);
+
+}
+
+void Game::setVSync(bool vsync) {
+    SDL_GL_SetSwapInterval(vsync ? 1 : 0);
+    OptionsUI::vsync = vsync;
+}
+
+void Game::setMinimizeOnLostFocus(bool minimize) {
+    SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, minimize ? "1" : "0");
+    OptionsUI::minimizeOnFocus = minimize;
+}
+
 int Game::run(int argc, char *argv[]) {
     EASY_FUNCTION(GAME_PROFILER_COLOR);
     startTime = Time::millis();
@@ -781,9 +1090,27 @@ int Game::run(int argc, char *argv[]) {
     mspt = 33;
     long msptPhysics = 16;
 
-    scale = 2;
-    ofsX = (int)(-CHUNK_W * 2);
+    scale = 3;
+    ofsX = (int)(-CHUNK_W * 4);
     ofsY = (int)(-CHUNK_H * 2.5);
+
+    ofsX = (ofsX - WIDTH / 2) / 2 * 3 + WIDTH / 2;
+    ofsY = (ofsY - HEIGHT / 2) / 2 * 3 + HEIGHT / 2;
+
+    std::string displayMode = clArgs->getString("display-mode");
+
+    if(displayMode == "windowed") {
+        setDisplayMode(DisplayMode::WINDOWED);
+    } else if(displayMode == "borderless") {
+        setDisplayMode(DisplayMode::BORDERLESS);
+    } else if(displayMode == "fullscreen") {
+        setDisplayMode(DisplayMode::FULLSCREEN);
+    }
+
+    setVSync(clArgs->getBool("vsync"));
+
+    // TODO: load settings from settings file
+    setMinimizeOnLostFocus(false);
 
     for(int i = 0; i < frameTimeNum; i++) {
         frameTime[i] = 0;
@@ -806,11 +1133,7 @@ int Game::run(int argc, char *argv[]) {
 
         if(networkMode != NetworkMode::SERVER) {
             #if BUILD_WITH_DISCORD
-            if(discordAPI) {
-                EASY_BLOCK("DiscordGameSDK tick");
-                core->RunCallbacks();
-                EASY_END_BLOCK;
-            }
+            DiscordIntegration::tick();
             #endif
 
             #if BUILD_WITH_STEAM
@@ -1088,7 +1411,7 @@ int Game::run(int argc, char *argv[]) {
                                 }
 
                                 if(n > 0) {
-                                    audioEngine.PlayEvent("event:/Impact");
+                                    audioEngine.PlayEvent("event:/Player/Impact");
                                     b2PolygonShape s;
                                     s.SetAsBox(1, 1);
                                     RigidBody* rb = world->makeRigidBody(b2_dynamicBody, (float)x, (float)y, 0, s, 1, (float)0.3, tex);
@@ -1195,7 +1518,7 @@ int Game::run(int argc, char *argv[]) {
                                         }
 
                                         if(nTilesChanged > 0) {
-                                            audioEngine.PlayEvent("event:/Impact");
+                                            audioEngine.PlayEvent("event:/Player/Impact");
                                         }
 
                                         //world->setTile((int)(hx), (int)(hy), MaterialInstance(&Materials::GENERIC_SOLID, 0xffffffff));
@@ -1334,7 +1657,8 @@ int Game::run(int argc, char *argv[]) {
             DebugDrawUI::Draw(this);
             DebugCheatsUI::Draw(this);
             MainMenuUI::Draw(this);
-            //ImGui::ShowDemoWindow();
+            IngameUI::Draw(this);
+            //  ImGui::ShowDemoWindow();
 
             if(DebugUI::visible) {
                 ImGui::Begin("Debug Info");
@@ -1390,25 +1714,27 @@ int Game::run(int argc, char *argv[]) {
                         ImGui::BeginTooltip();
                         ImGui::Text("%s", tile.mat->name.c_str());
 
-                        int ln = 0;
-                        if(tile.mat->interact) {
-                            for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
-                                if(tile.mat->nInteractions[i] > 0) {
-                                    char buff2[40];
-                                    snprintf(buff2, sizeof(buff2), "    %s", Materials::MATERIALS[i]->name.c_str());
-                                    //Drawing::drawText(target, buff2, font16, mx + 14, my + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
-                                    ImGui::Text("%s", buff2);
+                        if(Settings::draw_detailed_material_info) {
+                            int ln = 0;
+                            if(tile.mat->interact) {
+                                for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
+                                    if(tile.mat->nInteractions[i] > 0) {
+                                        char buff2[40];
+                                        snprintf(buff2, sizeof(buff2), "    %s", Materials::MATERIALS[i]->name.c_str());
+                                        //Drawing::drawText(target, buff2, font16, mx + 14, my + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
+                                        ImGui::Text("%s", buff2);
 
-                                    for(int j = 0; j < tile.mat->nInteractions[i]; j++) {
-                                        MaterialInteraction inter = tile.mat->interactions[i][j];
-                                        char buff1[40];
-                                        if(inter.type == INTERACT_TRANSFORM_MATERIAL) {
-                                            snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "TRANSFORM", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
-                                        } else if(inter.type == INTERACT_SPAWN_MATERIAL) {
-                                            snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "SPAWN", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
+                                        for(int j = 0; j < tile.mat->nInteractions[i]; j++) {
+                                            MaterialInteraction inter = tile.mat->interactions[i][j];
+                                            char buff1[40];
+                                            if(inter.type == INTERACT_TRANSFORM_MATERIAL) {
+                                                snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "TRANSFORM", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
+                                            } else if(inter.type == INTERACT_SPAWN_MATERIAL) {
+                                                snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "SPAWN", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
+                                            }
+                                            //Drawing::drawText(target, buff1, font16, mx + 14, my + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
+                                            ImGui::Text("%s", buff1);
                                         }
-                                        //Drawing::drawText(target, buff1, font16, mx + 14, my + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
-                                        ImGui::Text("%s", buff1);
                                     }
                                 }
                             }
@@ -1525,6 +1851,26 @@ int Game::run(int argc, char *argv[]) {
 exit:
     EASY_END_BLOCK; // frame??
 
+    std::vector<std::future<void>> results = {};
+
+    for(auto& p : world->chunkCache) {
+        if(p.first == INT_MIN) continue;
+        for(auto& p2 : p.second) {
+            if(p2.first == INT_MIN) continue;
+
+            results.push_back(updateDirtyPool->push([&](int id) {
+                Chunk* m = p2.second;
+                world->unloadChunk(m);
+            }));
+        }
+    }
+
+    EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
+    for(int i = 0; i < results.size(); i++) {
+        results[i].get();
+    }
+    EASY_END_BLOCK;
+
     // release resources & shutdown
     #pragma region
     delete objectDelete;
@@ -1588,7 +1934,7 @@ void Game::updateFrameEarly() {
             Settings::draw_frame_graph = false;
             Settings::draw_debug_stats = false;
             Settings::draw_chunk_state = false;
-            Settings::draw_material_info = false;
+            Settings::draw_detailed_material_info = false;
         }
     } else {
         if(Controls::STATS_DISPLAY->get()) {
@@ -1597,7 +1943,7 @@ void Game::updateFrameEarly() {
 
             if(Controls::STATS_DISPLAY_DETAILED->get()) {
                 Settings::draw_chunk_state = true;
-                Settings::draw_material_info = true;
+                Settings::draw_detailed_material_info = true;
             }
         }
     }
@@ -1731,8 +2077,8 @@ void Game::updateFrameEarly() {
             world->player = nullptr;
         } else {
             Player* e = new Player();
-            e->x = freeCamX;
-            e->y = freeCamY - 4;
+            e->x = -world->loadZone.x + world->tickZone.x + world->tickZone.w/2;
+            e->y = -world->loadZone.y + world->tickZone.y + world->tickZone.h/2;
             e->vx = 0;
             e->vy = 0;
             e->hw = 10;
@@ -1760,8 +2106,18 @@ void Game::updateFrameEarly() {
 
             world->entities.push_back(e);
             world->player = e;
+
+            /*accLoadX = 0;
+            accLoadY = 0;*/
         }
     }
+
+    if(Controls::PAUSE->get()) {
+        if(this->state == GameState::INGAME) {
+            IngameUI::visible = !IngameUI::visible;
+        }
+    }
+
     EASY_END_BLOCK;
     #pragma endregion
 
@@ -1772,7 +2128,7 @@ void Game::updateFrameEarly() {
     if(state == LOADING) {
 
     } else {
-        audioEngine.SetEventParameter("event:/Sand", "Sand", 0);
+        audioEngine.SetEventParameter("event:/World/Sand", "Sand", 0);
         if(world->player && world->player->heldItem != NULL && world->player->heldItem->getFlag(ItemFlags::FLUID_CONTAINER)) {
             if(Controls::lmouse && world->player->heldItem->carry.size() > 0) {
                 // shoot fluid from container
@@ -1792,7 +2148,7 @@ void Game::updateFrameEarly() {
                 world->player->heldItem->texture = GPU_CopyImageFromSurface(world->player->heldItem->surface);
                 GPU_SetImageFilter(world->player->heldItem->texture, GPU_FILTER_NEAREST);
 
-                audioEngine.SetEventParameter("event:/Sand", "Sand", 1);
+                audioEngine.SetEventParameter("event:/World/Sand", "Sand", 1);
                 #pragma endregion
             } else {
                 // pick up fluid into container
@@ -1832,7 +2188,7 @@ void Game::updateFrameEarly() {
                 }
 
                 if(n > 0) {
-                    audioEngine.PlayEvent("event:/Impact");
+                    audioEngine.PlayEvent("event:/Player/Impact");
                 }
                 #pragma endregion
             }
@@ -1945,6 +2301,10 @@ void Game::tick() {
 
         GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
         GPU_Clear(textureObjectsBack->target);
+
+        if(Settings::tick_world && world->readyToMerge.size() == 0) {
+            world->tickChunks();
+        }
 
         // render objects
         #pragma region
@@ -2186,6 +2546,31 @@ void Game::tick() {
                             world->tiles[wxd + wyd * world->width] = Tiles::NOTHING;
                             world->dirty[wxd + wyd * world->width] = true;
                             found = true;
+
+                            //for(int dxx = -1; dxx <= 1; dxx++) {
+                            //    for(int dyy = -1; dyy <= 1; dyy++) {
+                            //        if(world->tiles[(wxd + dxx) + (wyd + dyy) * world->width].mat->physicsType == PhysicsType::SAND || world->tiles[(wxd + dxx) + (wyd + dyy) * world->width].mat->physicsType == PhysicsType::SOUP) {
+                            //            uint32_t color = world->tiles[(wxd + dxx) + (wyd + dyy) * world->width].color;
+
+                            //            unsigned int offset = ((wxd + dxx) + (wyd + dyy) * world->width) * 4;
+
+                            //            dpixels_ar[offset + 2] = ((color >> 0) & 0xff);        // b
+                            //            dpixels_ar[offset + 1] = ((color >> 8) & 0xff);        // g
+                            //            dpixels_ar[offset + 0] = ((color >> 16) & 0xff);        // r
+                            //            dpixels_ar[offset + 3] = world->tiles[(wxd + dxx) + (wyd + dyy) * world->width].mat->alpha;    // a
+                            //        }
+                            //    }
+                            //}
+
+                            //if(!Settings::draw_load_zones) {
+                            //    unsigned int offset = (wxd + wyd * world->width) * 4;
+                            //    dpixels_ar[offset + 2] = 0;        // b
+                            //    dpixels_ar[offset + 1] = 0;        // g
+                            //    dpixels_ar[offset + 0] = 0xff;        // r
+                            //    dpixels_ar[offset + 3] = 0xff;    // a
+                            //}
+                            	
+
                             break;
                         }
                     }
@@ -2222,6 +2607,8 @@ void Game::tick() {
 
         if(tickTime % 10 == 0) world->tickObjectsMesh();
 
+        for(int i = 0; i < Materials::nMaterials; i++) movingTiles[i] = 0;
+
         results.clear();
         results.push_back(updateDirtyPool->push([&](int id) {
             EASY_BLOCK("dirty");
@@ -2230,6 +2617,7 @@ void Game::tick() {
 
                 if(world->dirty[i]) {
                     hadDirty = true;
+                    movingTiles[world->tiles[i].mat->id]++;
                     if(world->tiles[i].mat->physicsType == PhysicsType::AIR) {
                         dpixels_ar[offset + 0] = 0;        // b
                         dpixels_ar[offset + 1] = 0;        // g
@@ -2356,6 +2744,8 @@ void Game::tick() {
             results[i].get();
         }
         EASY_END_BLOCK;
+
+        updateMaterialSounds();
 
         EASY_BLOCK("particle GPU_UpdateImageBytes");
         GPU_UpdateImageBytes(
@@ -2641,13 +3031,13 @@ void Game::tickPlayer() {
         if(Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) {
             if(world->player->ground) {
                 world->player->vy = -4;
-                audioEngine.PlayEvent("event:/Jump");
+                audioEngine.PlayEvent("event:/Player/Jump");
             }
         }
 
         world->player->vy += (float)(((Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) ? (world->player->vy > -1 ? -0.8 : -0.35) : 0) + (Controls::PLAYER_DOWN->get() ? 0.1 : 0));
         if(Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) {
-            audioEngine.SetEventParameter("event:/Fly", "Intensity", 1);
+            audioEngine.SetEventParameter("event:/Player/Fly", "Intensity", 1);
             for(int i = 0; i < 4; i++) {
                 Particle* p = new Particle(Tiles::createLava(), (float)(world->player->x + world->loadZone.x + world->player->hw / 2 + rand() % 5 - 2 + world->player->vx), (float)(world->player->y + world->loadZone.y + world->player->hh + world->player->vy), (float)((rand() % 10 - 5) / 10.0f + world->player->vx / 2.0f), (float)((rand() % 10) / 10.0f + 1 + world->player->vy / 2.0f), 0, (float)0.025);
                 p->temporary = true;
@@ -2655,13 +3045,13 @@ void Game::tickPlayer() {
                 world->addParticle(p);
             }
         } else {
-            audioEngine.SetEventParameter("event:/Fly", "Intensity", 0);
+            audioEngine.SetEventParameter("event:/Player/Fly", "Intensity", 0);
         }
 
         if(world->player->vy > 0) {
-            audioEngine.SetEventParameter("event:/Wind", "Wind", (float)(world->player->vy / 12.0));
+            audioEngine.SetEventParameter("event:/Player/Wind", "Wind", (float)(world->player->vy / 12.0));
         } else {
-            audioEngine.SetEventParameter("event:/Wind", "Wind", 0);
+            audioEngine.SetEventParameter("event:/Player/Wind", "Wind", 0);
         }
 
         world->player->vx += (float)((Controls::PLAYER_LEFT->get() ? (world->player->vx > 0 ? -0.4 : -0.2) : 0) + (Controls::PLAYER_RIGHT->get() ? (world->player->vx < 0 ? 0.4 : 0.2) : 0));
@@ -3300,7 +3690,6 @@ void Game::renderLate() {
 
         EASY_END_BLOCK; // lighting shader
 
-
         GPU_BlitRect(worldTexture, NULL, target, &r1);
 
         if(Settings::draw_shaders) {
@@ -3842,6 +4231,105 @@ int Game::getAimSurface(int dist) {
     });
 
     return startInd;
+}
+
+void Game::quitToMainMenu() {
+    EASY_FUNCTION(GAME_PROFILER_COLOR);
+
+    if(state == LOADING) return;
+
+    std::string pref = "Saved in: ";
+
+    std::string worldName = "mainMenu";
+    char* wn = (char*)worldName.c_str();
+
+    logInfo("Loading main menu @ {}", gameDir.getWorldPath(wn));
+    MainMenuUI::visible = false;
+    state = LOADING;
+    stateAfterLoad = MAIN_MENU;
+
+    EASY_BLOCK("Close world");
+    delete world;
+    world = nullptr;
+    EASY_END_BLOCK;
+
+    WorldGenerator* generator = new MaterialTestGenerator();
+
+    std::string wpStr = gameDir.getWorldPath(wn);
+
+    EASY_BLOCK("Load world");
+    world = new World();
+    world->noSaveLoad = true;
+    world->init(wpStr, (int)ceil(Game::MAX_WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(Game::MAX_HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode, generator);
+
+    EASY_BLOCK("Queue chunk loading");
+    logInfo("Queueing chunk loading...");
+    for(int x = -CHUNK_W * 4; x < world->width + CHUNK_W * 4; x += CHUNK_W) {
+        for(int y = -CHUNK_H * 3; y < world->height + CHUNK_H * 8; y += CHUNK_H) {
+            world->queueLoadChunk(x / CHUNK_W, y / CHUNK_H, true, true);
+        }
+    }
+    EASY_END_BLOCK;
+    EASY_END_BLOCK;
+
+    std::fill(pixels.begin(), pixels.end(), 0);
+    std::fill(pixelsBackground.begin(), pixelsBackground.end(), 0);
+    std::fill(pixelsLayer2.begin(), pixelsLayer2.end(), 0);
+    std::fill(pixelsFire.begin(), pixelsFire.end(), 0);
+    std::fill(pixelsEmission.begin(), pixelsEmission.end(), 0);
+    std::fill(pixelsParticles.begin(), pixelsParticles.end(), 0);
+
+    GPU_UpdateImageBytes(
+        texture,
+        NULL,
+        &pixels[0],
+        world->width * 4
+    );
+
+    GPU_UpdateImageBytes(
+        textureBackground,
+        NULL,
+        &pixelsBackground[0],
+        world->width * 4
+    );
+
+    GPU_UpdateImageBytes(
+        textureLayer2,
+        NULL,
+        &pixelsLayer2[0],
+        world->width * 4
+    );
+
+    GPU_UpdateImageBytes(
+        textureFire,
+        NULL,
+        &pixelsFire[0],
+        world->width * 4
+    );
+
+    GPU_UpdateImageBytes(
+        emissionTexture,
+        NULL,
+        &pixelsEmission[0],
+        world->width * 4
+    );
+
+    GPU_UpdateImageBytes(
+        textureParticles,
+        NULL,
+        &pixelsParticles[0],
+        world->width * 4
+    );
+
+
+
+    MainMenuUI::visible = true;
+
+    #if BUILD_WITH_DISCORD
+    DiscordIntegration::setStart(0);
+    DiscordIntegration::setActivityState("On Main Menu");
+    DiscordIntegration::flushActivity();
+    #endif
 }
 
 int Game::getAimSolidSurface(int dist) {

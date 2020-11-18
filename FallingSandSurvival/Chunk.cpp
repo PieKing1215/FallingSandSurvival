@@ -9,6 +9,8 @@
 #include <easy/profiler.h>
 #include "ProfilerConfig.hpp"
 
+#include <lz4.h>
+
 using namespace std;
 
 std::vector<std::string> split(std::string strToSplit, char delimeter);
@@ -20,17 +22,14 @@ Chunk::Chunk(int x, int y, char* worldName) {
     this->x = x;
     this->y = y;
 
-    char* buff = new char[255];
-    snprintf(buff, 255, "%s/chunks/chunk_%d_%d.txt", worldName, x, y);
-
-    this->fname = buff;
+    this->fname = std::string(worldName) + "/chunks/chunk_" + std::to_string(x) + "_" + std::to_string(y);
 }
 
 Chunk::~Chunk() {
-    //if(tiles) delete tiles;
-    //if(layer2) delete layer2;
-    //if(background) delete background;
-    //if(biomes) delete biomes;
+    if(tiles) delete[] tiles;
+    if(layer2) delete[] layer2;
+    if(background) delete[] background;
+    if(biomes) delete[] biomes;
 }
 
 void Chunk::loadMeta() {
@@ -45,11 +44,12 @@ void Chunk::loadMeta() {
     }
 }
 
-MaterialInstanceData* Chunk::readBuf = (MaterialInstanceData*)malloc(CHUNK_W * CHUNK_H * 2 * sizeof(MaterialInstanceData));
+//MaterialInstanceData* Chunk::readBuf = (MaterialInstanceData*)malloc(CHUNK_W * CHUNK_H * 2 * sizeof(MaterialInstanceData));
 
 void Chunk::read() {
     EASY_FUNCTION();
 
+    
     EASY_BLOCK("create arrays");
     // use malloc here instead of new so it doesn't call the constructor
     MaterialInstance* tiles = (MaterialInstance*)malloc(CHUNK_W * CHUNK_H * sizeof(MaterialInstance));
@@ -68,9 +68,7 @@ void Chunk::read() {
     if(myfile.is_open()) {
         int state = 0;
 
-        getline(myfile, line, '\n');
-        int phase = stoi(line);
-        this->generationPhase = phase;
+        myfile.read((char*)&this->generationPhase, sizeof(int8_t));
 
         hasMeta = true;
         state = 1;
@@ -95,25 +93,56 @@ void Chunk::read() {
             background[i] = content;
         }*/
 
+        int src_size;
+        myfile.read((char*)&src_size, sizeof(int));
+        int compressed_size;
+        myfile.read((char*)&compressed_size, sizeof(int));
+
+        int src_size2;
+        myfile.read((char*)&src_size2, sizeof(int));
+        int compressed_size2;
+        myfile.read((char*)&compressed_size2, sizeof(int));
+
+        MaterialInstanceData* readBuf = (MaterialInstanceData*)malloc(src_size);
+
+        char* compressed_data = (char*)malloc(compressed_size);
+
         EASY_BLOCK("read MaterialInstanceData");
-        myfile.read((char*)readBuf, CHUNK_W * CHUNK_H * 2 * sizeof(MaterialInstanceData));
+        myfile.read((char*)compressed_data, compressed_size);
         EASY_END_BLOCK;
+
+        const int decompressed_size = LZ4_decompress_safe(compressed_data, (char*)readBuf, compressed_size, src_size);
+
+        free(compressed_data);
+
+        // basically, if either of these checks trigger, the chunk is unreadable, either due to miswriting it or corruption
+        // TODO: have the chunk regenerate on corruption (maybe save copies of corrupt chunks as well?)
+        if(decompressed_size < 0) {
+            logCritical("Error decompressing chunk tile data @ {},{} (err {}).", this->x, this->y, decompressed_size);
+        } else if(decompressed_size != src_size) {
+            logCritical("Decompressed chunk tile data is corrupt! @ {},{} (was {}, expected {}).", this->x, this->y, decompressed_size, src_size);
+        }
 
         EASY_BLOCK("copy MaterialInstanceData");
         // copy everything but the material pointer
-        memcpy(tiles, readBuf, CHUNK_W * CHUNK_H * sizeof(MaterialInstance));
-        memcpy(layer2, &readBuf[CHUNK_W * CHUNK_H], CHUNK_W * CHUNK_H * sizeof(MaterialInstance));
+        //memcpy(tiles, readBuf, CHUNK_W * CHUNK_H * sizeof(MaterialInstance));
+        //memcpy(layer2, &readBuf[CHUNK_W * CHUNK_H], CHUNK_W * CHUNK_H * sizeof(MaterialInstance));
 
         // copy the material pointer
         for(int i = 0; i < CHUNK_W * CHUNK_H; i++) {
             // twice as fast to set fields instead of making new ones
-
+            tiles[i].color = readBuf[i].color;
+            tiles[i].temperature = readBuf[i].temperature;
             tiles[i].mat = Materials::MATERIALS_ARRAY[readBuf[i].index];
+            tiles[i].id = MaterialInstance::_curID++;
             //tiles[i].color = readBuf[i].color;
             //tiles[i].temperature = readBuf[i].temperature;
             //tiles[i] = MaterialInstance(Materials::MATERIALS_ARRAY[buf[i].index], buf[i].color, buf[i].temperature);
 
+            layer2[i].color = readBuf[i + CHUNK_W * CHUNK_H].color;
+            layer2[i].temperature = readBuf[i + CHUNK_W * CHUNK_H].temperature;
             layer2[i].mat = Materials::MATERIALS_ARRAY[readBuf[CHUNK_W * CHUNK_H + i].index];
+            layer2[i].id = MaterialInstance::_curID++;
             //layer2[i].color = readBuf[CHUNK_W * CHUNK_H + i].color;
             //layer2[i].temperature = readBuf[CHUNK_W * CHUNK_H + i].temperature;
             //layer2[i] = MaterialInstance(Materials::MATERIALS_ARRAY[buf[CHUNK_W * CHUNK_H + i].index], buf[CHUNK_W * CHUNK_H + i].color, buf[CHUNK_W * CHUNK_H + i].temperature);
@@ -122,9 +151,23 @@ void Chunk::read() {
 
         //delete readBuf;
 
+        char* compressed_data2 = (char*)malloc(compressed_size2);
+
         EASY_BLOCK("read background data");
-        myfile.read((char*)background, CHUNK_W * CHUNK_H * sizeof(unsigned int));
+        myfile.read((char*)compressed_data2, compressed_size2);
         EASY_END_BLOCK;
+
+        const int decompressed_size2 = LZ4_decompress_safe(compressed_data2, (char*)background, compressed_size2, src_size2);
+
+        free(compressed_data2);
+
+        if(decompressed_size2 < 0) {
+            logCritical("Error decompressing chunk background data @ {},{} (err {}).", this->x, this->y, decompressed_size2);
+        }else if(decompressed_size2 != src_size2) {
+            logCritical("Decompressed chunk background data is corrupt! @ {},{} (was {}, expected {}).", this->x, this->y, decompressed_size2, src_size2);
+        }
+
+        free(readBuf);
 
         myfile.close();
     }
@@ -133,6 +176,7 @@ void Chunk::read() {
     this->layer2 = layer2;
     this->background = background;
     hasTileCache = true;
+
 }
 
 void Chunk::write(MaterialInstance* tiles, MaterialInstance* layer2, Uint32* background) {
@@ -141,11 +185,8 @@ void Chunk::write(MaterialInstance* tiles, MaterialInstance* layer2, Uint32* bac
     this->tiles = tiles;
     this->layer2 = layer2;
     this->background = background;
+    if(this->tiles == NULL || this->layer2 == NULL || this->background == NULL) return;
     hasTileCache = true;
-
-    ofstream myfile;
-    myfile.open(fname, std::ios::binary);
-    myfile << generationPhase << "\n";
 
     // TODO: make these loops faster
     /*for (int i = 0; i < CHUNK_W * CHUNK_H; i++) {
@@ -163,13 +204,67 @@ void Chunk::write(MaterialInstance* tiles, MaterialInstance* layer2, Uint32* bac
 
     MaterialInstanceData* buf = new MaterialInstanceData[CHUNK_W * CHUNK_H * 2];
     for(int i = 0; i < CHUNK_W * CHUNK_H; i++) {
-        buf[i] ={(Uint32)tiles[i].mat->id, tiles[i].color, tiles[i].temperature};
-        buf[CHUNK_W * CHUNK_H + i] ={(Uint32)layer2[i].mat->id, layer2[i].color, layer2[i].temperature};
+        buf[i] = {(Uint16)tiles[i].mat->id, tiles[i].color, tiles[i].temperature};
+        buf[CHUNK_W * CHUNK_H + i] = {(Uint16)layer2[i].mat->id, layer2[i].color, layer2[i].temperature};
     }
 
-    myfile.write((char*)buf, CHUNK_W * CHUNK_H * 2 * sizeof(MaterialInstanceData));
+    const char* const src = (char*)buf;
+    const int src_size = (int)(CHUNK_W * CHUNK_H * 2 * sizeof(MaterialInstanceData));
+    const int max_dst_size = LZ4_compressBound(src_size);
+
+    char* compressed_data = (char*)malloc((size_t)max_dst_size);
+
+    EASY_BLOCK("compress");
+    const int compressed_data_size = LZ4_compress_fast(src, compressed_data, src_size, max_dst_size, 10);
+    EASY_END_BLOCK;
+
+    if(compressed_data_size <= 0) {
+        logCritical("Failed to compress chunk tile data @ {},{} (err {})", this->x, this->y, compressed_data_size);
+    }
+
+    /*if(compressed_data_size > 0){
+        logDebug("Compression ratio: {}", (float)compressed_data_size / src_size * 100);
+    }*/
+
+    compressed_data = (char*)realloc(compressed_data, (size_t)compressed_data_size);
+
+    // bg compress
+
+    const char* const src2 = (char*)background;
+    const int src_size2 = (int)(CHUNK_W * CHUNK_H * sizeof(unsigned int));
+    const int max_dst_size2 = LZ4_compressBound(src_size2);
+
+    char* compressed_data2 = (char*)malloc((size_t)max_dst_size2);
+
+    EASY_BLOCK("compress");
+    const int compressed_data_size2 = LZ4_compress_fast(src2, compressed_data2, src_size2, max_dst_size2, 10);
+    EASY_END_BLOCK;
+
+    if(compressed_data_size2 <= 0) {
+        logCritical("Failed to compress chunk tile data @ {},{} (err {})", this->x, this->y, compressed_data_size2);
+    }
+
+    /*if(compressed_data_size2 > 0){
+        logDebug("Compression ratio: {}", (float)compressed_data_size2 / src_size2 * 100);
+    }*/
+
+    compressed_data2 = (char*)realloc(compressed_data2, (size_t)compressed_data_size2);
+
+    ofstream myfile;
+    myfile.open(fname, std::ios::binary);
+    myfile.write((char*)&generationPhase, sizeof(int8_t));
+
+    myfile.write((char*)&src_size, sizeof(int));
+    myfile.write((char*)&compressed_data_size, sizeof(int));
+    myfile.write((char*)&src_size2, sizeof(int));
+    myfile.write((char*)&compressed_data_size2, sizeof(int));
+
+    myfile.write((char*)compressed_data, compressed_data_size);
     delete[] buf;
-    myfile.write((char*)background, CHUNK_W * CHUNK_H * sizeof(unsigned int));
+    myfile.write((char*)compressed_data2, compressed_data_size2);
+
+    free(compressed_data);
+    free(compressed_data2);
 
     myfile.close();
 }
@@ -177,7 +272,7 @@ void Chunk::write(MaterialInstance* tiles, MaterialInstance* layer2, Uint32* bac
 bool Chunk::hasFile() {
     EASY_FUNCTION();
     struct stat buffer;
-    return (stat(fname, &buffer) == 0);
+    return (stat(fname.c_str(), &buffer) == 0);
 }
 
 std::vector<std::string> split(std::string strToSplit, char delimeter) {

@@ -34,15 +34,16 @@
 
 #define W_PI 3.14159265358979323846
 
-void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode) {
+void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode) {
     init(worldPath, w, h, target, audioEngine, netMode, new MaterialTestGenerator());
 }
 
-void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode, WorldGenerator* generator) {
+void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode, WorldGenerator* generator) {
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
     this->worldName = worldPath;
     EASY_BLOCK("makedir");
     experimental::filesystem::create_directories(worldPath);
+    if(!noSaveLoad) experimental::filesystem::create_directories(worldPath + "/chunks");
     EASY_END_BLOCK;
 
     metadata = WorldMeta::loadWorldMeta(this->worldName);
@@ -52,6 +53,10 @@ void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CA
 
     EASY_BLOCK("make tickPool");
     tickPool = new ctpl::thread_pool(6);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("make loadChunkPool");
+    loadChunkPool = new ctpl::thread_pool(8);
     EASY_END_BLOCK;
 
     EASY_BLOCK("make tickVisitedPool");
@@ -1051,8 +1056,6 @@ void World::setTileLayer2(int x, int y, MaterialInstance type) {
 
 void World::tick() {
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
-
-    tickChunks();
 
     // TODO: what if we only check tiles that were marked as dirty last tick?
 
@@ -2517,8 +2520,12 @@ void World::tickObjects() {
         cur->rb->body->SetLinearVelocity({(float)(cur->vx * 1.0), (float)(cur->vy * 1.0)});
     }
 
+    EASY_BLOCK("Box2D step");
     b2world->Step(timeStep, velocityIterations, positionIterations);
+    EASY_END_BLOCK;
+    EASY_BLOCK("Box2D step");
     b2world->Step(timeStep, velocityIterations, positionIterations);
+    EASY_END_BLOCK;
 
     for(auto& cur : entities) {
         /*cur->x = cur->rb->body->GetPosition().x + 0.5 - cur->hw / 2 - loadZone.x;
@@ -2585,7 +2592,12 @@ void World::frame() {
         //fut.wait();
         //readyToMerge.push_back(fut.get());
         //std::vector<std::future<ChunkReadyToMerge>> readyToReadyToMerge;
-        readyToReadyToMerge.push_back(std::async(&World::loadChunk, this, getChunk(para.x, para.y), para.populate, true));
+
+        readyToReadyToMerge.push_back(loadChunkPool->push([&](int id) {
+            EASY_THREAD("loadChunk Thread");
+            return World::loadChunk(getChunk(para.x, para.y), para.populate, true);
+        }));
+        //readyToReadyToMerge.push_back(std::async(&World::loadChunk, this, getChunk(para.x, para.y), para.populate, true));
 
         //std::thread t(&World::loadChunk, this, para.x, para.y, para.populate);
         //t.join();
@@ -2678,13 +2690,11 @@ void World::tickChunkGeneration() {
 
                     if(c->generationPhase < p2.second->generationPhase) {
                         if(c->pleaseDelete) {
-                            delete c->biomes;
                             delete c;
                         }
                         goto nextChunk;
                     }
                     if(c->pleaseDelete) {
-                        delete c->biomes;
                         delete c;
                     }
                 }
@@ -2719,18 +2729,19 @@ void World::tickChunks() {
             EASY_BLOCK("iterate");
             bool revX = changeX > 0;
             bool revY = changeY > 0;
-            for(int x = (revX ? (width - 1) : 0); (revX ? -1 : x) < (revX ? x : width); x += (revX ? -1 : 1)) {
-                for(int y = (revY ? (height - 1) : 0); (revY ? -1 : y) < (revY ? y : height); y += (revY ? -1 : 1)) {
-                    int newX = x + changeX;
-                    int newY = y + changeY;
-                    if(newX >= 0 && newY >= 0 && newX < width && newY < height) {
-                        tiles[newX + newY * width] = tiles[x + y * width];
-                        background[newX + newY * width] = background[x + y * width];
-                        layer2[newX + newY * width] = layer2[x + y * width];
-                        //dirty[newX + newY * width] = true;
+
+            for(int y = 0; y < height; y++) {
+                int oldY = (revY ? (height - y - 1) : y);
+                int newY = oldY + changeY;
+                if(newY < 0 || newY >= height) continue;
+                for(int x = 0; x < width; x++) {
+                    int oldX = (revX ? (width - x - 1) : x);
+                    int newX = oldX + changeX;
+                    if(newX >= 0 && newX < width) {
+                        tiles[newX + newY * width] = tiles[oldX + oldY * width];
+                        background[newX + newY * width] = background[oldX + oldY * width];
+                        layer2[newX + newY * width] = layer2[oldX + oldY * width];
                     }
-                    //newTiles[x + y * width] = Tiles::NOTHING;
-                    //dirty[x + y * width] = true;
                 }
             }
             EASY_END_BLOCK;
@@ -2754,6 +2765,7 @@ void World::tickChunks() {
                             int cy = floor(y / (float)CHUNK_H);
                             int cx = ceil((-(loadZone.x - changeX + i)) / (float)CHUNK_W);
                             //unloadChunk(cx, cy);
+                            chunkSaveCache(getChunk(cx, cy));
                         }
                     }
                 }
@@ -2776,6 +2788,7 @@ void World::tickChunks() {
                             int cy = floor(y / (float)CHUNK_H);
                             int cx = floor((-(loadZone.x - changeX - i) + tickZone.w) / (float)CHUNK_W) + 1;
                             //unloadChunk(cx, cy);
+                            chunkSaveCache(getChunk(cx, cy));
                         }
                     }
                 }
@@ -2793,6 +2806,17 @@ void World::tickChunks() {
                         }
                     }
                 }
+
+                for(int i = 0; i < abs(changeY); i++) {
+                    if(((loadZone.y - changeY - i - 1) + loadZone.h) % CHUNK_H == 0) {
+                        for(int x = -loadZone.x + tickZone.x; x <= -loadZone.x + tickZone.w + CHUNK_W; x += CHUNK_W) {
+                            int cx = floor(x / (float)CHUNK_W);
+                            int cy = ceil((-(loadZone.y - changeY + i)) / (float)CHUNK_H);
+                            //unloadChunk(cx, cy);
+                            chunkSaveCache(getChunk(cx, cy));
+                        }
+                    }
+                }
             } else if(changeY > 0) {
                 for(int i = 0; i < abs(changeY); i++) {
                     if(((loadZone.y - changeY + i) + loadZone.h) % CHUNK_H == 0) {
@@ -2802,6 +2826,17 @@ void World::tickChunks() {
                             for(int yy = 0; yy <= 4; yy++) {
                                 queueLoadChunk(cx, cy - yy, true, yy == 0 && x >= -loadZone.x + tickZone.x && x <= -loadZone.x + tickZone.w + CHUNK_W);
                             }
+                        }
+                    }
+                }
+
+                for(int i = 0; i < abs(changeY); i++) {
+                    if(((loadZone.y - changeY + i + 1) + loadZone.h) % CHUNK_H == 0) {
+                        for(int x = -loadZone.x + tickZone.x; x <= -loadZone.x + tickZone.w + CHUNK_W; x += CHUNK_W) {
+                            int cx = floor(x / (float)CHUNK_W);
+                            int cy = floor((-(loadZone.y - changeY - i) + tickZone.h) / (float)CHUNK_H) + 1;
+                            //unloadChunk(cx, cy);
+                            chunkSaveCache(getChunk(cx, cy));
                         }
                     }
                 }
@@ -2869,9 +2904,9 @@ void World::queueLoadChunk(int cx, int cy, bool populate, bool render) {
         }
         EASY_END_BLOCK;
 
-        loadChunk(ch, populate, render);
+        //loadChunk(ch, populate, render);
 
-        EASY_BLOCK("postload");
+        /*EASY_BLOCK("postload");
         readyToMerge.push_back(ch);
         if(!chunkCache.count(ch->x)) {
             chunkCache[ch->x] = google::dense_hash_map<int, Chunk*>();
@@ -2880,7 +2915,12 @@ void World::queueLoadChunk(int cx, int cy, bool populate, bool render) {
         }
         chunkCache[ch->x][ch->y] = ch;
         needToTickGeneration = true;
-        EASY_END_BLOCK;
+        EASY_END_BLOCK;*/
+
+        readyToReadyToMerge.push_back(loadChunkPool->push([&, ch](int id) {
+            EASY_THREAD("loadChunk Thread");
+            return World::loadChunk(ch, populate, render);
+        }));
 
         //readyToReadyToMerge.push_back(std::async(&World::loadChunk, this, ch, populate, render));
     }
@@ -2912,14 +2952,14 @@ Chunk* World::loadChunk(Chunk* ch, bool populate, bool render) {
 
     if(ch->hasTileCache) {
         //prop = ch->tiles;
-    } else if(ch->hasFile()) {
+    } else if(ch->hasFile() && !noSaveLoad) {
         ch->read();
     } else {
         generateChunk(ch);
         ch->generationPhase = 0;
         ch->hasTileCache = true;
         populateChunk(ch, 0, false);
-        ch->write(ch->tiles, ch->layer2, ch->background);
+        if(!noSaveLoad) ch->write(ch->tiles, ch->layer2, ch->background);
     }
 
     //if (populate) {
@@ -2987,14 +3027,33 @@ void World::unloadChunk(Chunk* ch) {
     //	}
     //}
     //ch->write(data, layer2);
+
+    chunkSaveCache(ch);
+    if(!noSaveLoad) writeChunkToDisk(ch);
+
     chunkCache[ch->x].erase(ch->y);
-    delete ch->tiles;
-    delete ch->layer2;
-    delete ch->background;
     delete ch;
     /*delete data;
     delete layer2;*/
     //delete data;
+}
+
+void World::writeChunkToDisk(Chunk* ch) {
+    ch->write(ch->tiles, ch->layer2, ch->background);
+}
+
+void World::chunkSaveCache(Chunk* ch) {
+    for (int x = 0; x < CHUNK_W; x++) {
+    	for (int y = 0; y < CHUNK_H; y++) {
+    		int tx = ch->x * CHUNK_W + loadZone.x + x;
+    		int ty = ch->y * CHUNK_H + loadZone.y + y;
+    		if (tx < 0 || tx >= width || ty < 0 || ty >= height) continue;
+            if(tiles[tx + ty * width] == Tiles::TEST_SOLID) continue;
+    		ch->tiles[x + y * CHUNK_W] = tiles[tx + ty * width];
+    		ch->layer2[x + y * CHUNK_W] = layer2[tx + ty * width];
+    		ch->background[x + y * CHUNK_W] = background[tx + ty * width];
+    	}
+    }
 }
 
 void World::generateChunk(Chunk* ch) {
@@ -3061,7 +3120,7 @@ void World::addStructure(PlacedStructure str) {
         for(int y = 0; y < str.base.h; y++) {
             int dx = x + loadZone.x + str.x;
             int dy = y + loadZone.y + str.y;
-            Chunk ch(floor(dx / CHUNK_W), floor(dy / CHUNK_H), worldName);
+            Chunk ch(floor(dx / CHUNK_W), floor(dy / CHUNK_H), (char*)worldName.c_str());
             //if(ch.e)
             if(dx >= 0 && dy >= 0 && dx < width && dy < height) {
                 tiles[dx + dy * width] = str.base.tiles[x + y * str.base.w];
@@ -3118,7 +3177,7 @@ Chunk* World::getChunk(int cx, int cy) {
     /*for (int i = 0; i < chunkCache.size(); i++) {
         if (chunkCache[i]->x == cx && chunkCache[i]->y == cy) return chunkCache[i];
     }*/
-    Chunk* c = new Chunk(cx, cy, worldName);
+    Chunk* c = new Chunk(cx, cy, (char*)worldName.c_str());
     c->generationPhase = -1;
     c->pleaseDelete = true;
     c->biomes = new Biome*[CHUNK_W * CHUNK_H];
@@ -3127,6 +3186,8 @@ Chunk* World::getChunk(int cx, int cy) {
 }
 
 void World::populateChunk(Chunk* ch, int phase, bool render) {
+    EASY_FUNCTION(WORLD_PROFILER_COLOR);
+
     bool has = hasPopulator[phase];
     if(!hasPopulator[phase]) return;
 
@@ -3137,7 +3198,7 @@ void World::populateChunk(Chunk* ch, int phase, bool render) {
     int aw = 1 + (phase * 2);
     int ah = 1 + (phase * 2);
 
-    Chunk* chs = new Chunk[aw * ah];
+    Chunk** chs = new Chunk*[aw * ah];
     bool* dirtyChunk = new bool[aw * ah]();
 
     if(phase == 1) {
@@ -3146,14 +3207,14 @@ void World::populateChunk(Chunk* ch, int phase, bool render) {
 
     for(int cx = ax; cx < ax + aw; cx++) {
         for(int cy = ay; cy < ay + ah; cy++) {
-            chs[(cx - ax) + (cy - ay) * aw] = *getChunk(cx, cy);
+            chs[(cx - ax) + (cy - ay) * aw] = getChunk(cx, cy);
             dirtyChunk[(cx - ax) + (cy - ay) * aw] = false;
         }
     }
 
     for(int i = 0; i < populators.size(); i++) {
         if(populators[i]->getPhase() == phase) {
-            std::vector<PlacedStructure> strs = populators[i]->apply(ch->tiles, ch->layer2, chs, dirtyChunk, ax * CHUNK_W, ay * CHUNK_H, aw * CHUNK_W, ah * CHUNK_H, *ch, this);
+            std::vector<PlacedStructure> strs = populators[i]->apply(ch->tiles, ch->layer2, chs, dirtyChunk, ax * CHUNK_W, ay * CHUNK_H, aw * CHUNK_W, ah * CHUNK_H, ch, this);
             for(int j = 0; j < strs.size(); j++) {
                 for(int tx = 0; tx < strs[j].base.w; tx++) {
                     for(int ty = 0; ty < strs[j].base.h; ty++) {
@@ -3162,7 +3223,7 @@ void World::populateChunk(Chunk* ch, int phase, bool render) {
                         int dxx = (CHUNK_W + ((tx + strs[j].x) % CHUNK_W)) % CHUNK_W;
                         int dyy = (CHUNK_H + ((ty + strs[j].y) % CHUNK_H)) % CHUNK_H;
                         if(strs[j].base.tiles[tx + ty * strs[j].base.w].mat->physicsType != PhysicsType::AIR) {
-                            chs[chx + chy * aw].tiles[dxx + dyy * CHUNK_W] = strs[j].base.tiles[tx + ty * strs[j].base.w];
+                            chs[chx + chy * aw]->tiles[dxx + dyy * CHUNK_W] = strs[j].base.tiles[tx + ty * strs[j].base.w];
                             dirtyChunk[chx + chy * aw] = true;
                         }
                     }
@@ -3175,15 +3236,15 @@ void World::populateChunk(Chunk* ch, int phase, bool render) {
         for(int y = 0; y < ah; y++) {
             if(dirtyChunk[x + y * aw]) {
                 if(x != aw / 2 && y != ah / 2) {
-                    chs[x + y * aw].write(chs[x + y * aw].tiles, chs[x + y * aw].layer2, chs[x + y * aw].background);
+                    chs[x + y * aw]->write(chs[x + y * aw]->tiles, chs[x + y * aw]->layer2, chs[x + y * aw]->background);
                     if(render) {
                         for(int i = 0; i < readyToMerge.size(); i++) {
-                            if(readyToMerge[i] == &chs[x + y * aw]) {
+                            if(readyToMerge[i] == chs[x + y * aw]) {
                                 readyToMerge.erase(readyToMerge.begin() + i);
                                 i--;
                             }
                         }
-                        readyToMerge.push_back(&chs[x + y * aw]);
+                        readyToMerge.push_back(chs[x + y * aw]);
                     }
                 }
             }
@@ -3542,7 +3603,7 @@ RigidBody* World::physicsCheck(int x, int y) {
             /*delete visited;
             delete cols;*/
 
-            //audioEngine.PlayEvent("event:/Impact");
+            //audioEngine.PlayEvent("event:/Player/Impact");
             b2PolygonShape s;
             s.SetAsBox(1, 1);
             RigidBody* rb = makeRigidBody(b2_dynamicBody, (float)minX, (float)minY, 0, s, 1, (float)0.3, tex);
@@ -3604,14 +3665,14 @@ void World::physicsCheck_flood(int x, int y, bool* visited, int* count, uint32* 
     }
 }
 
-WorldMeta WorldMeta::loadWorldMeta(char* worldFileName) {
+WorldMeta WorldMeta::loadWorldMeta(std::string worldFileName) {
 
     WorldMeta meta = WorldMeta();
 
     rapidjson::Document document;
 
     char* metaFile = new char[255];
-    snprintf(metaFile, 255, "%s/world.json", worldFileName);
+    snprintf(metaFile, 255, "%s/world.json", worldFileName.c_str());
 
     FILE* fp = fopen(metaFile, "rb"); // non-Windows use "r"
 
@@ -3672,9 +3733,9 @@ bool WorldMeta::save(std::string worldFileName) {
 World::~World() {
 
     //delete worldName;
-    delete tiles;
-    delete layer2;
-    delete background;
+    delete[] tiles;
+    delete[] layer2;
+    delete[] background;
 
     for(auto& v : particles) {
         delete v;
@@ -3684,16 +3745,24 @@ World::~World() {
     tickPool->stop(false);
     delete tickPool;
 
+    loadChunkPool->stop(false);
+    delete loadChunkPool;
+
+    tickVisitedPool->stop(false);
+    delete tickVisitedPool;
+
     updateRigidBodyHitboxPool->stop(false);
     delete updateRigidBodyHitboxPool;
 
-    delete newTemps;
+    delete[] newTemps;
 
-    delete dirty;
-    delete active;
-    delete lastActive;
-    delete layer2Dirty;
-    delete backgroundDirty;
+    delete[] dirty;
+    delete[] layer2Dirty;
+    delete[] backgroundDirty;
+    delete[] lastActive;
+    delete[] active;
+    delete[] tickVisited1;
+    delete[] tickVisited2;
 
     delete b2world;
 
@@ -3740,7 +3809,7 @@ World::~World() {
     }
     populators.clear();
 
-    delete hasPopulator;
+    delete[] hasPopulator;
 
     for(auto& v : entities) {
         delete v;

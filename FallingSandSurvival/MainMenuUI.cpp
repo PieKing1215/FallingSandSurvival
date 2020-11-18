@@ -1,5 +1,7 @@
 #include "UIs.hpp"
 
+#include "DiscordIntegration.hpp"
+
 #define timegm _mkgmtime
 
 #define BUILD_WITH_EASY_PROFILER
@@ -63,6 +65,8 @@ void MainMenuUI::Draw(Game* game) {
         DrawSingleplayer(game);
     } else if(state == 3) {
         DrawMultiplayer(game);
+    } else if(state == 4) {
+        DrawOptions(game);
     }
 	
 }
@@ -80,7 +84,7 @@ void MainMenuUI::DrawMainMenu(Game* game) {
     }
 
     ImGui::SetNextWindowSize(ImVec2(400, 300));
-    ImGui::SetNextWindowPos(ImVec2(game->WIDTH / 2 - 200, game->HEIGHT / 2 - 250), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(game->WIDTH / 2 - 400/2, game->HEIGHT / 2 - 300/2), ImGuiCond_FirstUseEver);
     if(!ImGui::Begin("Main Menu", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
         ImGui::End();
         return;
@@ -103,7 +107,7 @@ void MainMenuUI::DrawMainMenu(Game* game) {
     ImVec2 selPos = ImGui::GetCursorPos();
     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    if(ImGui::Button(" ", ImVec2(mainMenuButtonsWidth, 36))) {
+    if(ImGui::Button("##singleplayer", ImVec2(mainMenuButtonsWidth, 36))) {
         state = 2;
     }
     ImGui::PopStyleVar();
@@ -118,7 +122,7 @@ void MainMenuUI::DrawMainMenu(Game* game) {
     selPos = ImGui::GetCursorPos();
     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    if(ImGui::Button("  ", ImVec2(mainMenuButtonsWidth, 36))) {
+    if(ImGui::Button("##multiplayer", ImVec2(mainMenuButtonsWidth, 36))) {
         state = 2;
     }
     ImGui::PopStyleVar();
@@ -126,28 +130,27 @@ void MainMenuUI::DrawMainMenu(Game* game) {
     ImGui::Text("Multiplayer");
     ImGui::PopFont();
 
+    ImGui::PopItemFlag();
+    ImGui::PopStyleVar();
 
     ImGui::SetCursorPos(ImVec2(200 - mainMenuButtonsWidth / 2, 25 + mainMenuButtonsYOffset * 3));
     selPos = ImGui::GetCursorPos();
     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    if(ImGui::Button("   ", ImVec2(mainMenuButtonsWidth, 36))) {
-        state = 2;
+    if(ImGui::Button("##options", ImVec2(mainMenuButtonsWidth, 36))) {
+        state = 4;
     }
     ImGui::PopStyleVar();
     ImGui::SetCursorPos(ImVec2(selPos.x + mainMenuButtonsWidth / 2 - ImGui::CalcTextSize("Options").x / 2, selPos.y));
     ImGui::Text("Options");
     ImGui::PopFont();
 
-    ImGui::PopItemFlag();
-    ImGui::PopStyleVar();
-
 
     ImGui::SetCursorPos(ImVec2(200 - mainMenuButtonsWidth / 2, 25 + mainMenuButtonsYOffset * 4));
     selPos = ImGui::GetCursorPos();
     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    if(ImGui::Button("    ", ImVec2(mainMenuButtonsWidth, 36))) {
+    if(ImGui::Button("##quit", ImVec2(mainMenuButtonsWidth, 36))) {
         game->running = false;
     }
     ImGui::PopStyleVar();
@@ -185,7 +188,7 @@ void MainMenuUI::DrawSingleplayer(Game* game) {
     ImVec2 selPos = ImGui::GetCursorPos();
     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    if(ImGui::Button(" ", ImVec2(mainMenuNewButtonWidth, 36))) {
+    if(ImGui::Button("##newworld", ImVec2(mainMenuNewButtonWidth, 36))) {
         state = 1;
         CreateWorldUI::Reset(game);
     }
@@ -229,7 +232,7 @@ void MainMenuUI::DrawSingleplayer(Game* game) {
                 //std::thread loadWorldThread([&] () {
                 EASY_BLOCK("Load world");
                 World* w = new World();
-                w->init((char*)game->gameDir.getWorldPath(worldName).c_str(), (int)ceil(game->WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(game->HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, game->target, &game->audioEngine, game->networkMode);
+                w->init(game->gameDir.getWorldPath(worldName), (int)ceil(Game::MAX_WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(Game::MAX_HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, game->target, &game->audioEngine, game->networkMode);
 
                 EASY_BLOCK("Queue chunk loading");
                 logInfo("Queueing chunk loading...");
@@ -247,6 +250,10 @@ void MainMenuUI::DrawSingleplayer(Game* game) {
                 game->fadeInStart = game->now;
                 game->fadeInLength = 250;
                 game->fadeInWaitFrames = 4;
+
+                DiscordIntegration::setStart(Time::millis());
+                DiscordIntegration::setActivityState("Playing Singleplayer");
+                DiscordIntegration::flushActivity();
             };
         }
         ImGui::PopStyleVar();
@@ -288,7 +295,7 @@ void MainMenuUI::DrawSingleplayer(Game* game) {
     selPos = ImGui::GetCursorPos();
     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    if(ImGui::Button("  ", ImVec2(150, 36))) {
+    if(ImGui::Button("##back", ImVec2(150, 36))) {
         state = 0;
     }
     ImGui::PopStyleVar();
@@ -345,7 +352,7 @@ void MainMenuUI::DrawMultiplayer(Game* game) {
 }
 
 void MainMenuUI::DrawCreateWorld(Game* game) {
-    ImGui::SetNextWindowSize(ImVec2(400, 350));
+    ImGui::SetNextWindowSize(ImVec2(400, 360));
     if(!ImGui::Begin("Main Menu", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
         ImGui::End();
         return;
@@ -355,3 +362,19 @@ void MainMenuUI::DrawCreateWorld(Game* game) {
 
     ImGui::End();
 }
+
+void MainMenuUI::DrawOptions(Game* game) {
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.11f, 0.11f, 0.11f, 0.9f));
+    ImGui::SetNextWindowSize(ImVec2(400, 400));
+    if(!ImGui::Begin("Main Menu", NULL, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
+        ImGui::End();
+        ImGui::PopStyleColor();
+        return;
+    }
+
+    OptionsUI::Draw(game);
+
+    ImGui::End();
+    ImGui::PopStyleColor();
+}
+

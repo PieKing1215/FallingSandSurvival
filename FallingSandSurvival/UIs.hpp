@@ -66,6 +66,26 @@ public:
 
 	static void DrawCreateWorld(Game* game);
 
+	static void DrawOptions(Game* game);
+
+};
+
+class IngameUI {
+public:
+	static bool visible;
+
+	static int state;
+
+	static bool setup;
+
+	static void Setup();
+
+	static void Draw(Game* game);
+
+	static void DrawIngame(Game* game);
+
+	static void DrawOptions(Game* game);
+
 };
 
 class CreateWorldUI {
@@ -88,4 +108,20 @@ public:
 	static void Draw(Game* game);
 
 	static void inputChanged(std::string text, Game* game);
+};
+
+class OptionsUI {
+
+	static std::map<std::string, FMOD::Studio::Bus*> busMap;
+
+public:
+	static int item_current_idx;
+	static bool vsync;
+	static bool minimizeOnFocus;
+
+	static void Draw(Game* game);
+	static void DrawGeneral(Game* game);
+	static void DrawVideo(Game* game);
+	static void DrawAudio(Game* game);
+	static void DrawInput(Game* game);
 };

@@ -10,6 +10,8 @@ int main(int argc, char *argv[]) {
     options.add_options()
         ("h,help", "Print this help message")
         ("game-dir", "Set game directory", cxxopts::value<std::string>()->default_value("gamedir/"))
+        ("display-mode", "Set display mode (\"windowed\", \"borderless\", \"fullscreen\")", cxxopts::value<std::string>()->default_value("windowed"))
+        ("vsync", "Enable VSync")
         ("server", "Run as dedicated server")
         ("debug", "Open debug UIs by default")
         ;

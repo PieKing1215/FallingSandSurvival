@@ -27,6 +27,8 @@ Control* Controls::PLAYER_LEFT  = add(new KeyControl(SDLK_a, MOMENTARY));
 Control* Controls::PLAYER_DOWN  = add(new KeyControl(SDLK_s, MOMENTARY));
 Control* Controls::PLAYER_RIGHT = add(new KeyControl(SDLK_d, MOMENTARY));
 
+Control* Controls::PAUSE = add(new KeyControl(SDLK_ESCAPE, RISING));
+
 bool Controls::lmouse = false;
 bool Controls::mmouse = false;
 bool Controls::rmouse = false;

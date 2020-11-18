@@ -65,6 +65,9 @@
     <Filter Include="Source Files\vfx\gui">
       <UniqueIdentifier>{a5293a6a-99a5-4881-99c0-026613ebb5b6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\integration">
+      <UniqueIdentifier>{8b084989-8b81-418b-92ce-6e6304ec84f6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -255,6 +258,15 @@
     </ClCompile>
     <ClCompile Include="GameDir.cpp">
       <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="OptionsUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="DiscordIntegration.cpp">
+      <Filter>Source Files\integration</Filter>
+    </ClCompile>
+    <ClCompile Include="IngameUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -471,6 +483,12 @@
     </ClInclude>
     <ClInclude Include="CLArgs.hpp">
       <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="DiscordIntegration.hpp">
+      <Filter>Source Files\integration</Filter>
+    </ClInclude>
+    <ClInclude Include="DiscordUtils.hpp">
+      <Filter>Source Files\integration</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
