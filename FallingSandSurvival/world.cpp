@@ -1064,7 +1064,7 @@ void World::tick() {
     #ifdef DO_MULTITHREADING
     bool whichTickVisited = false;
     EASY_BLOCK("memset");
-    memset(tickVisited1, false, width * height);
+    memset(tickVisited1, false, (size_t)width * height);
     EASY_END_BLOCK;
     #endif
 
@@ -1085,7 +1085,7 @@ void World::tick() {
             std::future<void> tickVisitedDone = tickVisitedPool->push([&](int id) {
                 EASY_THREAD("memset tickVisited");
                 EASY_BLOCK("memset");
-                memset(whichTickVisited ? tickVisited1 : tickVisited2, false, width * height);
+                memset(whichTickVisited ? tickVisited1 : tickVisited2, false, (size_t)width * height);
                 EASY_END_BLOCK;
             });
             #else
@@ -2192,47 +2192,47 @@ n += factor;\
 }
 
             if(tiles[(x + -1) + (y + -1) * width].temperature) {
-                factor = abs(tiles[(x + -1) + (y + -1) * width].temperature) / 64 * tiles[(x + -1) + (y + -1) * width].mat->conductionOther;
+                factor = abs(tiles[(x + -1) + (y + -1) * width].temperature) / 64.0f * tiles[(x + -1) + (y + -1) * width].mat->conductionOther;
                 v += tiles[(x + -1) + (y + -1) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + -1) + (y + 0) * width].temperature) {
-                factor = abs(tiles[(x + -1) + (y + 0) * width].temperature) / 64 * tiles[(x + -1) + (y + 0) * width].mat->conductionOther;
+                factor = abs(tiles[(x + -1) + (y + 0) * width].temperature) / 64.0f * tiles[(x + -1) + (y + 0) * width].mat->conductionOther;
                 v += tiles[(x + -1) + (y + 0) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + -1) + (y + 1) * width].temperature) {
-                factor = abs(tiles[(x + -1) + (y + 1) * width].temperature) / 64 * tiles[(x + -1) + (y + 1) * width].mat->conductionOther;
+                factor = abs(tiles[(x + -1) + (y + 1) * width].temperature) / 64.0f * tiles[(x + -1) + (y + 1) * width].mat->conductionOther;
                 v += tiles[(x + -1) + (y + 1) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + 0) + (y + -1) * width].temperature) {
-                factor = abs(tiles[(x + 0) + (y + -1) * width].temperature) / 64 * tiles[(x + 0) + (y + -1) * width].mat->conductionOther;
+                factor = abs(tiles[(x + 0) + (y + -1) * width].temperature) / 64.0f * tiles[(x + 0) + (y + -1) * width].mat->conductionOther;
                 v += tiles[(x + 0) + (y + -1) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + 0) + (y + 0) * width].temperature) {
-                factor = abs(tiles[(x + 0) + (y + 0) * width].temperature) / 64 * tiles[(x + 0) + (y + 0) * width].mat->conductionOther;
+                factor = abs(tiles[(x + 0) + (y + 0) * width].temperature) / 64.0f * tiles[(x + 0) + (y + 0) * width].mat->conductionOther;
                 v += tiles[(x + 0) + (y + 0) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + 0) + (y + 1) * width].temperature) {
-                factor = abs(tiles[(x + 0) + (y + 1) * width].temperature) / 64 * tiles[(x + 0) + (y + 1) * width].mat->conductionOther;
+                factor = abs(tiles[(x + 0) + (y + 1) * width].temperature) / 64.0f * tiles[(x + 0) + (y + 1) * width].mat->conductionOther;
                 v += tiles[(x + 0) + (y + 1) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + 1) + (y + -1) * width].temperature) {
-                factor = abs(tiles[(x + 1) + (y + -1) * width].temperature) / 64 * tiles[(x + 1) + (y + -1) * width].mat->conductionOther;
+                factor = abs(tiles[(x + 1) + (y + -1) * width].temperature) / 64.0f * tiles[(x + 1) + (y + -1) * width].mat->conductionOther;
                 v += tiles[(x + 1) + (y + -1) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + 1) + (y + 0) * width].temperature) {
-                factor = abs(tiles[(x + 1) + (y + 0) * width].temperature) / 64 * tiles[(x + 1) + (y + 0) * width].mat->conductionOther;
+                factor = abs(tiles[(x + 1) + (y + 0) * width].temperature) / 64.0f * tiles[(x + 1) + (y + 0) * width].mat->conductionOther;
                 v += tiles[(x + 1) + (y + 0) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + 1) + (y + 1) * width].temperature) {
-                factor = abs(tiles[(x + 1) + (y + 1) * width].temperature) / 64 * tiles[(x + 1) + (y + 1) * width].mat->conductionOther;
+                factor = abs(tiles[(x + 1) + (y + 1) * width].temperature) / 64.0f * tiles[(x + 1) + (y + 1) * width].mat->conductionOther;
                 v += tiles[(x + 1) + (y + 1) * width].temperature * factor;
                 n += factor;
             }
@@ -3563,14 +3563,14 @@ RigidBody* World::physicsCheck(int x, int y) {
     static bool* visited = new bool[width * height];
     EASY_END_BLOCK;
     EASY_BLOCK("memset");
-    memset(visited, false, width * height);
+    memset(visited, false, (size_t)width * height);
     EASY_END_BLOCK;
 
     EASY_BLOCK("alloc");
     static uint32* cols = new uint32[width * height];
     EASY_END_BLOCK;
     EASY_BLOCK("memset");
-    memset(cols, 0x00, width * height * sizeof(uint32)); // init to all 0s
+    memset(cols, 0x00, (size_t)width * height * sizeof(uint32)); // init to all 0s
     EASY_END_BLOCK;
 
     int count = 0;
@@ -3592,7 +3592,7 @@ RigidBody* World::physicsCheck(int x, int y) {
             for(int yy = minY; yy <= maxY; yy++) {
                 for(int xx = minX; xx <= maxX; xx++) {
                     if(visited[xx + yy * width]) {
-                        PIXEL(tex, xx - minX, yy - minY) = cols[xx + yy * width];
+                        PIXEL(tex, (unsigned long long)(xx) - minX, yy - minY) = cols[xx + yy * width];
                         tiles[xx + yy * width] = Tiles::NOTHING;
                         dirty[xx + yy * width] = true;
                     }

@@ -979,8 +979,8 @@ void Game::handleWindowSizeChange(int newWidth, int newHeight) {
     EASY_END_BLOCK;
     #pragma endregion
 
-    accLoadX -= (newWidth - prevWidth) / 2 / scale;
-    accLoadY -= (newHeight - prevHeight) / 2 / scale;
+    accLoadX -= (newWidth - prevWidth) / 2.0f / scale;
+    accLoadY -= (newHeight - prevHeight) / 2.0f / scale;
 
     tickChunkLoading();
 
@@ -1067,8 +1067,8 @@ int Game::run(int argc, char *argv[]) {
     EASY_BLOCK("start game loop");
     logInfo("Starting game loop...");
 
-    freeCamX = world->width / 2 - CHUNK_W / 2;
-    freeCamY = world->height / 2 - (int)(CHUNK_H * 0.75);
+    freeCamX = world->width / 2.0f - CHUNK_W / 2;
+    freeCamY = world->height / 2.0f - (int)(CHUNK_H * 0.75);
     if(world->player) {
         plPosX = world->player->x;
         plPosY = world->player->y;
@@ -1387,8 +1387,8 @@ int Game::run(int argc, char *argv[]) {
                                 #pragma region
                                 float breakSize = world->player->heldItem->breakSize;
 
-                                int x = (int)(world->player->x + world->player->hw / 2 + world->loadZone.x + 10 * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
-                                int y = (int)(world->player->y + world->player->hh / 2 + world->loadZone.y + 10 * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
+                                int x = (int)(world->player->x + world->player->hw / 2.0f + world->loadZone.x + 10 * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
+                                int y = (int)(world->player->y + world->player->hh / 2.0f + world->loadZone.y + 10 * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
 
                                 SDL_Surface* tex = SDL_CreateRGBSurfaceWithFormat(0, (int)breakSize, (int)breakSize, 32, SDL_PIXELFORMAT_ARGB8888);
 
@@ -1476,7 +1476,7 @@ int Game::run(int argc, char *argv[]) {
                                         }
 
                                         int nTilesChanged = 0;
-                                        for(int i = 0; i < points.size(); i++) {
+                                        for(size_t i = 0; i < points.size(); i++) {
                                             int segSx = i == 0 ? world->player->hammerX : std::get<0>(points[i - 1]);
                                             int segSy = i == 0 ? world->player->hammerY : std::get<1>(points[i - 1]);
                                             int segEx = std::get<0>(points[i]);
@@ -2069,23 +2069,23 @@ void Game::updateFrameEarly() {
 
     if(Controls::DEBUG_TOGGLE_PLAYER->get()) {
         if(world->player) {
-            freeCamX = world->player->x + world->player->hw / 2;
-            freeCamY = world->player->y - world->player->hh / 2;
+            freeCamX = world->player->x + world->player->hw / 2.0f;
+            freeCamY = world->player->y - world->player->hh / 2.0f;
             world->entities.erase(std::remove(world->entities.begin(), world->entities.end(), world->player), world->entities.end());
             world->b2world->DestroyBody(world->player->rb->body);
             delete world->player;
             world->player = nullptr;
         } else {
             Player* e = new Player();
-            e->x = -world->loadZone.x + world->tickZone.x + world->tickZone.w/2;
-            e->y = -world->loadZone.y + world->tickZone.y + world->tickZone.h/2;
+            e->x = -world->loadZone.x + world->tickZone.x + world->tickZone.w/2.0f;
+            e->y = -world->loadZone.y + world->tickZone.y + world->tickZone.h/2.0f;
             e->vx = 0;
             e->vy = 0;
             e->hw = 10;
             e->hh = 20;
             b2PolygonShape sh;
-            sh.SetAsBox(e->hw / 2 + 1, e->hh / 2);
-            e->rb = world->makeRigidBody(b2BodyType::b2_kinematicBody, e->x + e->hw / 2 - 0.5, e->y + e->hh / 2 - 0.5, 0, sh, 1, 1, NULL);
+            sh.SetAsBox(e->hw / 2.0f + 1, e->hh / 2.0f);
+            e->rb = world->makeRigidBody(b2BodyType::b2_kinematicBody, e->x + e->hw / 2.0f - 0.5, e->y + e->hh / 2.0f - 0.5, 0, sh, 1, 1, NULL);
             e->rb->body->SetGravityScale(0);
             e->rb->body->SetLinearDamping(0);
             e->rb->body->SetAngularDamping(0);
@@ -2133,8 +2133,8 @@ void Game::updateFrameEarly() {
             if(Controls::lmouse && world->player->heldItem->carry.size() > 0) {
                 // shoot fluid from container
                 #pragma region
-                int x = (int)(world->player->x + world->player->hw / 2 + world->loadZone.x + 10 * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f));
-                int y = (int)(world->player->y + world->player->hh / 2 + world->loadZone.y + 10 * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f));
+                int x = (int)(world->player->x + world->player->hw / 2.0f + world->loadZone.x + 10 * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f));
+                int y = (int)(world->player->y + world->player->hh / 2.0f + world->loadZone.y + 10 * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f));
 
                 MaterialInstance mat = world->player->heldItem->carry[world->player->heldItem->carry.size() - 1];
                 world->player->heldItem->carry.pop_back();
@@ -2155,8 +2155,8 @@ void Game::updateFrameEarly() {
                 #pragma region
                 float breakSize = world->player->heldItem->breakSize;
 
-                int x = (int)(world->player->x + world->player->hw / 2 + world->loadZone.x + 10 * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
-                int y = (int)(world->player->y + world->player->hh / 2 + world->loadZone.y + 10 * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
+                int x = (int)(world->player->x + world->player->hw / 2.0f + world->loadZone.x + 10 * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
+                int y = (int)(world->player->y + world->player->hh / 2.0f + world->loadZone.y + 10 * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
 
                 int n = 0;
                 for(int xx = 0; xx < breakSize; xx++) {
@@ -2309,7 +2309,7 @@ void Game::tick() {
         // render objects
         #pragma region
         EASY_BLOCK("memset objectDelete");
-        memset(objectDelete, false, world->width * world->height * sizeof(bool));
+        memset(objectDelete, false, (size_t)world->width * world->height * sizeof(bool));
         EASY_END_BLOCK;
 
         EASY_BLOCK("render rigidbodies");
@@ -2492,7 +2492,7 @@ void Game::tick() {
             //SDL_SetRenderTarget(renderer, textureParticles);
             void* particlePixels = pixelsParticles_ar;
             EASY_BLOCK("memset");
-            memset(particlePixels, 0, world->width * world->height * 4);
+            memset(particlePixels, 0, (size_t)world->width * world->height * 4);
             EASY_END_BLOCK; // memset
             world->renderParticles((unsigned char**)&particlePixels);
             world->tickParticles();
@@ -2757,9 +2757,9 @@ void Game::tick() {
         EASY_END_BLOCK; // GPU_UpdateImageBytes
 
         EASY_BLOCK("dirty memset");
-        if(hadDirty)		   memset(world->dirty, false, world->width * world->height);
-        if(hadLayer2Dirty)	   memset(world->layer2Dirty, false, world->width * world->height);
-        if(hadBackgroundDirty) memset(world->backgroundDirty, false, world->width * world->height);
+        if(hadDirty)		   memset(world->dirty, false, (size_t)world->width * world->height);
+        if(hadLayer2Dirty)	   memset(world->layer2Dirty, false, (size_t)world->width * world->height);
+        if(hadBackgroundDirty) memset(world->backgroundDirty, false, (size_t)world->width * world->height);
         EASY_END_BLOCK;
 
         EASY_END_BLOCK; // post World::tick
@@ -2896,9 +2896,9 @@ void Game::tickChunkLoading() {
         #pragma endregion
 
         EASY_BLOCK("memset");
-        memset(world->dirty, false, world->width * world->height);
-        memset(world->layer2Dirty, false, world->width * world->height);
-        memset(world->backgroundDirty, false, world->width * world->height);
+        memset(world->dirty, false, (size_t)world->width * world->height);
+        memset(world->layer2Dirty, false, (size_t)world->width * world->height);
+        memset(world->backgroundDirty, false, (size_t)world->width * world->height);
         EASY_END_BLOCK;
 
         EASY_BLOCK("loop");
@@ -3089,8 +3089,8 @@ void Game::tickPlayer() {
             if(world->player->heldItem->getFlag(ItemFlags::VACUUM)) {
                 if(world->player->holdVacuum) {
 
-                    int wcx = (int)((WIDTH / 2 - ofsX - camX) / scale);
-                    int wcy = (int)((HEIGHT / 2 - ofsY - camY) / scale);
+                    int wcx = (int)((WIDTH / 2.0f - ofsX - camX) / scale);
+                    int wcy = (int)((HEIGHT / 2.0f - ofsY - camY) / scale);
 
                     int wmx = (int)((mx - ofsX - camX) / scale);
                     int wmy = (int)((my - ofsY - camY) / scale);
@@ -3142,7 +3142,7 @@ void Game::tickPlayer() {
                             world->player->heldItem->vacuumParticles.push_back(par);
 
                             par->killCallback = [&]() {
-                                auto v = world->player->heldItem->vacuumParticles;
+                                auto& v = world->player->heldItem->vacuumParticles;
                                 v.erase(std::remove(v.begin(), v.end(), par), v.end());
                             };
 
@@ -3197,7 +3197,7 @@ void Game::tickPlayer() {
                                             world->player->heldItem->vacuumParticles.push_back(cur);
 
                                             cur->killCallback = [&]() {
-                                                auto v = world->player->heldItem->vacuumParticles;
+                                                auto& v = world->player->heldItem->vacuumParticles;
                                                 v.erase(std::remove(v.begin(), v.end(), cur), v.end());
                                             };
 
@@ -3260,8 +3260,8 @@ void Game::tickPlayer() {
 
                         if(cur->lifetime <= 0) {
                             cur->targetForce = 0.45f;
-                            cur->targetX = world->player->x + world->player->hw / 2 + world->loadZone.x;
-                            cur->targetY = world->player->y + world->player->hh / 2 + world->loadZone.y;
+                            cur->targetX = world->player->x + world->player->hw / 2.0f + world->loadZone.x;
+                            cur->targetY = world->player->y + world->player->hh / 2.0f + world->loadZone.y;
                             cur->ax = 0;
                             cur->ay = 0.01f;
                         }
@@ -3319,8 +3319,8 @@ void Game::updateFrameLate() {
             plPosX = (float)(plPosX + (freeCamX - plPosX) / 50.0f);
             plPosY = (float)(plPosY + (freeCamY - plPosY) / 50.0f);
 
-            nofsX = (int)(-(plPosX + 0 + world->loadZone.x) * scale + WIDTH / 2);
-            nofsY = (int)(-(plPosY + 0 + world->loadZone.y) * scale + HEIGHT / 2);
+            nofsX = (int)(-(plPosX + 0 + world->loadZone.x) * scale + WIDTH / 2.0f);
+            nofsY = (int)(-(plPosY + 0 + world->loadZone.y) * scale + HEIGHT / 2.0f);
         }
 
         accLoadX += (nofsX - ofsX) / (float)scale;
@@ -3470,13 +3470,13 @@ void Game::renderEarly() {
         if(Controls::mmouse) {
             int x = (int)((mx - ofsX - camX) / scale);
             int y = (int)((my - ofsY - camY) / scale);
-            GPU_RectangleFilled(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2, y - DebugDrawUI::brushSize / 2, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)), y + (int)(ceil(DebugDrawUI::brushSize / 2.0)), {0xff, 0x40, 0x40, 0x90});
-            GPU_Rectangle(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2, y - DebugDrawUI::brushSize / 2, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, y + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, {0xff, 0x40, 0x40, 0xE0});
+            GPU_RectangleFilled(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2.0f, y - DebugDrawUI::brushSize / 2.0f, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)), y + (int)(ceil(DebugDrawUI::brushSize / 2.0)), {0xff, 0x40, 0x40, 0x90});
+            GPU_Rectangle(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2.0f, y - DebugDrawUI::brushSize / 2.0f, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, y + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, {0xff, 0x40, 0x40, 0xE0});
         }else if(Controls::DEBUG_DRAW->get()) {
             int x = (int)((mx - ofsX - camX) / scale);
             int y = (int)((my - ofsY - camY) / scale);
-            GPU_RectangleFilled(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2, y - DebugDrawUI::brushSize / 2, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)), y + (int)(ceil(DebugDrawUI::brushSize / 2.0)), {0x00, 0xff, 0xB0, 0x80});
-            GPU_Rectangle(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2, y - DebugDrawUI::brushSize / 2, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, y + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, {0x00, 0xff, 0xB0, 0xE0});
+            GPU_RectangleFilled(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2.0f, y - DebugDrawUI::brushSize / 2.0f, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)), y + (int)(ceil(DebugDrawUI::brushSize / 2.0)), {0x00, 0xff, 0xB0, 0x80});
+            GPU_Rectangle(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2.0f, y - DebugDrawUI::brushSize / 2.0f, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, y + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, {0x00, 0xff, 0xB0, 0xE0});
         }
 
     }
@@ -3512,9 +3512,9 @@ void Game::renderLate() {
             for(size_t i = 0; i < bg.layers.size(); i++) {
                 BackgroundLayer cur = bg.layers[i];
 
-                SDL_Surface* texture = cur.surface[scale - 1];
+                SDL_Surface* texture = cur.surface[(size_t)scale - 1];
 
-                GPU_Image* tex = cur.texture[scale - 1];
+                GPU_Image* tex = cur.texture[(size_t)scale - 1];
                 GPU_SetBlendMode(tex, GPU_BLEND_NORMAL);
 
                 int tw = texture->w;
@@ -3528,8 +3528,8 @@ void Game::renderLate() {
                     src->w = tw;
                     src->h = th;
 
-                    dst->x = (((ofsX + camX) + world->loadZone.x*scale) + n * tw / cur.parralaxX) * cur.parralaxX + world->width / 2 * scale - tw / 2;
-                    dst->y = ((ofsY + camY) + world->loadZone.y*scale) * cur.parralaxY + world->height / 2 * scale - th / 2 - HEIGHT / 3 * (scale - 1);
+                    dst->x = (((ofsX + camX) + world->loadZone.x*scale) + n * tw / cur.parralaxX) * cur.parralaxX + world->width / 2.0f * scale - tw / 2.0f;
+                    dst->y = ((ofsY + camY) + world->loadZone.y*scale) * cur.parralaxY + world->height / 2.0f * scale - th / 2.0f - HEIGHT / 3.0f * (scale - 1);
                     dst->w = (float)tw;
                     dst->h = (float)th;
 
@@ -3643,8 +3643,8 @@ void Game::renderLate() {
             float lightTy;
 
             if(world->player) {
-                lightTx = (world->loadZone.x + world->player->x + world->player->hw / 2) / (float)world->width;
-                lightTy = (world->loadZone.y + world->player->y + world->player->hh / 2) / (float)world->height;
+                lightTx = (world->loadZone.x + world->player->x + world->player->hw / 2.0f) / (float)world->width;
+                lightTy = (world->loadZone.y + world->player->y + world->player->hh / 2.0f) / (float)world->height;
             } else {
                 lightTx = lmsx / (float)world->width;
                 lightTy = lmsy / (float)world->height;
@@ -4212,11 +4212,11 @@ int Game::getAimSurface(int dist) {
     float udx = dcx / len;
     float udy = dcy / len;
 
-    int mmx = WIDTH / 2 + udx * dist;
-    int mmy = HEIGHT / 2 + udy * dist;
+    int mmx = WIDTH / 2.0f + udx * dist;
+    int mmy = HEIGHT / 2.0f + udy * dist;
 
-    int wcx = (int)((WIDTH / 2 - ofsX - camX) / scale);
-    int wcy = (int)((HEIGHT / 2 - ofsY - camY) / scale);
+    int wcx = (int)((WIDTH / 2.0f - ofsX - camX) / scale);
+    int wcy = (int)((HEIGHT / 2.0f - ofsY - camY) / scale);
 
     int wmx = (int)((mmx - ofsX - camX) / scale);
     int wmy = (int)((mmy - ofsY - camY) / scale);
@@ -4340,11 +4340,11 @@ int Game::getAimSolidSurface(int dist) {
     float udx = dcx / len;
     float udy = dcy / len;
 
-    int mmx = WIDTH / 2 + udx * dist;
-    int mmy = HEIGHT / 2 + udy * dist;
+    int mmx = WIDTH / 2.0f + udx * dist;
+    int mmy = HEIGHT / 2.0f + udy * dist;
 
-    int wcx = (int)((WIDTH / 2 - ofsX - camX) / scale);
-    int wcy = (int)((HEIGHT / 2 - ofsY - camY) / scale);
+    int wcx = (int)((WIDTH / 2.0f - ofsX - camX) / scale);
+    int wcy = (int)((HEIGHT / 2.0f - ofsY - camY) / scale);
 
     int wmx = (int)((mmx - ofsX - camX) / scale);
     int wmy = (int)((mmy - ofsY - camY) / scale);

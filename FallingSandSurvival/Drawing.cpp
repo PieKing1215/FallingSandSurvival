@@ -28,7 +28,7 @@ void Drawing::drawText(GPU_Target* target, const char* string,
         EASY_END_BLOCK;
         //SDL_BlitSurface(textSurface, NULL, screen, &textLocation);
         GPU_Rect Message_rect;
-        Message_rect.x = x + 1 - align * textSurface->w / 2;
+        Message_rect.x = x + 1 - align * textSurface->w / 2.0f;
         Message_rect.y = y + 1;
         Message_rect.w = textSurface->w;
         Message_rect.h = textSurface->h;
@@ -52,7 +52,7 @@ void Drawing::drawText(GPU_Target* target, const char* string,
         EASY_END_BLOCK;
         //SDL_BlitSurface(textSurface, NULL, screen, &textLocation);
         GPU_Rect Message_rect;
-        Message_rect.x = x - align * textSurface->w / 2;
+        Message_rect.x = x - align * textSurface->w / 2.0f;
         Message_rect.y = y;
         Message_rect.w = textSurface->w;
         Message_rect.h = textSurface->h;
@@ -87,7 +87,7 @@ void Drawing::drawTextBG(GPU_Target* target, const char* string,
 
     {
         GPU_Rect Message_rect;
-        Message_rect.x = x + 1 - align * textSurface2->w / 2 - 3;
+        Message_rect.x = x + 1 - align * textSurface2->w / 2.0f - 3;
         Message_rect.y = y + 1;
         Message_rect.w = textSurface2->w + 5;
         Message_rect.h = textSurface2->h;
@@ -106,7 +106,7 @@ void Drawing::drawTextBG(GPU_Target* target, const char* string,
         EASY_END_BLOCK;
         //SDL_BlitSurface(textSurface, NULL, screen, &textLocation);
         GPU_Rect Message_rect;
-        Message_rect.x = x + 1 - align * textSurface->w / 2;
+        Message_rect.x = x + 1 - align * textSurface->w / 2.0f;
         Message_rect.y = y + 1;
         Message_rect.w = textSurface->w;
         Message_rect.h = textSurface->h;
@@ -128,7 +128,7 @@ void Drawing::drawTextBG(GPU_Target* target, const char* string,
         EASY_END_BLOCK;
         //SDL_BlitSurface(textSurface, NULL, screen, &textLocation);
         GPU_Rect Message_rect;
-        Message_rect.x = x - align * textSurface2->w / 2;
+        Message_rect.x = x - align * textSurface2->w / 2.0f;
         Message_rect.y = y;
         Message_rect.w = textSurface2->w;
         Message_rect.h = textSurface2->h;
@@ -198,7 +198,7 @@ void Drawing::drawText(GPU_Target* target, DrawTextParams pm, int x, int y, bool
 
     if(shadow) {
         EASY_BLOCK("GPU_Blit", GPU_PROFILER_COLOR);
-        GPU_Blit(pm.t1, NULL, target, x + 1 - align * pm.w / 2 + pm.w / 2, y + 1 + pm.h / 2);
+        GPU_Blit(pm.t1, NULL, target, x + 1 - align * pm.w / 2.0f + pm.w / 2.0f, y + 1 + pm.h / 2.0f);
         EASY_END_BLOCK;
 
         //SDL_FreeSurface(textSurface);
@@ -207,7 +207,7 @@ void Drawing::drawText(GPU_Target* target, DrawTextParams pm, int x, int y, bool
 
     {
         EASY_BLOCK("GPU_Blit", GPU_PROFILER_COLOR);
-        GPU_Blit(pm.t2, NULL, target, x - align * pm.w / 2 + pm.w / 2, y + pm.h / 2);
+        GPU_Blit(pm.t2, NULL, target, x - align * pm.w / 2.0f + pm.w / 2.0f, y + pm.h / 2.0f);
         EASY_END_BLOCK;
 
         //SDL_FreeSurface(textSurface);

@@ -95,15 +95,23 @@ void Chunk::read() {
 
         int src_size;
         myfile.read((char*)&src_size, sizeof(int));
+
+        if(src_size != CHUNK_W * CHUNK_H * 2 * sizeof(MaterialInstanceData)) throw std::runtime_error("Chunk src_size was different from expected: " + std::to_string(src_size) + " vs " + std::to_string(CHUNK_W * CHUNK_H * 2 * sizeof(MaterialInstanceData)));
+
         int compressed_size;
         myfile.read((char*)&compressed_size, sizeof(int));
 
         int src_size2;
         myfile.read((char*)&src_size2, sizeof(int));
+
+        if(src_size2 != CHUNK_W * CHUNK_H * 2 * sizeof(MaterialInstanceData)) throw std::runtime_error("Chunk src_size2 was different from expected: " + std::to_string(src_size2) + " vs " + std::to_string(CHUNK_W * CHUNK_H * sizeof(unsigned int)));
+
         int compressed_size2;
         myfile.read((char*)&compressed_size2, sizeof(int));
 
         MaterialInstanceData* readBuf = (MaterialInstanceData*)malloc(src_size);
+
+        if(readBuf == NULL) throw std::runtime_error("Failed to allocate memory for Chunk readBuf.");
 
         char* compressed_data = (char*)malloc(compressed_size);
 
@@ -226,7 +234,9 @@ void Chunk::write(MaterialInstance* tiles, MaterialInstance* layer2, Uint32* bac
         logDebug("Compression ratio: {}", (float)compressed_data_size / src_size * 100);
     }*/
 
-    compressed_data = (char*)realloc(compressed_data, (size_t)compressed_data_size);
+    char* n_compressed_data = (char*)realloc(compressed_data, (size_t)compressed_data_size);
+    if(n_compressed_data == NULL) throw std::runtime_error("Failed to realloc memory for Chunk::write compressed_data.");
+    compressed_data = n_compressed_data;
 
     // bg compress
 
@@ -248,7 +258,9 @@ void Chunk::write(MaterialInstance* tiles, MaterialInstance* layer2, Uint32* bac
         logDebug("Compression ratio: {}", (float)compressed_data_size2 / src_size2 * 100);
     }*/
 
-    compressed_data2 = (char*)realloc(compressed_data2, (size_t)compressed_data_size2);
+    char* n_compressed_data2 = (char*)realloc(compressed_data2, (size_t)compressed_data_size2);
+    if(n_compressed_data2 == NULL) throw std::runtime_error("Failed to realloc memory for Chunk::write compressed_data2.");
+    compressed_data2 = n_compressed_data2;
 
     ofstream myfile;
     myfile.open(fname, std::ios::binary);
