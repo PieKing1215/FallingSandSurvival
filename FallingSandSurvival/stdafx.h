@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef __cplusplus
 #define DEVELOPMENT_BUILD
 #define ALPHA_BUILD
 
@@ -95,3 +96,4 @@
 #define logWarn SPDLOG_WARN
 #define logError SPDLOG_ERROR
 #define logCritical SPDLOG_CRITICAL
+#endif

@@ -46,7 +46,9 @@ bool DiscordIntegration::init() {
         });
         EASY_END_BLOCK;
 
+        #if BUILD_WITH_STEAM
         core->ActivityManager().RegisterSteam(STEAM_APPID);
+        #endif
 
         fullActivity.GetAssets().SetLargeImage("largeicon");
         fullActivity.GetAssets().SetLargeText("Falling Sand Survival");
