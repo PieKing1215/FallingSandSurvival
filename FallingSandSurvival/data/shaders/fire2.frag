@@ -1,5 +1,7 @@
 // Fragment
+#ifdef GL_ES
 precision mediump float;
+#endif
 
 float intensity=1.0;// light transmition coeficient <0,1>
 const int txrsiz=1200;     // max texture size [pixels]

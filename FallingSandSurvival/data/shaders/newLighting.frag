@@ -1,5 +1,7 @@
 // Fragment
+#ifdef GL_ES
 precision mediump float;
+#endif
 
 uniform bool simpleOnly = false;
 uniform bool emission = true;
