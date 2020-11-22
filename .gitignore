@@ -32,8 +32,6 @@
 # CMake
 /build/*
 /build/
-/CMake/*
-/CMake/
 /out/*
 /out/
 
