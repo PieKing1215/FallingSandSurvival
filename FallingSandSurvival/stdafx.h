@@ -27,7 +27,11 @@
 #include <vector>
 #include <deque>
 #include <iterator>
-#include <filesystem>
+#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
+#include <experimental/filesystem>
+namespace std {
+    namespace filesystem = experimental::filesystem;
+}
 #include <regex> 
 #include <memory>
 

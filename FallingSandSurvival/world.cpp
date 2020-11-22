@@ -19,7 +19,6 @@
 #include "Populators.cpp"
 #include "DefaultGenerator.cpp"
 #include "MaterialTestGenerator.cpp"
-#include <filesystem>
 
 #undef min
 #undef max
@@ -42,8 +41,8 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
     this->worldName = worldPath;
     EASY_BLOCK("makedir");
-    experimental::filesystem::create_directories(worldPath);
-    if(!noSaveLoad) experimental::filesystem::create_directories(worldPath + "/chunks");
+    filesystem::create_directories(worldPath);
+    if(!noSaveLoad) filesystem::create_directories(worldPath + "/chunks");
     EASY_END_BLOCK;
 
     metadata = WorldMeta::loadWorldMeta(this->worldName);
@@ -530,7 +529,8 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     for(auto it = result2.begin(); it != result2.end(); it++) {
         std::list<TPPLPoly> result;
         EASY_BLOCK("Triangulate_EC");
-        part2.Triangulate_EC(&(std::list<TPPLPoly>{ *it }), &result);
+        std::list<TPPLPoly> l = { *it };
+        part2.Triangulate_EC(&l, &result);
         EASY_END_BLOCK;
 
         /*bool* solid = new bool[10 * 10];

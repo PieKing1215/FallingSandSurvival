@@ -281,8 +281,8 @@ include(${CMAKE_BINARY_DIR}/conan.cmake)
 
 
 conan_cmake_run(CONANFILE conanfile.txt  # or relative build/conanfile.txt
-                BASIC_SETUP
-                BUILD missing)
+                BASIC_SETUP 
+                BUILD missing SETTINGS compiler.toolset=v141)
                 
 message("=================================")
 message("=================================")
@@ -301,6 +301,7 @@ message(STATUS "Conan: Loading ${_CONANBUILDINFOFOLDER}/${_CONANBUILDINFO}")
 #link_directories(${CONAN_LIB_DIRS_RELEASE})
 
 add_executable(${PROJECT_NAME} ${ALL_FILES})
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_14)
 
 target_precompile_headers(${PROJECT_NAME} PUBLIC "stdafx.h")
 

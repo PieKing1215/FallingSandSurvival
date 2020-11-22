@@ -11,8 +11,6 @@
 
 #include <lz4.h>
 
-using namespace std;
-
 std::vector<std::string> split(std::string strToSplit, char delimeter);
 std::vector<std::string> string_split(std::string s, const char delimiter);
 std::vector<std::string>

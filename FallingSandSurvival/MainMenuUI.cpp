@@ -30,7 +30,7 @@ void MainMenuUI::RefreshWorlds(Game* game) {
 
 	worlds = {};
 
-	for(auto& p : experimental::filesystem::directory_iterator(game->gameDir.getPath("worlds/"))) {
+	for(auto& p : filesystem::directory_iterator(game->gameDir.getPath("worlds/"))) {
 		string worldName = p.path().filename().generic_string();
 
 		WorldMeta meta = WorldMeta::loadWorldMeta((char*)game->gameDir.getWorldPath(worldName).c_str());
