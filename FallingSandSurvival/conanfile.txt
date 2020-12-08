@@ -1,7 +1,7 @@
 [requires]
 zlib/1.2.11
 libpng/1.6.37
-sdl2/2.0.12@bincrafters/stable
+sdl2/2.0.9@bincrafters/stable
 sdl2_ttf/2.0.15@bincrafters/stable
 sdl2_image/2.0.5@bincrafters/stable
 sdl_gpu/20201002@sdl_gpu/20201002
