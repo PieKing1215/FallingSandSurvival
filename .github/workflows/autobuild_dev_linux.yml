@@ -30,9 +30,9 @@ jobs:
           sudo pip install conan
         shell: bash
 
-      - name: Change Conan home
-        run: echo "CONAN_USER_HOME=D:/a/FallingSandSurvival/" >> $GITHUB_ENV
-        shell: bash
+#      - name: Change Conan home
+#        run: echo "CONAN_USER_HOME=D:/a/FallingSandSurvival/" >> $GITHUB_ENV
+#        shell: bash
 
       - name: Print Conan home
         run: conan config home
