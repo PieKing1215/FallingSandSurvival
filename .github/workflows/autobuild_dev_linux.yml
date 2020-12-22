@@ -69,20 +69,21 @@ jobs:
         run: |
           cd build
           echo $PWD
-          cmake --build . --config Release
+          cmake --build . --config Release -- -j4
           cd ./FallingSandSurvival
           echo $PWD
           mkdir Build
           cp -r ../../FallingSandSurvival/assets/ Build/assets/
           cp -r ../../FallingSandSurvival/data/ Build/data/
           cp -r ../../FallingSandSurvival/gamedir/ Build/gamedir/
+          cp ./FallingSandSurvival Build/FallingSandSurvival
         shell: bash
         
 #      - name: Collect Artifact
 #        run: Compress-Archive -Path '.\Build' -DestinationPath '.\FallingSandSurvival_x64.zip'
 #        shell: powershell
       
-      - name: Compress FallingSandSurvival.exe with UPX
+      - name: Compress binary with UPX
         uses: svenstaro/upx-action@2.0.1
         with:
           file: build/FallingSandSurvival/Build/FallingSandSurvival
