@@ -61,11 +61,13 @@ jobs:
         run: |
           mkdir build
           cd build
+          echo $PWD
           cmake ..
         shell: bash
         
       - name: Build Binary
         run: |
+          echo $PWD
           cmake --build . --config Release
           cd FallingSandSurvival
           mkdir Build
