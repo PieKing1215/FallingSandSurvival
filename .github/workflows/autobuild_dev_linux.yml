@@ -25,7 +25,9 @@ jobs:
       - uses: actions/checkout@v2
         
       - name: Install Conan
-        run: pip install conan
+        run: |
+          pip install wheel
+          pip install conan
         shell: bash
 
       - name: Change Conan home
