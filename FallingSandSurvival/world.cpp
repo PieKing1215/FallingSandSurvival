@@ -60,41 +60,50 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     height = h;
 
     EASY_BLOCK("make tickPool");
+    logDebug("make tickPool");
     tickPool = new ctpl::thread_pool(6);
     EASY_END_BLOCK;
 
     EASY_BLOCK("make loadChunkPool");
+    logDebug("make loadChunkPool");
     loadChunkPool = new ctpl::thread_pool(8);
     EASY_END_BLOCK;
 
     EASY_BLOCK("make tickVisitedPool");
+    logDebug("make tickVisitedPool");
     tickVisitedPool = new ctpl::thread_pool(1);
     EASY_END_BLOCK;
 
     EASY_BLOCK("make updateRigidBodyHitboxPool");
+    logDebug("make updateRigidBodyHitboxPool");
     updateRigidBodyHitboxPool = new ctpl::thread_pool(8);
     EASY_END_BLOCK;
 
     if(netMode != NetworkMode::SERVER) {
         EASY_BLOCK("audio load Explode event");
+        logDebug("audio load Explode event");
         this->audioEngine = audioEngine;
         audioEngine->LoadEvent("event:/Explode");
         EASY_END_BLOCK;
     }
 
     EASY_BLOCK("create newTemp array");
+    logDebug("create newTemp array");
     newTemps = new int32_t[width * height];
     EASY_END_BLOCK;
 
     EASY_BLOCK("init generator");
+    logDebug("init generator");
     gen = generator;
     EASY_END_BLOCK;
 
     EASY_BLOCK("init populators");
+    logDebug("init populators");
     populators = gen->getPopulators();
     EASY_END_BLOCK;
 
     EASY_BLOCK("init hasPopulator");
+    logDebug("init hasPopulator");
     hasPopulator = new bool[6];
     for(int i = 0; i < 6; i++) hasPopulator[i] = false;
     for(int i = 0; i < populators.size(); i++) {
@@ -107,6 +116,7 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     loadZone = {0, 0, w, h};
 
     EASY_BLOCK("init noise");
+    logDebug("init noise");
     noise.SetSeed((unsigned int)Time::millis());
     noise.SetNoiseType(FastNoise::Perlin);
 
@@ -114,6 +124,7 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     EASY_END_BLOCK;
 
     EASY_BLOCK("init chunkCache");
+    logDebug("init chunkCache");
     auto ha = google::dense_hash_map<int, google::dense_hash_map<int, Chunk*>>();
     ha.set_deleted_key(INT_MAX);
     ha.set_empty_key(INT_MIN);
@@ -121,6 +132,7 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     EASY_END_BLOCK;
 
     EASY_BLOCK("init distributedPoints");
+    logDebug("init distributedPoints");
     float distributedPointsDistance = 0.05f;
     for(int i = 0; i < (1 / distributedPointsDistance) * (1 / distributedPointsDistance); i++) {
         float x = rand() % 1000 / 1000.0;
@@ -142,6 +154,7 @@ tooClose: {}
     rigidBodies.reserve(1);
 
     EASY_BLOCK("init dirty/active/visited arrays");
+    logDebug("init dirty/active/visited arrays");
     dirty = new bool[width * height];
     layer2Dirty = new bool[width * height];
     backgroundDirty = new bool[width * height];
@@ -161,6 +174,7 @@ tooClose: {}
     EASY_END_BLOCK;
 
     EASY_BLOCK("init layer arrays");
+    logDebug("init layer arrays");
     tiles = new MaterialInstance[w * h];
     layer2 = new MaterialInstance[w * h];
     background = new Uint32[w * h];
@@ -175,6 +189,7 @@ tooClose: {}
     EASY_END_BLOCK;
 
     EASY_BLOCK("init box2d");
+    logDebug("init box2d");
     gravity = b2Vec2(0, 20);
     b2world = new b2World(gravity);
     EASY_END_BLOCK;
@@ -182,6 +197,7 @@ tooClose: {}
     entities = {};
 
     EASY_BLOCK("init world mesh");
+    logDebug("init world mesh");
     b2PolygonShape nothingShape;
     nothingShape.SetAsBox(0, 0);
     this->staticBody = makeRigidBody(b2_staticBody, 0, 0, 0, nothingShape, 0, 0, Textures::cloud);
@@ -190,6 +206,7 @@ tooClose: {}
     EASY_END_BLOCK;
 
     EASY_BLOCK("add test object");
+    logDebug("add test object");
     b2PolygonShape dynamicBox3;
     dynamicBox3.SetAsBox(10.0f, 2.0f, {10, -10}, 0);
     RigidBody* rb = makeRigidBody(b2_dynamicBody, 300, 300, 0, dynamicBox3, 1, .3, Textures::loadTexture("assets/objects/testObject3.png"));
