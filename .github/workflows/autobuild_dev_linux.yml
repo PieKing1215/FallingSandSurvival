@@ -69,7 +69,8 @@ jobs:
         run: |
           cd build
           echo $PWD
-          cmake --build . --config Release -- -j4
+          echo "$(nproc) cores available"
+          cmake --build . --config Release -- -j $(nproc)
           cd ./FallingSandSurvival
           echo $PWD
           mkdir Build
@@ -83,10 +84,10 @@ jobs:
 #        run: Compress-Archive -Path '.\Build' -DestinationPath '.\FallingSandSurvival_x64.zip'
 #        shell: powershell
       
-      - name: Compress binary with UPX
-        uses: svenstaro/upx-action@2.0.1
-        with:
-          file: build/FallingSandSurvival/Build/FallingSandSurvival
+#      - name: Compress binary with UPX
+#        uses: svenstaro/upx-action@2.0.1
+#        with:
+#          file: build/FallingSandSurvival/Build/FallingSandSurvival
         
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.0
