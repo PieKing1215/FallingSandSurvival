@@ -26,8 +26,8 @@ jobs:
         
       - name: Install Conan
         run: |
-          pip install wheel
-          pip install conan
+          sudo pip install wheel
+          sudo pip install conan
         shell: bash
 
       - name: Change Conan home
