@@ -50,7 +50,7 @@ jobs:
 #          restore-keys: ${{ runner.os }}-builder-${{ env.cache-name }}-
 
       - name: Run setup.sh
-        run: yes n | sh ./setup.sh || if [[ $? -eq 141 ]]; then true; else exit $?; fi
+        run: yes n | sh ./setup.sh
         shell: bash
 
       - name: Install system libs
