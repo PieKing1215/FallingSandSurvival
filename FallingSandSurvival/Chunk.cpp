@@ -101,8 +101,9 @@ void Chunk::read() {
 
         int src_size2;
         myfile.read((char*)&src_size2, sizeof(int));
+        int desSize = CHUNK_W * CHUNK_H * sizeof(unsigned int);
 
-        if(src_size2 != CHUNK_W * CHUNK_H * 2 * sizeof(MaterialInstanceData)) throw std::runtime_error("Chunk src_size2 was different from expected: " + std::to_string(src_size2) + " vs " + std::to_string(CHUNK_W * CHUNK_H * sizeof(unsigned int)));
+        if(src_size2 != desSize) throw std::runtime_error("Chunk src_size2 was different from expected: " + std::to_string(src_size2) + " vs " + std::to_string(desSize));
 
         int compressed_size2;
         myfile.read((char*)&compressed_size2, sizeof(int));

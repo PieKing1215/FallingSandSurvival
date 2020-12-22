@@ -272,6 +272,8 @@ if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
                   "${CMAKE_BINARY_DIR}/conan.cmake")
 endif()
 
+set(SPDLOG_FMT_EXTERNAL ON)
+
 message("=================================")
 message("=================================")
 message("= STARTING CONAN                =")
@@ -279,16 +281,24 @@ message("=================================")
 message("=================================")
 include(${CMAKE_BINARY_DIR}/conan.cmake)
 
-
-conan_cmake_run(CONANFILE conanfile.txt  # or relative build/conanfile.txt
+if(WINDOWS)
+conan_cmake_run(CONANFILE conanfile.txt
                 BASIC_SETUP 
                 BUILD missing SETTINGS compiler.toolset=v141)
+elseif(LINUX)
+conan_cmake_run(CONANFILE conanfile.txt
+                BASIC_SETUP 
+                BUILD missing)
+endif()
                 
 message("=================================")
 message("=================================")
 message("= CONAN DONE                    =")
 message("=================================")
 message("=================================")
+
+message("CONAN_INCLUDE_DIRS_DEBUG = ${CONAN_INCLUDE_DIRS_DEBUG}")
+include_directories(${CONAN_INCLUDE_DIRS_DEBUG})
 
 message(STATUS "Conan: Loading ${_CONANBUILDINFOFOLDER}/${_CONANBUILDINFO}")
 
@@ -302,6 +312,10 @@ message(STATUS "Conan: Loading ${_CONANBUILDINFOFOLDER}/${_CONANBUILDINFO}")
 
 add_executable(${PROJECT_NAME} ${ALL_FILES})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_14)
+set_source_files_properties("lib/FastNoiseSIMD/FastNoiseSIMD_sse2.cpp" PROPERTIES COMPILE_FLAGS -msse2)
+set_source_files_properties("lib/FastNoiseSIMD/FastNoiseSIMD_sse41.cpp" PROPERTIES COMPILE_FLAGS -msse4.1)
+set_source_files_properties("lib/FastNoiseSIMD/FastNoiseSIMD_avx2.cpp" PROPERTIES COMPILE_FLAGS -mavx2)
+set_source_files_properties("lib/FastNoiseSIMD/FastNoiseSIMD_avx512.cpp" PROPERTIES COMPILE_FLAGS -mavx512f)
 
 target_precompile_headers(${PROJECT_NAME} PUBLIC "stdafx.h")
 
@@ -386,6 +400,7 @@ endif()
 # Compile and link options
 ################################################################################
 if(MSVC)
+    message("########## MSVC")
     if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
         target_compile_options(${PROJECT_NAME} PRIVATE
             $<$<CONFIG:Debug>:
@@ -458,11 +473,40 @@ if(MSVC)
             /ignore:4099
         )
     endif()
+else()    
+    message("########## UNIX")
+    if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
+        message("########## x64")
+        target_compile_options(${PROJECT_NAME} PUBLIC -O2)
+    elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
+        message("########## x86")
+        target_compile_options(${PROJECT_NAME} PUBLIC -O2)
+    endif()
+    if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
+        target_link_options(${PROJECT_NAME} PRIVATE
+            $<$<CONFIG:Debug>:
+                -O0
+            >
+            $<$<CONFIG:Release>:
+                -O2
+            >
+        )
+    elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
+        target_link_options(${PROJECT_NAME} PRIVATE
+            $<$<CONFIG:Debug>:
+                -O0
+            >
+            $<$<CONFIG:Release>:
+                -O2
+            >
+        )
+    endif()
 endif()
 
 ################################################################################
 # Pre build events
 ################################################################################
+
 if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
     add_custom_command_if(
         TARGET ${PROJECT_NAME}
@@ -488,29 +532,46 @@ elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
           "
     )
 endif()
+
+
+message("1")
 
 ################################################################################
 # Dependencies
 ################################################################################
-if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
-    set(ADDITIONAL_LIBRARY_DEPENDENCIES
-        "fmodL_vc;"
-        "fmodstudioL_vc;"
-        "ws2_32;"
-        "winmm"
-    )
-elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
-    set(ADDITIONAL_LIBRARY_DEPENDENCIES
-        "fmodL_vc;"
-        "fmodstudioL_vc;"
-        "ws2_32;"
-        "winmm"
-    )
+message("CMAKE_VS_PLATFORM_NAME = ${CMAKE_VS_PLATFORM_NAME}")
+if(WINDOWS)
+    if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
+        set(ADDITIONAL_LIBRARY_DEPENDENCIES
+            "fmodL_vc;"
+            "fmodstudioL_vc;"
+            "ws2_32;"
+            "winmm"
+        )
+    elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
+        set(ADDITIONAL_LIBRARY_DEPENDENCIES
+            "fmodL_vc;"
+            "fmodstudioL_vc;"
+            "ws2_32;"
+            "winmm"
+        )
+    endif()
+
+elseif(LINUX)
+    target_link_libraries(${PROJECT_NAME} "libfmod.so")
+    target_link_libraries(${PROJECT_NAME} "libfmodL.so")
+    target_link_libraries(${PROJECT_NAME} "libfmodstudio.so")
+    target_link_libraries(${PROJECT_NAME} "libfmodstudioL.so")
+    
+    target_link_libraries(${PROJECT_NAME} stdc++fs)
 endif()
 
+message("2")
 conan_target_link_libraries(${PROJECT_NAME})
+message("3")
 target_link_libraries(${PROJECT_NAME} "${ADDITIONAL_LIBRARY_DEPENDENCIES}" )
 
+message("4")
 if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
     target_link_directories(${PROJECT_NAME} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x64;"
@@ -526,4 +587,5 @@ elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
         "${CMAKE_CURRENT_SOURCE_DIR}/lib/discord_game_sdk/lib/x86"
     )
 endif()
+message("5")
 

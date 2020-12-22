@@ -33,6 +33,11 @@
 
 #define W_PI 3.14159265358979323846
 
+template<typename R>
+bool is_ready(std::future<R> const& f){
+    return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+}
+
 void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode) {
     init(worldPath, w, h, target, audioEngine, netMode, new MaterialTestGenerator());
 }
@@ -2605,7 +2610,7 @@ void World::frame() {
     }
 
     for(int i = 0; i < readyToReadyToMerge.size(); i++) {
-        if(readyToReadyToMerge[i]._Is_ready()) {
+        if(is_ready(readyToReadyToMerge[i])) {
             Chunk* merge = readyToReadyToMerge[i].get();
 
             for(int j = 0; j < readyToMerge.size(); j++) {

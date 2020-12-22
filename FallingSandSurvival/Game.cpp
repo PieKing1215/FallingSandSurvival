@@ -31,7 +31,7 @@ void Game::updateMaterialSounds() {
 }
 
 int Game::init(int argc, char *argv[]) {
-    //EASY_PROFILER_ENABLE;
+    EASY_PROFILER_ENABLE;
     profiler::startListen();
     EASY_MAIN_THREAD;
     EASY_FUNCTION(GAME_PROFILER_COLOR);
@@ -41,16 +41,20 @@ int Game::init(int argc, char *argv[]) {
     // init console & print title
     #pragma region
     EASY_BLOCK("init console");
+    #ifdef _WIN32
     if(_setmode(_fileno(stdout), _O_WTEXT) == -1) {
         std::wcout << "Error initting console: " << std::strerror(errno) << std::endl;
     }
+    #endif
 
     EASY_BLOCK("print ascii title");
-    std::locale ulocale(locale(), new codecvt_utf8<wchar_t>);
-    std::wifstream ifs("assets/title.txt");
-    std::locale prevlocale = ifs.imbue(ulocale);
-    std::wcout << ifs.rdbuf() << std::endl;
+    //std::locale ulocale(locale(), new codecvt_utf8<wchar_t>);
+    //std::wifstream ifs("assets/title.txt");
+    //std::locale prevlocale = ifs.imbue(ulocale);
+    //std::wcout << ifs.rdbuf() << std::endl;
     EASY_END_BLOCK;
+    
+    std::cout << "starting" << std::endl;
 
     EASY_BLOCK("start spdlog");
     spdlog::set_level(spdlog::level::trace);
@@ -286,7 +290,8 @@ int Game::init(int argc, char *argv[]) {
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         ImGui::GetIO().Fonts->AddFontDefault();
-        ImGui::GetIO().Fonts->AddFontFromFileTTF("assets\\fonts\\pixel_operator\\PixelOperator.ttf", 32);
+        ImGui::GetIO().Fonts->AddFontDefault();
+        //ImGui::GetIO().Fonts->AddFontFromFileTTF("assets\\fonts\\pixel_operator\\PixelOperator.ttf", 32);
 
         ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
 
@@ -1804,7 +1809,11 @@ int Game::run(int argc, char *argv[]) {
         }
 
         if(Time::millis() - now < 2) {
+            #ifdef _WIN32
             Sleep(2 - (Time::millis() - now));
+            #else
+            sleep((2 - (Time::millis() - now))/1000.0f);
+            #endif
         }
 
         EASY_BLOCK("frameCounter");
@@ -1850,6 +1859,8 @@ int Game::run(int argc, char *argv[]) {
 exit:
     EASY_END_BLOCK; // frame??
 
+    logInfo("Shutting down...");
+
     std::vector<std::future<void>> results = {};
 
     for(auto& p : world->chunkCache) {
@@ -1891,6 +1902,8 @@ exit:
     #pragma endregion
 
     if(profiler::isEnabled()) {
+        logDebug("Dumping profile data");
+    
         // dump profiler data
         time_t rawtime;
         struct tm * timeinfo;
@@ -1901,6 +1914,7 @@ exit:
 
         strftime(buf, sizeof(buf), gameDir.getPath("profiler/%Y-%m-%d_%H-%M-%S.prof").c_str(), timeinfo);
         std::string str(buf);
+        logDebug("{}", str.c_str());
 
         profiler::dumpBlocksToFile(str.c_str());
         struct stat buffer;
@@ -1912,7 +1926,7 @@ exit:
             dst << src.rdbuf();
         }
     }
-
+    
     return EXIT_SUCCESS;
 }
 
@@ -2121,7 +2135,7 @@ void Game::updateFrameEarly() {
     #pragma endregion
 
     EASY_BLOCK("audioEngine.Update");
-    audioEngine.Update();
+    //audioEngine.Update();
     EASY_END_BLOCK;
 
     if(state == LOADING) {
@@ -3407,7 +3421,11 @@ void Game::renderEarly() {
 
             lastLoadingTick = now;
         } else {
+            #ifdef _WIN32
             Sleep(5);
+            #else
+            sleep(5/1000.0f);
+            #endif
         }
         GPU_ActivateShaderProgram(0, NULL);
         GPU_BlitRect(loadingTexture, NULL, target, NULL);
@@ -3698,20 +3716,22 @@ void Game::renderLate() {
 
         EASY_END_BLOCK; // draw world
 
-        GPU_Clear(texture2Fire->target);
-        EASY_BLOCK("fire shader 1");
-        fireShader->activate();
-        fireShader->update(textureFire);
-        GPU_BlitRect(textureFire, NULL, texture2Fire->target, NULL);
-        GPU_ActivateShaderProgram(0, NULL);
-        EASY_END_BLOCK;
+        if(Settings::draw_shaders) {
+            GPU_Clear(texture2Fire->target);
+            EASY_BLOCK("fire shader 1");
+            fireShader->activate();
+            fireShader->update(textureFire);
+            GPU_BlitRect(textureFire, NULL, texture2Fire->target, NULL);
+            GPU_ActivateShaderProgram(0, NULL);
+            EASY_END_BLOCK;
 
-        EASY_BLOCK("fire shader 2");
-        fire2Shader->activate();
-        fire2Shader->update(texture2Fire);
-        GPU_BlitRect(texture2Fire, NULL, target, &r1);
-        GPU_ActivateShaderProgram(0, NULL);
-        EASY_END_BLOCK;
+            EASY_BLOCK("fire shader 2");
+            fire2Shader->activate();
+            fire2Shader->update(texture2Fire);
+            GPU_BlitRect(texture2Fire, NULL, target, &r1);
+            GPU_ActivateShaderProgram(0, NULL);
+            EASY_END_BLOCK;
+        }
 
         // done light
 

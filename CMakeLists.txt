@@ -4,6 +4,14 @@ set(CMAKE_SYSTEM_VERSION 10.0.16299.0 CACHE STRING "" FORCE)
 
 project(FallingSandSurvival C CXX)
 
+if (CMAKE_HOST_WIN32)
+    message("Windows")
+    set(WINDOWS 1)
+elseif(CMAKE_HOST_UNIX)
+    message("Linux")
+    set(LINUX 1)
+endif()
+
 # Set target arch type if empty. Visual studio solution generator provides it.
 message("${CMAKE_VS_PLATFORM_NAME} architecture in use")
 if(NOT CMAKE_VS_PLATFORM_NAME)
