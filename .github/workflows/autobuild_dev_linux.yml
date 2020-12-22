@@ -62,7 +62,7 @@ jobs:
           mkdir build
           cd build
           echo $PWD
-          cmake ..
+          cmake -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ..
         shell: bash
         
       - name: Build Binary
