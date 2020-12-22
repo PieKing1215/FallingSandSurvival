@@ -563,6 +563,8 @@ elseif(LINUX)
     target_link_libraries(${PROJECT_NAME} "libfmodstudio.so")
     target_link_libraries(${PROJECT_NAME} "libfmodstudioL.so")
     
+    message("LINUX target_link_libraries")
+    
     target_link_libraries(${PROJECT_NAME} stdc++fs)
 endif()
 
