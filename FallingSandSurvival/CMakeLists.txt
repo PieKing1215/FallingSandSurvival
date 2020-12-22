@@ -562,8 +562,8 @@ elseif(LINUX)
     message("LINUX target_link_libraries")
     if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
         message("x64")
-        link_directories("${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x64");
-        link_directories("${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x64");
+        link_directories("${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x64")
+        link_directories("${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x64")
         target_link_libraries(${PROJECT_NAME} "libfmod")
         target_link_libraries(${PROJECT_NAME} "libfmodL")
         target_link_libraries(${PROJECT_NAME} "libfmodstudio")
