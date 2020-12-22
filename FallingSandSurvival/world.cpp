@@ -46,10 +46,14 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
     this->worldName = worldPath;
     EASY_BLOCK("makedir");
+    logDebug("w1");
     filesystem::create_directories(worldPath);
+    logDebug("w2");
     if(!noSaveLoad) filesystem::create_directories(worldPath + "/chunks");
+    logDebug("w3");
     EASY_END_BLOCK;
 
+    logDebug("w4");
     metadata = WorldMeta::loadWorldMeta(this->worldName);
 
     width = w;
@@ -194,6 +198,7 @@ tooClose: {}
     updateRigidBodyHitbox(rb);
     EASY_END_BLOCK;
 
+    logDebug("winit end");
 }
 
 RigidBody* World::makeRigidBody(b2BodyType type, float x, float y, float angle, b2PolygonShape shape, float density, float friction, SDL_Surface* texture) {

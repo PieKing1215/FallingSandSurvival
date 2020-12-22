@@ -461,8 +461,11 @@ int Game::init(int argc, char *argv[]) {
     EASY_BLOCK("init world");
     logInfo("Initializing world...");
     world = new World();
+    logDebug("a");
     world->noSaveLoad = true;
+    logDebug("b");
     world->init(gameDir.getWorldPath("mainMenu"), (int)ceil(MAX_WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(MAX_HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode);
+    logDebug("c");
     EASY_END_BLOCK;
     #pragma endregion
 
