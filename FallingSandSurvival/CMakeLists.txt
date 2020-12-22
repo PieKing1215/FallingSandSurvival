@@ -558,12 +558,22 @@ if(WINDOWS)
     endif()
 
 elseif(LINUX)
-    target_link_libraries(${PROJECT_NAME} "libfmod.so")
-    target_link_libraries(${PROJECT_NAME} "libfmodL.so")
-    target_link_libraries(${PROJECT_NAME} "libfmodstudio.so")
-    target_link_libraries(${PROJECT_NAME} "libfmodstudioL.so")
     
     message("LINUX target_link_libraries")
+    if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
+        message("x64")
+        target_link_libraries(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x64/libfmod.so")
+        target_link_libraries(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x64/libfmodL.so")
+        target_link_libraries(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x64/libfmodstudio.so")
+        target_link_libraries(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x64/libfmodstudioL.so")
+    elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
+        message("x86")
+        target_link_libraries(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x86/libfmod.so")
+        target_link_libraries(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x86/libfmodL.so")
+        target_link_libraries(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x86/libfmodstudio.so")
+        target_link_libraries(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x86/libfmodstudioL.so")
+    endif()
+    message("LINK_LIBRARIES = ${LINK_LIBRARIES}")
     
     target_link_libraries(${PROJECT_NAME} stdc++fs)
 endif()
@@ -571,20 +581,18 @@ endif()
 message("2")
 conan_target_link_libraries(${PROJECT_NAME})
 message("3")
-target_link_libraries(${PROJECT_NAME} "${ADDITIONAL_LIBRARY_DEPENDENCIES}" )
+if(WINDOWS)
+    target_link_libraries(${PROJECT_NAME} "${ADDITIONAL_LIBRARY_DEPENDENCIES}" )
+endif()
 
 message("4")
 if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
     target_link_directories(${PROJECT_NAME} PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x64;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x64;"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib/steam/redistributable_bin/win64;"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib/discord_game_sdk/lib/x86_64"
     )
 elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
     target_link_directories(${PROJECT_NAME} PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x86;"
-        "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x86;"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib/steam/redistributable_bin;"
         "${CMAKE_CURRENT_SOURCE_DIR}/lib/discord_game_sdk/lib/x86"
     )
