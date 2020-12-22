@@ -67,9 +67,11 @@ jobs:
         
       - name: Build Binary
         run: |
+          cd build
           echo $PWD
           cmake --build . --config Release
-          cd build/FallingSandSurvival
+          cd ./FallingSandSurvival
+          echo $PWD
           mkdir Build
           cp -r ../../FallingSandSurvival/assets/ Build/assets/
           cp -r ../../FallingSandSurvival/data/ Build/data/
