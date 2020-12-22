@@ -208,11 +208,18 @@ tooClose: {}
     EASY_BLOCK("add test object");
     logDebug("add test object");
     b2PolygonShape dynamicBox3;
+    logDebug("add test object 1");
     dynamicBox3.SetAsBox(10.0f, 2.0f, {10, -10}, 0);
-    RigidBody* rb = makeRigidBody(b2_dynamicBody, 300, 300, 0, dynamicBox3, 1, .3, Textures::loadTexture("assets/objects/testObject3.png"));
+    logDebug("add test object 2");
+    auto a = Textures::loadTexture("assets/objects/testObject3.png");
+    logDebug("add test object 3");
+    RigidBody* rb = makeRigidBody(b2_dynamicBody, 300, 300, 0, dynamicBox3, 1, .3, a);
+    logDebug("add test object 4");
 
     rigidBodies.push_back(rb);
+    logDebug("add test object 5");
     updateRigidBodyHitbox(rb);
+    logDebug("add test object 6");
     EASY_END_BLOCK;
 
     logDebug("winit end");

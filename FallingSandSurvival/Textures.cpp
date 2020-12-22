@@ -26,7 +26,11 @@ SDL_Surface* Textures::loadTexture(std::string path) {
 }
 
 SDL_Surface* Textures::loadTexture(std::string path, Uint32 pixelFormat) {
-    SDL_Surface* loadedSurface = SDL_ConvertSurfaceFormat(IMG_Load(path.c_str()), pixelFormat, 0);
+    logDebug("loading texture: {}", path);
+    auto a = IMG_Load(path.c_str());
+    logDebug("tex 1");
+    SDL_Surface* loadedSurface = SDL_ConvertSurfaceFormat(a, pixelFormat, 0);
+    logDebug("tex 2");
     if(loadedSurface == NULL) {
         logError("Unable to load image {}! SDL_image Error: {}\n", path.c_str(), IMG_GetError());
     }
