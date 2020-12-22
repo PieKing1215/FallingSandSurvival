@@ -54,7 +54,7 @@ jobs:
         shell: bash
 
       - name: Install system libs
-        run: sudo apt-get install -y libgl-dev xorg-dev libx11-xcb-dev libxcb-render0-dev libxcb-render-util0-dev libxcb-xkb-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-sync-dev libxcb-xfixes0-dev libxcb-xinerama0-dev libjack0 libjack-jackd2-dev
+        run: sudo apt-get install -y libgl-dev xorg-dev libx11-xcb-dev libxcb-render0-dev libxcb-render-util0-dev libxcb-xkb-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-sync-dev libxcb-xfixes0-dev libxcb-xinerama0-dev libjack-jackd2-0 libjack0 libjack-jackd2-dev
         shell: bash
         
       - name: Generate build files
