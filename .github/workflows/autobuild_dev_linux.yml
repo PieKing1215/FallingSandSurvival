@@ -85,13 +85,13 @@ jobs:
       - name: Compress FallingSandSurvival.exe with UPX
         uses: svenstaro/upx-action@2.0.1
         with:
-          file: ./Build/FallingSandSurvival
+          file: build/FallingSandSurvival/Build/FallingSandSurvival
         
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.0
         with:
           name: FallingSandSurvival_x64
-          path: ./Build
+          path: build/FallingSandSurvival/Build
         
 #      - name: Create Release
 #        id: create_release
