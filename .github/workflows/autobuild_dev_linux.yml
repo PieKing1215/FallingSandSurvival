@@ -62,6 +62,9 @@ jobs:
           mkdir build
           cd build
           echo $PWD
+          mkdir lib
+          cp ../FallingSandSurvival/lib/FMOD/lib/x64/* lib/
+          cp ../FallingSandSurvival/lib/FMOD_studio/lib/x64/* lib/
           cmake -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ..
         shell: bash
         
@@ -78,12 +81,11 @@ jobs:
           cd build/FallingSandSurvival
           echo $PWD
           mkdir Build
+          mkdir Build/lib
           cp -r ../../FallingSandSurvival/assets/ Build/assets/
           cp -r ../../FallingSandSurvival/data/ Build/data/
           cp -r ../../FallingSandSurvival/gamedir/ Build/gamedir/
-          cp -r ../../FallingSandSurvival/lib/FMOD/lib/x64/ Build/
-          cp ../../FallingSandSurvival/lib/FMOD/lib/x64/*.so Build/
-          cp ../../FallingSandSurvival/lib/FMOD_studio/lib/x64/*.so Build/
+          cp ../lib/* Build/lib/
           cp ./FallingSandSurvival Build/FallingSandSurvival
           chmod +x Build/FallingSandSurvival
         shell: bash
