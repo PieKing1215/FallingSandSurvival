@@ -6,8 +6,8 @@
 
 #define VERSION "0.1.0"
 
-#define BUILD_WITH_STEAM 0
-#define BUILD_WITH_DISCORD 0
+#define BUILD_WITH_STEAM 1
+#define BUILD_WITH_DISCORD 1
 
 #if BUILD_WITH_STEAM
 #define STEAM_APPID 1284340
@@ -87,7 +87,9 @@ namespace std {
 #undef SendMessage
 #undef ERROR
 
+#ifndef SPDLOG_FMT_EXTERNAL
 #define SPDLOG_FMT_EXTERNAL
+#endif
 #include "spdlog/common.h"
 #undef SPDLOG_ACTIVE_LEVEL
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE

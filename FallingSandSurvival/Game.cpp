@@ -51,8 +51,10 @@ int Game::init(int argc, char *argv[]) {
     std::locale ulocale(locale(), new codecvt_utf8<wchar_t>);
     std::wifstream ifs("assets/title.txt");
     std::locale prevlocale = ifs.imbue(ulocale);
+    #ifndef _WIN32
     std::wcout.sync_with_stdio(false);
     std::wcout.imbue(std::locale("en_US.utf8"));
+    #endif
     std::wcout << ifs.rdbuf() << std::endl;
     EASY_END_BLOCK;
 
