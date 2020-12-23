@@ -48,13 +48,13 @@ int Game::init(int argc, char *argv[]) {
     #endif
 
     EASY_BLOCK("print ascii title");
-    //std::locale ulocale(locale(), new codecvt_utf8<wchar_t>);
-    //std::wifstream ifs("assets/title.txt");
-    //std::locale prevlocale = ifs.imbue(ulocale);
-    //std::wcout << ifs.rdbuf() << std::endl;
+    std::locale ulocale(locale(), new codecvt_utf8<wchar_t>);
+    std::wifstream ifs("assets/title.txt");
+    std::locale prevlocale = ifs.imbue(ulocale);
+    std::wcout.sync_with_stdio(false);
+    std::wcout.imbue(std::locale("en_US.utf8"));
+    std::wcout << ifs.rdbuf() << std::endl;
     EASY_END_BLOCK;
-    
-    std::cout << "starting" << std::endl;
 
     EASY_BLOCK("start spdlog");
     spdlog::set_level(spdlog::level::trace);
