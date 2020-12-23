@@ -312,7 +312,12 @@ message(STATUS "Conan: Loading ${_CONANBUILDINFOFOLDER}/${_CONANBUILDINFO}")
 
 set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
-set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
+
+if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
+    set(CMAKE_INSTALL_RPATH "$ORIGIN/lib;$ORIGIN/../../FallingSandSurvival/lib/FMOD/lib/x64;$ORIGIN/../../FallingSandSurvival/lib/FMOD_studio/lib/x64")
+elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
+    set(CMAKE_INSTALL_RPATH "$ORIGIN/lib;$ORIGIN/../../FallingSandSurvival/lib/FMOD/lib/x86;$ORIGIN/../../FallingSandSurvival/lib/FMOD_studio/lib/x86")
+endif()
 add_executable(${PROJECT_NAME} ${ALL_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES BUILD_RPATH_USE_ORIGIN ON)
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_14)

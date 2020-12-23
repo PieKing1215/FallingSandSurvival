@@ -2135,7 +2135,7 @@ void Game::updateFrameEarly() {
     #pragma endregion
 
     EASY_BLOCK("audioEngine.Update");
-    //audioEngine.Update();
+    audioEngine.Update();
     EASY_END_BLOCK;
 
     if(state == LOADING) {

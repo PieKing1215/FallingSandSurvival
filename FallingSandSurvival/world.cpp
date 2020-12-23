@@ -74,7 +74,7 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     if(netMode != NetworkMode::SERVER) {
         EASY_BLOCK("audio load Explode event");
         this->audioEngine = audioEngine;
-        audioEngine->LoadEvent("event:/Explode");
+        audioEngine->LoadEvent("event:/World/Explode");
         EASY_END_BLOCK;
     }
 
