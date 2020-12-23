@@ -286,7 +286,7 @@ conan_cmake_run(CONANFILE conanfile.txt
                 BASIC_SETUP 
                 BUILD missing SETTINGS compiler.toolset=v141)
 elseif(LINUX)
-conan_cmake_run(CONANFILE conanfile.txt
+conan_cmake_run(CONANFILE conanfile_linux.txt
                 BASIC_SETUP 
                 BUILD missing)
 endif()
@@ -521,10 +521,8 @@ if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
         TARGET ${PROJECT_NAME}
         PRE_BUILD
         COMMANDS
-        COMMAND   $<CONFIG:Debug> del $<CONFIG>\\Game.obj
-        COMMAND   $<CONFIG:Debug> exit 0
-        COMMAND $<CONFIG:Release> del $<CONFIG>\\Game.obj
-        COMMAND $<CONFIG:Release> exit 0
+        COMMAND   $<CONFIG:Debug> del $<CONFIG>\\Game.obj || exit 0
+        COMMAND $<CONFIG:Release> del $<CONFIG>\\Game.obj || exit 0
         COMMENT "
           "
     )
@@ -533,10 +531,8 @@ elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
         TARGET ${PROJECT_NAME}
         PRE_BUILD
         COMMANDS
-        COMMAND   $<CONFIG:Debug> del $<CONFIG>\\Game.obj
-        COMMAND   $<CONFIG:Debug> exit 0
-        COMMAND $<CONFIG:Release> del $<CONFIG>\\Game.obj
-        COMMAND $<CONFIG:Release> exit 0
+        COMMAND   $<CONFIG:Debug> del $<CONFIG>\\Game.obj || exit 0
+        COMMAND $<CONFIG:Release> del $<CONFIG>\\Game.obj || exit 0
         COMMENT "
           "
     )
