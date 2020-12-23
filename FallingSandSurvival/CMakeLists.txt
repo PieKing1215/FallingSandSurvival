@@ -310,6 +310,7 @@ message(STATUS "Conan: Loading ${_CONANBUILDINFOFOLDER}/${_CONANBUILDINFO}")
 #link_directories(${CONAN_LIB_DIRS_DEBUG})
 #link_directories(${CONAN_LIB_DIRS_RELEASE})
 
+set(CMAKE_INSTALL_RPATH $ORIGIN)
 add_executable(${PROJECT_NAME} ${ALL_FILES})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_14)
 set_source_files_properties("lib/FastNoiseSIMD/FastNoiseSIMD_sse2.cpp" PROPERTIES COMPILE_FLAGS -msse2)

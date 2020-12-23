@@ -35,9 +35,9 @@ jobs:
 #        run: echo "CONAN_USER_HOME=D:/a/FallingSandSurvival/" >> $GITHUB_ENV
 #        shell: bash
 
-      - name: Print Conan home
-        run: conan config home
-        shell: bash
+#      - name: Print Conan home
+#        run: conan config home
+#        shell: bash
 
 #      - name: Cache for .conan
 #        id: cache-conan
@@ -53,11 +53,11 @@ jobs:
         run: bash -c "yes n || true" | sh ./setup.sh
         shell: bash
 
-      - name: Install system libs
-        run: sudo apt-get install -y libgl-dev xorg-dev libx11-xcb-dev libxcb-render0-dev libxcb-render-util0-dev libxcb-xkb-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-sync-dev libxcb-xfixes0-dev libxcb-xinerama0-dev libjack-jackd2-0 libjack-jackd2-dev
+      - name: Install System Libs
+        run: sudo apt-fast install -y libgl-dev xorg-dev libx11-xcb-dev libxcb-render0-dev libxcb-render-util0-dev libxcb-xkb-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-sync-dev libxcb-xfixes0-dev libxcb-xinerama0-dev libjack-jackd2-0 libjack-jackd2-dev
         shell: bash
         
-      - name: Generate build files
+      - name: Generate Build Files
         run: |
           mkdir build
           cd build
@@ -71,19 +71,23 @@ jobs:
           echo $PWD
           echo "$(nproc) cores available"
           cmake --build . --config Release -- -j $(nproc)
-          cd ./FallingSandSurvival
+        shell: bash
+        
+      - name: Package Build
+        run: |
+          cd build/FallingSandSurvival
           echo $PWD
           mkdir Build
           cp -r ../../FallingSandSurvival/assets/ Build/assets/
           cp -r ../../FallingSandSurvival/data/ Build/data/
           cp -r ../../FallingSandSurvival/gamedir/ Build/gamedir/
+          cp -r ../../FallingSandSurvival/lib/FMOD/lib/x64/ Build/
+          cp ../../FallingSandSurvival/lib/FMOD/lib/x64/*.so Build/
+          cp ../../FallingSandSurvival/lib/FMOD_studio/lib/x64/*.so Build/
           cp ./FallingSandSurvival Build/FallingSandSurvival
+          chmod +x Build/FallingSandSurvival
         shell: bash
         
-#      - name: Collect Artifact
-#        run: Compress-Archive -Path '.\Build' -DestinationPath '.\FallingSandSurvival_x64.zip'
-#        shell: powershell
-      
 #      - name: Compress binary with UPX
 #        uses: svenstaro/upx-action@2.0.1
 #        with:
