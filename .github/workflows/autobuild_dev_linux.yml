@@ -108,7 +108,7 @@ jobs:
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.0
         with:
-          name: FallingSandSurvival_x64
+          name: FallingSandSurvival_linux_x64
           path: build/FallingSandSurvival/Build
         
 #      - name: Create Release
@@ -131,7 +131,7 @@ jobs:
 #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 #        with:
 #          upload_url: ${{ steps.create_release.outputs.upload_url }}
-#          asset_path: ./FallingSandSurvival_x64.ZIP
-#          asset_name: FallingSandSurvival_x64.ZIP
+#          asset_path: ./FallingSandSurvival_linux_x64.ZIP
+#          asset_name: FallingSandSurvival_linux_x64.ZIP
 #          asset_content_type: application/zip
 #
