@@ -46,64 +46,51 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
     this->worldName = worldPath;
     EASY_BLOCK("makedir");
-    logDebug("w1");
     filesystem::create_directories(worldPath);
-    logDebug("w2");
     if(!noSaveLoad) filesystem::create_directories(worldPath + "/chunks");
-    logDebug("w3");
     EASY_END_BLOCK;
 
-    logDebug("w4");
     metadata = WorldMeta::loadWorldMeta(this->worldName);
 
     width = w;
     height = h;
 
     EASY_BLOCK("make tickPool");
-    logDebug("make tickPool");
     tickPool = new ctpl::thread_pool(6);
     EASY_END_BLOCK;
 
     EASY_BLOCK("make loadChunkPool");
-    logDebug("make loadChunkPool");
     loadChunkPool = new ctpl::thread_pool(8);
     EASY_END_BLOCK;
 
     EASY_BLOCK("make tickVisitedPool");
-    logDebug("make tickVisitedPool");
     tickVisitedPool = new ctpl::thread_pool(1);
     EASY_END_BLOCK;
 
     EASY_BLOCK("make updateRigidBodyHitboxPool");
-    logDebug("make updateRigidBodyHitboxPool");
     updateRigidBodyHitboxPool = new ctpl::thread_pool(8);
     EASY_END_BLOCK;
 
     if(netMode != NetworkMode::SERVER) {
         EASY_BLOCK("audio load Explode event");
-        logDebug("audio load Explode event");
         this->audioEngine = audioEngine;
         audioEngine->LoadEvent("event:/Explode");
         EASY_END_BLOCK;
     }
 
     EASY_BLOCK("create newTemp array");
-    logDebug("create newTemp array");
     newTemps = new int32_t[width * height];
     EASY_END_BLOCK;
 
     EASY_BLOCK("init generator");
-    logDebug("init generator");
     gen = generator;
     EASY_END_BLOCK;
 
     EASY_BLOCK("init populators");
-    logDebug("init populators");
     populators = gen->getPopulators();
     EASY_END_BLOCK;
 
     EASY_BLOCK("init hasPopulator");
-    logDebug("init hasPopulator");
     hasPopulator = new bool[6];
     for(int i = 0; i < 6; i++) hasPopulator[i] = false;
     for(int i = 0; i < populators.size(); i++) {
@@ -116,7 +103,6 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     loadZone = {0, 0, w, h};
 
     EASY_BLOCK("init noise");
-    logDebug("init noise");
     noise.SetSeed((unsigned int)Time::millis());
     noise.SetNoiseType(FastNoise::Perlin);
 
@@ -124,7 +110,6 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     EASY_END_BLOCK;
 
     EASY_BLOCK("init chunkCache");
-    logDebug("init chunkCache");
     auto ha = google::dense_hash_map<int, google::dense_hash_map<int, Chunk*>>();
     ha.set_deleted_key(INT_MAX);
     ha.set_empty_key(INT_MIN);
@@ -132,7 +117,6 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     EASY_END_BLOCK;
 
     EASY_BLOCK("init distributedPoints");
-    logDebug("init distributedPoints");
     float distributedPointsDistance = 0.05f;
     for(int i = 0; i < (1 / distributedPointsDistance) * (1 / distributedPointsDistance); i++) {
         float x = rand() % 1000 / 1000.0;
@@ -154,7 +138,6 @@ tooClose: {}
     rigidBodies.reserve(1);
 
     EASY_BLOCK("init dirty/active/visited arrays");
-    logDebug("init dirty/active/visited arrays");
     dirty = new bool[width * height];
     layer2Dirty = new bool[width * height];
     backgroundDirty = new bool[width * height];
@@ -174,7 +157,6 @@ tooClose: {}
     EASY_END_BLOCK;
 
     EASY_BLOCK("init layer arrays");
-    logDebug("init layer arrays");
     tiles = new MaterialInstance[w * h];
     layer2 = new MaterialInstance[w * h];
     background = new Uint32[w * h];
@@ -189,7 +171,6 @@ tooClose: {}
     EASY_END_BLOCK;
 
     EASY_BLOCK("init box2d");
-    logDebug("init box2d");
     gravity = b2Vec2(0, 20);
     b2world = new b2World(gravity);
     EASY_END_BLOCK;
@@ -197,7 +178,6 @@ tooClose: {}
     entities = {};
 
     EASY_BLOCK("init world mesh");
-    logDebug("init world mesh");
     b2PolygonShape nothingShape;
     nothingShape.SetAsBox(0, 0);
     this->staticBody = makeRigidBody(b2_staticBody, 0, 0, 0, nothingShape, 0, 0, Textures::cloud);
@@ -206,23 +186,14 @@ tooClose: {}
     EASY_END_BLOCK;
 
     EASY_BLOCK("add test object");
-    logDebug("add test object");
     b2PolygonShape dynamicBox3;
-    logDebug("add test object 1");
     dynamicBox3.SetAsBox(10.0f, 2.0f, {10, -10}, 0);
-    logDebug("add test object 2");
-    auto a = Textures::loadTexture("assets/objects/testObject3.png");
-    logDebug("add test object 3");
-    RigidBody* rb = makeRigidBody(b2_dynamicBody, 300, 300, 0, dynamicBox3, 1, .3, a);
-    logDebug("add test object 4");
+    RigidBody* rb = makeRigidBody(b2_dynamicBody, 300, 300, 0, dynamicBox3, 1, .3, Textures::loadTexture("assets/objects/testObject3.png"));
 
     rigidBodies.push_back(rb);
-    logDebug("add test object 5");
     updateRigidBodyHitbox(rb);
-    logDebug("add test object 6");
     EASY_END_BLOCK;
 
-    logDebug("winit end");
 }
 
 RigidBody* World::makeRigidBody(b2BodyType type, float x, float y, float angle, b2PolygonShape shape, float density, float friction, SDL_Surface* texture) {
@@ -338,7 +309,6 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
 
     EASY_BLOCK("init");
-    logDebug("updateRigidBodyHitbox 1");
     SDL_Surface* texture = rb->surface;
 
     for(int x = 0; x < texture->w; x++) {
@@ -352,7 +322,6 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
         }
     }
 
-    logDebug("updateRigidBodyHitbox 2");
     int minX = texture->w;
     int maxX = 0;
     int minY = texture->h;
@@ -369,20 +338,16 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     }
     maxX++;
     maxY++;
-    logDebug("updateRigidBodyHitbox 3");
     SDL_Surface* sf = SDL_CreateRGBSurfaceWithFormat(texture->flags, maxX - minX, maxY - minY, texture->format->BitsPerPixel, texture->format->format);
     SDL_Rect src = {minX, minY, maxX - minX, maxY - minY};
     SDL_SetSurfaceBlendMode(texture, SDL_BlendMode::SDL_BLENDMODE_NONE);
     SDL_BlitSurface(texture, &src, sf, NULL);
 
-    logDebug("updateRigidBodyHitbox 4");
     SDL_FreeSurface(texture);
 
-    logDebug("updateRigidBodyHitbox 5");
     rb->surface = sf;
     texture = rb->surface;
 
-    logDebug("updateRigidBodyHitbox 6");
     if(rb->surface->w <= 0 || rb->surface->h <= 0) {
         b2world->DestroyBody(rb->body);
         rigidBodies.erase(std::remove(rigidBodies.begin(), rigidBodies.end(), rb), rigidBodies.end());
@@ -414,12 +379,10 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     }
     EASY_END_BLOCK;
 
-    logDebug("updateRigidBodyHitbox 7");
     if(!foundAnything) {
         return;
     }
 
-    logDebug("updateRigidBodyHitbox 8");
     EASY_BLOCK("alloc data");
     unsigned char* data = new unsigned char[texture->w * texture->h];
     EASY_END_BLOCK;
@@ -437,7 +400,6 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     }
     EASY_END_BLOCK;
 
-    logDebug("updateRigidBodyHitbox 9");
     std::vector<std::vector<b2Vec2>> meshes = {};
 
     std::list<TPPLPoly> shapes;
@@ -445,7 +407,6 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     int inn = 0;
     int lookIndex = 0;
     EASY_BLOCK("loop");
-    logDebug("updateRigidBodyHitbox 10");
     while(true) {
         inn++;
 
@@ -557,8 +518,6 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
 
         if(poly.GetNumPoints() > 2) shapes.push_back(poly);
     }
-    
-    logDebug("updateRigidBodyHitbox 11");
     EASY_END_BLOCK;
     delete[] edgeSeen;
     delete[] data;
@@ -621,7 +580,6 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
 
     }
 
-    logDebug("updateRigidBodyHitbox 12");
     if(polys2s.size() > 0) {
 
         EASY_BLOCK("calculate nearest");
@@ -631,27 +589,21 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
             int nThreads = updateRigidBodyHitboxPool->n_idle();
             int div = texture->w / nThreads;
             int rem = texture->w % nThreads;
-            logDebug("updateRigidBodyHitboxPool div = {}", div);
-            logDebug("updateRigidBodyHitboxPool rem = {}", rem);
 
             for(int thr = 0; thr < nThreads; thr++) {
                 poolResults.push_back(updateRigidBodyHitboxPool->push([&, thr, div, rem](int id) {
                     EASY_THREAD("Update RigidBody Thread");
-                    logDebug("updateRigidBodyHitboxPool {} a", id);
                     int stx = thr * div;
                     int enx = stx + div + (thr == nThreads - 1 ? rem : 0);
 
-                    logDebug("updateRigidBodyHitboxPool {} b {} {} {} {} {} {} {} {}", id, stx, enx, texture->h, thr, div, nThreads, rem, texture->w);
                     for(int x = stx; x < enx; x++) {
                         for(int y = 0; y < texture->h; y++) {
-                            logDebug("updateRigidBodyHitboxPool {} loop {} {}", id, x, y);
                             if(((PIXEL(texture, x, y) >> 24) & 0xff) == 0x00) continue;
 
                             int nb = 0;
 
                             int nearestDist = 100000;
                             EASY_BLOCK("search");
-                            logDebug("updateRigidBodyHitboxPool {} search {} {}", id, x, y);
                             // for each body
                             for(int b = 0; b < polys2s.size(); b++) {
                                 // for each triangle in the mesh
@@ -665,14 +617,11 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
                             }
                             EASY_END_BLOCK;
                             EASY_BLOCK("copy pixels");
-                            logDebug("updateRigidBodyHitboxPool {} copy pixels {} {}", id, x, y);
                             PIXEL(polys2sSfcs[nb], x, y) = PIXEL(texture, x, y);
                             if(x == rb->weldX && y == rb->weldY) polys2sWeld[nb] = true;
                             EASY_END_BLOCK;
-                            logDebug("updateRigidBodyHitboxPool {} done loop {} {}", id, x, y);
                         }
                     }
-                    logDebug("updateRigidBodyHitboxPool {} c", id);
                 }));
             }
 
@@ -705,7 +654,6 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
             }
         }
 
-        logDebug("updateRigidBodyHitbox 13");
         EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
         for(int i = 0; i < poolResults.size(); i++) {
             EASY_BLOCK("get");
@@ -715,7 +663,6 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
         EASY_END_BLOCK;
         EASY_END_BLOCK;
 
-        logDebug("updateRigidBodyHitbox 14");
         for(int b = 0; b < polys2s.size(); b++) {
             std::vector<b2PolygonShape> polys2 = polys2s[b];
 
@@ -770,22 +717,18 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
         }
     }
 
-    logDebug("updateRigidBodyHitbox 15");
     EASY_BLOCK("DestroyBody");
     b2world->DestroyBody(rb->body);
     EASY_END_BLOCK;
-    logDebug("updateRigidBodyHitbox 16");
     EASY_BLOCK("erase old rigidbody");
     rigidBodies.erase(std::remove(rigidBodies.begin(), rigidBodies.end(), rb), rigidBodies.end());
     EASY_END_BLOCK;
 
-    logDebug("updateRigidBodyHitbox 17");
     delete[] rb->tiles;
     GPU_FreeImage(rb->texture);
     SDL_FreeSurface(rb->surface);
     delete rb;
 
-    logDebug("updateRigidBodyHitbox end");
 }
 
 void World::updateChunkMesh(Chunk* chunk) {
