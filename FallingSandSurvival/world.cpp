@@ -631,9 +631,11 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
             int nThreads = updateRigidBodyHitboxPool->n_idle();
             int div = texture->w / nThreads;
             int rem = texture->w % nThreads;
+            logDebug("updateRigidBodyHitboxPool div = {}", div);
+            logDebug("updateRigidBodyHitboxPool rem = {}", rem);
 
             for(int thr = 0; thr < nThreads; thr++) {
-                poolResults.push_back(updateRigidBodyHitboxPool->push([&, thr](int id) {
+                poolResults.push_back(updateRigidBodyHitboxPool->push([&, thr, div, rem](int id) {
                     EASY_THREAD("Update RigidBody Thread");
                     logDebug("updateRigidBodyHitboxPool {} a", id);
                     int stx = thr * div;
