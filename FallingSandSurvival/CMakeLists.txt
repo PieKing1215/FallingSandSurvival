@@ -310,6 +310,7 @@ message(STATUS "Conan: Loading ${_CONANBUILDINFOFOLDER}/${_CONANBUILDINFO}")
 #link_directories(${CONAN_LIB_DIRS_DEBUG})
 #link_directories(${CONAN_LIB_DIRS_RELEASE})
 
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 add_executable(${PROJECT_NAME} ${ALL_FILES})
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_14)
 set_source_files_properties("lib/FastNoiseSIMD/FastNoiseSIMD_sse2.cpp" PROPERTIES COMPILE_FLAGS -msse2)
@@ -565,9 +566,9 @@ elseif(LINUX)
         message("x64")
         
         set_target_properties(${PROJECT_NAME} PROPERTIES BUILD_RPATH_USE_ORIGIN ON)
+        set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
         target_link_directories(${PROJECT_NAME} PRIVATE 
-            "lib/FMOD/lib/x64"
-            "lib/FMOD_studio/lib/x64")
+            "lib")
         
         target_link_libraries(${PROJECT_NAME} "libfmod.so")
         target_link_libraries(${PROJECT_NAME} "libfmodL.so")
