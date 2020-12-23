@@ -564,7 +564,7 @@ elseif(LINUX)
     if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
         message("x64")
         target_link_directories(${PROJECT_NAME} PRIVATE 
-            "./lib")
+            "lib")
         
         target_link_libraries(${PROJECT_NAME} "libfmod.so")
         target_link_libraries(${PROJECT_NAME} "libfmodL.so")
