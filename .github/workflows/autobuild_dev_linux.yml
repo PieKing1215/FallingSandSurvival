@@ -88,6 +88,7 @@ jobs:
           cp ../lib/* Build/lib/
           cp ./FallingSandSurvival Build/FallingSandSurvival
           chmod +x Build/FallingSandSurvival
+          objdump -p Build/FallingSandSurvival | egrep 'RPATH|RUNPATH'
         shell: bash
         
 #      - name: Compress binary with UPX

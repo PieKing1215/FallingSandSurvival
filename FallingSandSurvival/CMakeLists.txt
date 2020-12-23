@@ -310,7 +310,8 @@ message(STATUS "Conan: Loading ${_CONANBUILDINFOFOLDER}/${_CONANBUILDINFO}")
 #link_directories(${CONAN_LIB_DIRS_DEBUG})
 #link_directories(${CONAN_LIB_DIRS_RELEASE})
 
-set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
+set_target_properties(${PROJECT_NAME} PROPERTIES BUILD_RPATH_USE_ORIGIN ON)
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib;$ORIGIN/lib")
 add_executable(${PROJECT_NAME} ${ALL_FILES})
 SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--disable-new-dtags")
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_14)
@@ -567,7 +568,7 @@ elseif(LINUX)
         message("x64")
         
         set_target_properties(${PROJECT_NAME} PROPERTIES BUILD_RPATH_USE_ORIGIN ON)
-        set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
+        set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib;$ORIGIN/lib")
         target_link_directories(${PROJECT_NAME} PRIVATE 
             "../build/lib")
         
