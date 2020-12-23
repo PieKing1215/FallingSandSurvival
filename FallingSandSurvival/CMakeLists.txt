@@ -563,8 +563,11 @@ elseif(LINUX)
     message("CMAKE_CURRENT_SOURCE_DIR = ${CMAKE_CURRENT_SOURCE_DIR}")
     if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
         message("x64")
+        
+        set_target_properties(${PROJECT_NAME} PROPERTIES BUILD_RPATH_USE_ORIGIN ON)
         target_link_directories(${PROJECT_NAME} PRIVATE 
-            "lib")
+            "lib/FMOD/lib/x64"
+            "lib/FMOD_studio/lib/x64")
         
         target_link_libraries(${PROJECT_NAME} "libfmod.so")
         target_link_libraries(${PROJECT_NAME} "libfmodL.so")
