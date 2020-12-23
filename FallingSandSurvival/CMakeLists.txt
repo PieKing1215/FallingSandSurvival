@@ -603,7 +603,7 @@ if(WINDOWS)
 endif()
 
 message("4")
-if(FALSE)
+if(WINDOWS)
     if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
         target_link_directories(${PROJECT_NAME} PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/lib/steam/redistributable_bin/win64;"
