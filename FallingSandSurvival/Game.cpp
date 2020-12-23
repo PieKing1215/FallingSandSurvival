@@ -288,11 +288,10 @@ int Game::init(int argc, char *argv[]) {
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO(); (void)io;
-        ImGui::GetIO().Fonts->AddFontDefault();
-        ImGui::GetIO().Fonts->AddFontDefault();
-        //ImGui::GetIO().Fonts->AddFontFromFileTTF("assets\\fonts\\pixel_operator\\PixelOperator.ttf", 32);
 
+        ImGui::GetIO().Fonts->AddFontDefault();
+        ImGui::GetIO().Fonts->AddFontFromFileTTF("assets/fonts/pixel_operator/PixelOperator.ttf", 32);
+        
         ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
 
         const char* glsl_version = "#version 130";
