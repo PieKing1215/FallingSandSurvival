@@ -642,12 +642,14 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
                     logDebug("updateRigidBodyHitboxPool {} b", id);
                     for(int x = stx; x < enx; x++) {
                         for(int y = 0; y < texture->h; y++) {
+                            logDebug("updateRigidBodyHitboxPool {} loop {} {}", id, x, y);
                             if(((PIXEL(texture, x, y) >> 24) & 0xff) == 0x00) continue;
 
                             int nb = 0;
 
                             int nearestDist = 100000;
                             EASY_BLOCK("search");
+                            logDebug("updateRigidBodyHitboxPool {} search {} {}", id, x, y);
                             // for each body
                             for(int b = 0; b < polys2s.size(); b++) {
                                 // for each triangle in the mesh
@@ -661,9 +663,11 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
                             }
                             EASY_END_BLOCK;
                             EASY_BLOCK("copy pixels");
+                            logDebug("updateRigidBodyHitboxPool {} copy pixels {} {}", id, x, y);
                             PIXEL(polys2sSfcs[nb], x, y) = PIXEL(texture, x, y);
                             if(x == rb->weldX && y == rb->weldY) polys2sWeld[nb] = true;
                             EASY_END_BLOCK;
+                            logDebug("updateRigidBodyHitboxPool {} done loop {} {}", id, x, y);
                         }
                     }
                     logDebug("updateRigidBodyHitboxPool {} c", id);
