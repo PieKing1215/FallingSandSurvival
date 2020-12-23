@@ -1,27 +1,19 @@
-# This is a basic workflow to help you get started with Actions
 
 name: AutoBuild - dev
 
-# Controls when the action will run. Triggers the workflow on push
-# events but only for the dev branch
 on:
   push:
-    branches: [ dev ]
+    branches: [ cmake ]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  windows-x64:
     # Want VS2017 so we use an old version
     runs-on: windows-2016
     
     # Don't build for commits with "[nobuild]"
     if: "! contains(github.event.head_commit.message, '[nobuild]')"
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
         
       - name: Install Conan
@@ -30,10 +22,6 @@ jobs:
 
       - name: Change Conan home
         run: echo "CONAN_USER_HOME=D:/a/FallingSandSurvival/" >> $GITHUB_ENV
-        shell: bash
-
-      - name: Print Conan home
-        run: conan config home
         shell: bash
 
 #      - name: Cache for .conan
@@ -66,10 +54,6 @@ jobs:
           cp -r ./FallingSandSurvival/gamedir ./Build/gamedir
         shell: bash
         
-#      - name: Collect Artifact
-#        run: Compress-Archive -Path '.\Build' -DestinationPath '.\FallingSandSurvival_x64.zip'
-#        shell: powershell
-      
       - name: Compress FallingSandSurvival.exe with UPX
         uses: svenstaro/upx-action@2.0.1
         with:
@@ -113,5 +97,117 @@ jobs:
 #          upload_url: ${{ steps.create_release.outputs.upload_url }}
 #          asset_path: ./FallingSandSurvival_x64.ZIP
 #          asset_name: FallingSandSurvival_x64.ZIP
+#          asset_content_type: application/zip
+#
+  linux-x64:
+    runs-on: ubuntu-latest
+    
+    # Don't build for commits with "[nobuild]"
+    if: "! contains(github.event.head_commit.message, '[nobuild]')"
+
+    steps:
+      - uses: actions/checkout@v2
+        
+      - name: Install Conan
+        run: |
+          sudo apt-get install python3-setuptools
+          sudo pip3 install wheel
+          sudo pip3 install conan
+        shell: bash
+
+#      - name: Cache for .conan
+#        id: cache-conan
+#        uses: actions/cache@v2.1.2
+#        env:
+#          cache-name: cache-conan-modules
+#        with:
+#          path: "D:/a/FallingSandSurvival/.conan/"
+#          key: ${{ runner.os }}-builder-${{ env.cache-name }}-${{ hashFiles('./FallingSandSurvival/conanfile.txt') }}-aa
+#          restore-keys: ${{ runner.os }}-builder-${{ env.cache-name }}-
+
+      - name: Run setup.sh
+        run: bash -c "yes n || true" | sh ./setup.sh
+        shell: bash
+
+      - name: Install System Libs
+        run: sudo apt-fast install -y libgl-dev xorg-dev libx11-xcb-dev libxcb-render0-dev libxcb-render-util0-dev libxcb-xkb-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev libxcb-randr0-dev libxcb-shape0-dev libxcb-sync-dev libxcb-xfixes0-dev libxcb-xinerama0-dev libjack-jackd2-0 libjack-jackd2-dev
+        shell: bash
+        
+      - name: Generate Build Files
+        run: |
+          mkdir build
+          cd build
+          echo $PWD
+          mkdir lib
+          cmake ..
+        shell: bash
+        
+      - name: Build Binary
+        run: |
+          cd build
+          echo $PWD
+          echo "$(nproc) cores available"
+          cmake --build . --config Release -- -j $(nproc)
+        shell: bash
+        
+      - name: Package Build
+        run: |
+          cd build/FallingSandSurvival
+          echo $PWD
+          mkdir Build
+          mkdir Build/lib
+          cp ../../FallingSandSurvival/lib/FMOD/lib/x64/libfmod.so.11 Build/lib/
+          cp ../../FallingSandSurvival/lib/FMOD_studio/lib/x64/libfmodstudio.so.11 Build/lib/
+          cp -r ../../FallingSandSurvival/assets/ Build/assets/
+          cp -r ../../FallingSandSurvival/data/ Build/data/
+          cp -r ../../FallingSandSurvival/gamedir/ Build/gamedir/
+          cp ./FallingSandSurvival Build/FallingSandSurvival
+          chmod +x Build/FallingSandSurvival
+          objdump -p Build/FallingSandSurvival | egrep 'RPATH|RUNPATH'
+        shell: bash
+        
+      - name: Compress binary with UPX
+        uses: svenstaro/upx-action@2.0.1
+        with:
+          file: build/FallingSandSurvival/Build/FallingSandSurvival
+          
+      - name: Compress libfmod.so.11 with UPX
+        uses: svenstaro/upx-action@2.0.1
+        with:
+          file: build/FallingSandSurvival/Build/lib/libfmod.so.11
+          
+      - name: Compress libfmodstudio.so.11 with UPX
+        uses: svenstaro/upx-action@2.0.1
+        with:
+          file: build/FallingSandSurvival/Build/lib/libfmodstudio.so.11
+        
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v2.2.0
+        with:
+          name: FallingSandSurvival_linux_x64
+          path: build/FallingSandSurvival/Build
+        
+#      - name: Create Release
+#        id: create_release
+#        uses: actions/create-release@latest
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          tag_name: ${{ github.ref }}
+#          release_name: Release ${{ github.ref }}
+#          body: |
+#            Automated Release by GitHub Action CI
+#          draft: true
+#          prerelease: true      
+#          
+#      - name: Upload Release Asset (x64)
+#        id: upload-release-asset-x64
+#        uses: actions/upload-release-asset@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        with:
+#          upload_url: ${{ steps.create_release.outputs.upload_url }}
+#          asset_path: ./FallingSandSurvival_linux_x64.ZIP
+#          asset_name: FallingSandSurvival_linux_x64.ZIP
 #          asset_content_type: application/zip
 #
