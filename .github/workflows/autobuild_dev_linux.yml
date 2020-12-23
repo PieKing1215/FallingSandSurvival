@@ -63,9 +63,7 @@ jobs:
           cd build
           echo $PWD
           mkdir lib
-          cp ../FallingSandSurvival/lib/FMOD/lib/x64/* lib/
-          cp ../FallingSandSurvival/lib/FMOD_studio/lib/x64/* lib/
-          cmake -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON ..
+          cmake ..
         shell: bash
         
       - name: Build Binary
@@ -82,19 +80,30 @@ jobs:
           echo $PWD
           mkdir Build
           mkdir Build/lib
+          cp ../../FallingSandSurvival/lib/FMOD/lib/x64/libfmod.so.12 Build/lib/
+          cp ../../FallingSandSurvival/lib/FMOD_studio/lib/x64/libfmodstudio.so.12 Build/lib/
           cp -r ../../FallingSandSurvival/assets/ Build/assets/
           cp -r ../../FallingSandSurvival/data/ Build/data/
           cp -r ../../FallingSandSurvival/gamedir/ Build/gamedir/
-          cp ../lib/* Build/lib/
           cp ./FallingSandSurvival Build/FallingSandSurvival
           chmod +x Build/FallingSandSurvival
           objdump -p Build/FallingSandSurvival | egrep 'RPATH|RUNPATH'
         shell: bash
         
-#      - name: Compress binary with UPX
-#        uses: svenstaro/upx-action@2.0.1
-#        with:
-#          file: build/FallingSandSurvival/Build/FallingSandSurvival
+      - name: Compress binary with UPX
+        uses: svenstaro/upx-action@2.0.1
+        with:
+          file: build/FallingSandSurvival/Build/FallingSandSurvival
+          
+      - name: Compress libfmod.so.12 with UPX
+        uses: svenstaro/upx-action@2.0.1
+        with:
+          file: build/FallingSandSurvival/Build/lib/libfmod.so.12
+          
+      - name: Compress libfmodstudio.so.12 with UPX
+        uses: svenstaro/upx-action@2.0.1
+        with:
+          file: build/FallingSandSurvival/Build/lib/libfmodstudio.so.12
         
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v2.2.0

@@ -569,7 +569,8 @@ elseif(LINUX)
         message("x64")
         
         target_link_directories(${PROJECT_NAME} PRIVATE 
-            "../build/lib")
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x64"
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x64")
         
         target_link_libraries(${PROJECT_NAME} "libfmod.so")
         target_link_libraries(${PROJECT_NAME} "libfmodL.so")
@@ -577,10 +578,15 @@ elseif(LINUX)
         target_link_libraries(${PROJECT_NAME} "libfmodstudioL.so")
     elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
         message("x86")
-        target_link_libraries(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x86/libfmod.so")
-        target_link_libraries(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x86/libfmodL.so")
-        target_link_libraries(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x86/libfmodstudio.so")
-        target_link_libraries(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x86/libfmodstudioL.so")
+        
+        target_link_directories(${PROJECT_NAME} PRIVATE 
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x86"
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x86")
+        
+        target_link_libraries(${PROJECT_NAME} "libfmod.so")
+        target_link_libraries(${PROJECT_NAME} "libfmodL.so")
+        target_link_libraries(${PROJECT_NAME} "libfmodstudio.so")
+        target_link_libraries(${PROJECT_NAME} "libfmodstudioL.so")
     endif()
     get_target_property(OUT ${PROJECT_NAME} LINK_LIBRARIES)
     message("LINK_LIBRARIES = ${OUT}")
