@@ -568,7 +568,7 @@ elseif(LINUX)
         set_target_properties(${PROJECT_NAME} PROPERTIES BUILD_RPATH_USE_ORIGIN ON)
         set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
         target_link_directories(${PROJECT_NAME} PRIVATE 
-            "lib")
+            "../build/lib")
         
         target_link_libraries(${PROJECT_NAME} "libfmod.so")
         target_link_libraries(${PROJECT_NAME} "libfmodL.so")
