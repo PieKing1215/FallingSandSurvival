@@ -639,7 +639,7 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
                     int stx = thr * div;
                     int enx = stx + div + (thr == nThreads - 1 ? rem : 0);
 
-                    logDebug("updateRigidBodyHitboxPool {} b", id);
+                    logDebug("updateRigidBodyHitboxPool {} b {} {} {} {} {} {} {}", id, stx, enx, texture->h, thr, div, nThreads, rem);
                     for(int x = stx; x < enx; x++) {
                         for(int y = 0; y < texture->h; y++) {
                             logDebug("updateRigidBodyHitboxPool {} loop {} {}", id, x, y);
