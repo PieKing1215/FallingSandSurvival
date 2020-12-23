@@ -6,7 +6,7 @@ name: AutoBuild - dev (Linux)
 # events but only for the dev branch
 on:
   push:
-    branches: [ cmake ]
+    branches: [ dev ]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
