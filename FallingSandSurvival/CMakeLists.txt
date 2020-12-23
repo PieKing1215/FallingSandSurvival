@@ -603,14 +603,18 @@ if(WINDOWS)
 endif()
 
 message("4")
-if(FALSE)
+if(WINDOWS)
     if("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
         target_link_directories(${PROJECT_NAME} PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x64;"
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x64;"
             "${CMAKE_CURRENT_SOURCE_DIR}/lib/steam/redistributable_bin/win64;"
             "${CMAKE_CURRENT_SOURCE_DIR}/lib/discord_game_sdk/lib/x86_64"
         )
     elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x86")
         target_link_directories(${PROJECT_NAME} PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD/lib/x86;"
+            "${CMAKE_CURRENT_SOURCE_DIR}/lib/FMOD_studio/lib/x86;"
             "${CMAKE_CURRENT_SOURCE_DIR}/lib/steam/redistributable_bin;"
             "${CMAKE_CURRENT_SOURCE_DIR}/lib/discord_game_sdk/lib/x86"
         )
