@@ -635,9 +635,11 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
             for(int thr = 0; thr < nThreads; thr++) {
                 poolResults.push_back(updateRigidBodyHitboxPool->push([&, thr](int id) {
                     EASY_THREAD("Update RigidBody Thread");
+                    logDebug("updateRigidBodyHitboxPool {} a", id);
                     int stx = thr * div;
                     int enx = stx + div + (thr == nThreads - 1 ? rem : 0);
 
+                    logDebug("updateRigidBodyHitboxPool {} b", id);
                     for(int x = stx; x < enx; x++) {
                         for(int y = 0; y < texture->h; y++) {
                             if(((PIXEL(texture, x, y) >> 24) & 0xff) == 0x00) continue;
@@ -664,6 +666,7 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
                             EASY_END_BLOCK;
                         }
                     }
+                    logDebug("updateRigidBodyHitboxPool {} c", id);
                 }));
             }
 
