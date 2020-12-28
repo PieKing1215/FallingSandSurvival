@@ -27,7 +27,11 @@
 #include "Controls.hpp"
 #include <chrono>
 #include <thread>
+#ifdef _WIN32
 #include <io.h>
+#else
+#include <sys/io.h>
+#endif
 #include <fcntl.h>
 #include <codecvt>
 #include "Drawing.hpp"

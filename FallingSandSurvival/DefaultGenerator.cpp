@@ -56,7 +56,7 @@ class DefaultGenerator : public WorldGenerator {
         return baseH;
     }
 
-    void WorldGenerator::generateChunk(World* world, Chunk* ch) {
+    void generateChunk(World* world, Chunk* ch) override {
         MaterialInstance* prop = new MaterialInstance[CHUNK_W * CHUNK_H];
         MaterialInstance* layer2 = new MaterialInstance[CHUNK_W * CHUNK_H];
         Uint32* background = new Uint32[CHUNK_W * CHUNK_H];
@@ -207,7 +207,7 @@ class DefaultGenerator : public WorldGenerator {
         ch->background = background;
     }
 
-    std::vector<Populator*> WorldGenerator::getPopulators() {
+    std::vector<Populator*> getPopulators() override {
         return {
             new CavePopulator(),
             new OrePopulator(),

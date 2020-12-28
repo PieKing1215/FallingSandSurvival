@@ -259,6 +259,10 @@ void CreateWorldUI::inputChanged(std::string text, Game* game) {
 }
 
 void CreateWorldUI::Reset(Game* game) {
+    #ifdef _WIN32
     strcpy_s(worldNameBuf, "New World");
+    #else
+    strcpy(worldNameBuf, "New World");
+    #endif
     inputChanged(std::string(worldNameBuf), game);
 }

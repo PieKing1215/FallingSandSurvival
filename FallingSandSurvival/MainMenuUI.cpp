@@ -2,7 +2,9 @@
 
 #include "DiscordIntegration.hpp"
 
+#ifdef _WIN32
 #define timegm _mkgmtime
+#endif
 
 #define BUILD_WITH_EASY_PROFILER
 #include <easy/profiler.h>

@@ -1,4 +1,9 @@
-# FallingSandSurvival
+<h1>FallingSandSurvival<br>
+  <a href="https://github.com/PieKing1215/FallingSandSurvival/actions?query=workflow%3A%22AutoBuild+-+dev%22+branch%3Adev+is%3Asuccess"> <img alt="GitHub Workflow Status (branch)" src="https://img.shields.io/github/workflow/status/PieKing1215/FallingSandSurvival/AutoBuild%20-%20dev/dev?label=AutoBuild%20-%20dev"></a>
+  <a href="https://github.com/PieKing1215/FallingSandSurvival/commits/dev"><img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/PieKing1215/FallingSandSurvival"></a>
+  <a href="https://github.com/PieKing1215/FallingSandSurvival/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/PieKing1215/FallingSandSurvival"></a>
+</h1>
+
 2D survival game inspired by Noita and slightly Terraria<br>
 (*name TBD*)
 

@@ -33,6 +33,11 @@
 
 #define W_PI 3.14159265358979323846
 
+template<typename R>
+bool is_ready(std::future<R> const& f){
+    return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+}
+
 void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode) {
     init(worldPath, w, h, target, audioEngine, netMode, new MaterialTestGenerator());
 }
@@ -69,7 +74,7 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     if(netMode != NetworkMode::SERVER) {
         EASY_BLOCK("audio load Explode event");
         this->audioEngine = audioEngine;
-        audioEngine->LoadEvent("event:/Explode");
+        audioEngine->LoadEvent("event:/World/Explode");
         EASY_END_BLOCK;
     }
 
@@ -586,7 +591,7 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
             int rem = texture->w % nThreads;
 
             for(int thr = 0; thr < nThreads; thr++) {
-                poolResults.push_back(updateRigidBodyHitboxPool->push([&, thr](int id) {
+                poolResults.push_back(updateRigidBodyHitboxPool->push([&, thr, div, rem](int id) {
                     EASY_THREAD("Update RigidBody Thread");
                     int stx = thr * div;
                     int enx = stx + div + (thr == nThreads - 1 ? rem : 0);
@@ -2605,7 +2610,7 @@ void World::frame() {
     }
 
     for(int i = 0; i < readyToReadyToMerge.size(); i++) {
-        if(readyToReadyToMerge[i]._Is_ready()) {
+        if(is_ready(readyToReadyToMerge[i])) {
             Chunk* merge = readyToReadyToMerge[i].get();
 
             for(int j = 0; j < readyToMerge.size(); j++) {

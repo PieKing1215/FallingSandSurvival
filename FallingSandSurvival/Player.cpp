@@ -10,11 +10,12 @@ void Player::render(GPU_Target* target, int ofsX, int ofsY) {
         int scaleEnt = Settings::hd_objects ? Settings::hd_objects_size : 1;
 
         GPU_Rect* ir = new GPU_Rect {(float)(int)(ofsX + x + hw / 2.0 - heldItem->surface->w), (float)(int)(ofsY + y + hh / 2.0 - heldItem->surface->h / 2), (float)heldItem->surface->w, (float)heldItem->surface->h};
-        SDL_FPoint* fp = new SDL_FPoint {(float)(int)(-ir->x + ofsX + x + hw / 2.0), (float)(int)(-ir->y + ofsY + y + hh / 2.0)};
-        fp->x -= heldItem->pivotX;
+        float fx = (float)(int)(-ir->x + ofsX + x + hw / 2.0);
+        float fy = (float)(int)(-ir->y + ofsY + y + hh / 2.0);
+        fx -= heldItem->pivotX;
         ir->x += heldItem->pivotX;
+        fy -= heldItem->pivotY;
         ir->y += heldItem->pivotY;
-        fp->y -= heldItem->pivotY;
         GPU_SetShapeBlendMode(GPU_BlendPresetEnum::GPU_BLEND_ADD);
         //GPU_BlitTransformX(heldItem->texture, NULL, target, ir->x, ir->y, fp->x, fp->y, holdAngle, 1, 1);
         //SDL_RenderCopyExF(renderer, heldItem->texture, NULL, ir, holdAngle, fp, abs(holdAngle) > 90 ? SDL_FLIP_VERTICAL : SDL_FLIP_NONE);
@@ -22,9 +23,8 @@ void Player::render(GPU_Target* target, int ofsX, int ofsY) {
         ir->y *= scaleEnt;
         ir->w *= scaleEnt;
         ir->h *= scaleEnt;
-        GPU_BlitRectX(heldItem->texture, NULL, target, ir, holdAngle, fp->x, fp->y, abs(holdAngle) > 90 ? GPU_FLIP_VERTICAL : GPU_FLIP_NONE);
+        GPU_BlitRectX(heldItem->texture, NULL, target, ir, holdAngle, fx, fy, abs(holdAngle) > 90 ? GPU_FLIP_VERTICAL : GPU_FLIP_NONE);
         delete ir;
-        delete fp;
     }
 }
 
