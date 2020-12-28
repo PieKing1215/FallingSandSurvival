@@ -1,8 +1,9 @@
 #!/bin/bash
 echo "FallingSandSurvival project setup"
 echo ""
-echo "You should have already done the steps in SETUP.txt under \"Before you start\""
+echo "You should have already done the required steps before running this file."
 echo "Please do these first unless you know what you're doing."
+echo "Instructions: https://github.com/PieKing1215/FallingSandSurvival/wiki/Building"
 echo ""
 read -p "Press [Enter] to start (or Ctrl+C to exit)..."
 echo ""
@@ -280,4 +281,4 @@ fi
 
 echo ""
 echo "== Setup complete! =="
-echo "Continue to the next step in SETUP.txt"
+echo "Continue to the next step"
