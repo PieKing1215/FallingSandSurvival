@@ -1,3 +1,9 @@
+<!---
+Repo: FallingSandSurvival
+Author: PieKing1215
+URL: https://github.com/PieKing1215/FallingSandSurvival
+-->
+
 <h1>FallingSandSurvival<br>
   <a href="https://github.com/PieKing1215/FallingSandSurvival/actions?query=workflow%3A%22AutoBuild+-+dev%22+branch%3Adev+is%3Asuccess"> <img alt="GitHub Workflow Status (branch)" src="https://img.shields.io/github/workflow/status/PieKing1215/FallingSandSurvival/AutoBuild%20-%20dev/dev?label=AutoBuild%20-%20dev"></a>
   <a href="https://github.com/PieKing1215/FallingSandSurvival/commits/dev"><img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/PieKing1215/FallingSandSurvival"></a>
@@ -51,7 +57,7 @@ Please use the [GitHub issues](https://github.com/PieKing1215/FallingSandSurviva
 See [Tech & Integrations](../../wiki/Tech-&-Integrations)
 
 ## Building<br>
-See [SETUP.txt](../dev/SETUP.txt)
+See [Building](../../wiki/Building)
 
 ## More Images<br>
 ![](../media/preview_2.gif)<br>
