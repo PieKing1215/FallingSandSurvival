@@ -235,6 +235,9 @@ void MainMenuUI::DrawSingleplayer(Game* game) {
                 EASY_BLOCK("Load world");
                 World* w = new World();
                 w->init(game->gameDir.getWorldPath(worldName), (int)ceil(Game::MAX_WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(Game::MAX_HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, game->target, &game->audioEngine, game->networkMode);
+                w->metadata.lastOpenedTime = Time::millis() / 1000;
+                w->metadata.lastOpenedVersion = std::string(VERSION);
+                w->metadata.save(w->worldName);
 
                 EASY_BLOCK("Queue chunk loading");
                 logInfo("Queueing chunk loading...");
