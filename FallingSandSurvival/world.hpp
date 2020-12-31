@@ -95,9 +95,10 @@ public:
     MaterialInstance getTileLayer2(int x, int y);
     void setTileLayer2(int x, int y, MaterialInstance type);
     int tickCt = 0;
-    ctpl::thread_pool* tickPool = nullptr;
-    ctpl::thread_pool* tickVisitedPool = nullptr;
-    ctpl::thread_pool* updateRigidBodyHitboxPool = nullptr;
+    static ctpl::thread_pool* tickPool;
+    static ctpl::thread_pool* tickVisitedPool;
+    static ctpl::thread_pool* updateRigidBodyHitboxPool;
+    static ctpl::thread_pool* loadChunkPool;
 
     GPU_Image* fireTex = nullptr;
     bool* tickVisited1 = nullptr;
@@ -146,7 +147,6 @@ public:
     std::vector<RigidBody*> worldRigidBodies;
 
     std::vector<LoadChunkParams> toLoad;
-    ctpl::thread_pool* loadChunkPool = nullptr;
     std::vector<std::future<Chunk*>> readyToReadyToMerge;
     std::deque<Chunk*> readyToMerge;
     void queueLoadChunk(int cx, int cy, bool populate, bool render);

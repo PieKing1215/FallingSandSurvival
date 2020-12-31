@@ -33,6 +33,11 @@
 
 #define W_PI 3.14159265358979323846
 
+ctpl::thread_pool* World::tickPool = nullptr;
+ctpl::thread_pool* World::tickVisitedPool = nullptr;
+ctpl::thread_pool* World::updateRigidBodyHitboxPool = nullptr;
+ctpl::thread_pool* World::loadChunkPool = nullptr;
+
 template<typename R>
 bool is_ready(std::future<R> const& f){
     return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
@@ -56,19 +61,19 @@ void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* targ
     height = h;
 
     EASY_BLOCK("make tickPool");
-    tickPool = new ctpl::thread_pool(6);
+    if(tickPool == nullptr) tickPool = new ctpl::thread_pool(6);
     EASY_END_BLOCK;
 
     EASY_BLOCK("make loadChunkPool");
-    loadChunkPool = new ctpl::thread_pool(8);
+    if(loadChunkPool == nullptr) loadChunkPool = new ctpl::thread_pool(8);
     EASY_END_BLOCK;
 
     EASY_BLOCK("make tickVisitedPool");
-    tickVisitedPool = new ctpl::thread_pool(1);
+    if(tickVisitedPool == nullptr) tickVisitedPool = new ctpl::thread_pool(1);
     EASY_END_BLOCK;
 
     EASY_BLOCK("make updateRigidBodyHitboxPool");
-    updateRigidBodyHitboxPool = new ctpl::thread_pool(8);
+    if(updateRigidBodyHitboxPool == nullptr) updateRigidBodyHitboxPool = new ctpl::thread_pool(8);
     EASY_END_BLOCK;
 
     if(netMode != NetworkMode::SERVER) {
@@ -3747,7 +3752,12 @@ World::~World() {
     }
     particles.clear();
 
-    tickPool->stop(false);
+    tickPool->clear_queue();
+    loadChunkPool->clear_queue();
+    tickVisitedPool->clear_queue();
+    updateRigidBodyHitboxPool->clear_queue();
+
+    /*tickPool->stop(false);
     delete tickPool;
 
     loadChunkPool->stop(false);
@@ -3757,7 +3767,7 @@ World::~World() {
     delete tickVisitedPool;
 
     updateRigidBodyHitboxPool->stop(false);
-    delete updateRigidBodyHitboxPool;
+    delete updateRigidBodyHitboxPool;*/
 
     delete[] newTemps;
 
