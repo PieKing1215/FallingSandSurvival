@@ -153,6 +153,7 @@ public:
     float lastInside = 0.0;
     bool lastSimpleMode = false;
     bool lastEmissionEnabled = false;
+    bool lastDitheringEnabled = false;
 
     NewLightingShader() : Shader("data/shaders/common.vert", "data/shaders/newLighting.frag") {};
 
@@ -170,6 +171,13 @@ public:
         GPU_SetUniformi(emission_loc, emissionEnabled);
 
         lastEmissionEnabled = emissionEnabled;
+    }
+
+    void setDitheringEnabled(bool ditheringEnabled) {
+        int dithering_loc = GPU_GetUniformLocation(shader, "dithering");
+        GPU_SetUniformi(dithering_loc, ditheringEnabled);
+
+        lastDitheringEnabled = ditheringEnabled;
     }
 
     void setQuality(float quality) {

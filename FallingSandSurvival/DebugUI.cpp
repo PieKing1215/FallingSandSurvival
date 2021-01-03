@@ -42,6 +42,7 @@ void DebugUI::Draw(Game* game) {
         ImGui::Checkbox("Light Overlay", &Settings::draw_light_overlay);
         ImGui::Checkbox("Simple Lighting", &Settings::simpleLighting);
         ImGui::Checkbox("Lighting Emission", &Settings::lightingEmission);
+        ImGui::Checkbox("Lighting Ditheirng", &Settings::lightingDithering);
         ImGui::Unindent(10.0f);
     }
 

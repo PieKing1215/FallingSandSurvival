@@ -19,6 +19,7 @@ public:
     static bool draw_light_overlay;
     static bool simpleLighting;
     static bool lightingEmission;
+    static bool lightingDithering;
 
     static bool tick_world;
     static bool tick_box2d;

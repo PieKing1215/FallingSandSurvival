@@ -5,6 +5,7 @@ precision mediump float;
 
 uniform bool simpleOnly = false;
 uniform bool emission = true;
+uniform bool dithering = false;
 uniform float lightingQuality = 0.5;
 uniform float inside = 0.0;
 
@@ -43,13 +44,20 @@ vec4 brightnessContrast2(vec4 value, float brightness, float contrast){
     return vec4((value.rgb - vec3(0.5)) * contrast + 0.5 + brightness, 1.0);
 }
 
+const float DITHER_NOISE = 0.004;
+
+// based on https://shader-tutorial.dev/advanced/color-banding-dithering/ (MIT license)
+float random(vec2 coords) {
+   return fract(sin(dot(coords.xy, vec2(12.9898,78.233))) * 43758.5453);
+}
+
 void main(){
     if(texCoord.x < (minX / texSize.x) || texCoord.x > (maxX / texSize.x) || texCoord.y < (minY / texSize.y) || texCoord.y > (maxY / texSize.y)){
         // only basic lighting outside visible area
         float dst2 = distance(texCoord * texSize * vec2(0.75, 1.0), t0 * texSize * vec2(0.75, 1.0)) / 3000.0;
         
         float dark = clamp(1.0 - dst2 * 3.5 * inside, 0.0, 1.0);
-        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0 - dark);
+        // gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0 - dark);
         gl_FragColor = vec4(vec3(dark), 1.0);
     }else{
         float dst = distance(texCoord * texSize * vec2(0.75, 1.0), t0 * texSize * vec2(0.75, 1.0)) / 3000.0;
@@ -82,8 +90,13 @@ void main(){
                 lcol.rgb /= nSteps * nDirs - 15.0;
                 if(emission) ecol.rgb /= nSteps * nDirs - 15.0;
                 
-                vec4 brr = clamp(brightnessContrast2(lcol, 0.2, 0.9) * distBr, 0.0, 1.0);
+                vec4 c = brightnessContrast2(lcol, 0.2, 0.9) * distBr;
+                if(dithering){
+                    c += vec4(mix(-DITHER_NOISE * 5, DITHER_NOISE * 5, random(gl_FragCoord.xy / texSize))) * c * (1.0 - lightingQuality * 0.8);
+                }
+                vec4 brr = clamp(c, 0.0, 1.0);
                 brr = mix(brr, vec4(1.0), distNr);
+                
                 if(emission) brr += pow(ecol, vec4(0.6));
                 //gl_FragColor = mix(vec4(vec3(0.0), 1.0), olcol, brr); // mix orig color
                 gl_FragColor = brr; // b/w
@@ -91,7 +104,13 @@ void main(){
             }else{
                 // no tile (background)
             
-                vec4 col = vec4(vec3(clamp(mix(distBr, 1.0, distNr), 0.0, 1.0)), 1.0);
+                //float c = clamp(mix(distBr, 1.0, distNr), 0.0, 1.0);
+                float c = clamp(distBr, 0.0, 1.0);
+                if(dithering){
+                    c += mix(-DITHER_NOISE, DITHER_NOISE, random(gl_FragCoord.xy / texSize));
+                }
+                //c = floor(c * 100.0) / 100.0;
+                vec4 col = vec4(vec3(c), 1.0);
             
                 if(!simpleOnly && emission){
                     vec4 ecol = lightEmit(texCoord);

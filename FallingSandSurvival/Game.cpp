@@ -31,7 +31,7 @@ void Game::updateMaterialSounds() {
 }
 
 int Game::init(int argc, char *argv[]) {
-    //EASY_PROFILER_ENABLE;
+    EASY_PROFILER_ENABLE;
     profiler::startListen();
     EASY_MAIN_THREAD;
     EASY_FUNCTION(GAME_PROFILER_COLOR);
@@ -1151,7 +1151,7 @@ int Game::run(int argc, char *argv[]) {
 
             // handle window events
             #pragma region
-            EASY_BLOCK("poll SDL events");
+            EASY_BLOCK("poll SDL events", SDL_PROFILER_COLOR);
             while(SDL_PollEvent(&windowEvent)) {
 
                 if(windowEvent.type == SDL_QUIT) {
@@ -3698,6 +3698,9 @@ void Game::renderLate() {
 
             if(newLightingShader->lastEmissionEnabled != Settings::lightingEmission) needToRerenderLighting = true;
             newLightingShader->setEmissionEnabled(Settings::lightingEmission);
+
+            if(newLightingShader->lastDitheringEnabled != Settings::lightingDithering) needToRerenderLighting = true;
+            newLightingShader->setDitheringEnabled(Settings::lightingDithering);
         }
         
         if(Settings::draw_shaders && needToRerenderLighting) {

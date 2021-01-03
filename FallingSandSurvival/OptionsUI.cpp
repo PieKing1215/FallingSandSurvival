@@ -220,6 +220,7 @@ void OptionsUI::DrawVideo(Game* game) {
     ImGui::SetNextItemWidth(100);
     ImGui::SliderFloat("Lighting Quality", &Settings::lightingQuality, 0.0, 1.0, "", 0);
     ImGui::Checkbox("Simple Lighting", &Settings::simpleLighting);
+    ImGui::Checkbox("Dither Lighting", &Settings::lightingDithering);
 
     ImGui::Unindent(4);
 }

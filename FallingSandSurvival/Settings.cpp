@@ -17,6 +17,7 @@ float Settings::lightingQuality     = 0.5f;
 bool Settings::draw_light_overlay   = false;
 bool Settings::simpleLighting       = false;
 bool Settings::lightingEmission     = true;
+bool Settings::lightingDithering    = false;
 
 bool Settings::tick_world           = true;
 bool Settings::tick_box2d           = true;
