@@ -48,10 +48,12 @@ public:
     int nReactions = 0;
     std::vector<MaterialInteraction> reactions;
 
-    Material(int id, std::string name, int physicsType, Uint8 alpha, float density, int iterations, int emit, Uint32 emitColor, Uint32 color);
-    Material(int id, std::string name, int physicsType, Uint8 alpha, float density, int iterations, int emit, Uint32 emitColor) : Material(id, name, physicsType, alpha, density, iterations, emit, emitColor, 0xffffffff) {};
-    Material(int id, std::string name, int physicsType, Uint8 alpha, float density, int iterations) : Material(id, name, physicsType, alpha, density, iterations, 0, 0) {};
-    Material(int id, std::string name, int physicsType, float density, int iterations) : Material(id, name, physicsType, 0xff, density, iterations) {};
-    Material() : Material(0, "Air", PhysicsType::AIR, 0, 0) {};
+    int slipperyness = 1;
+
+    Material(int id, std::string name, int physicsType, int slipperyness, Uint8 alpha, float density, int iterations, int emit, Uint32 emitColor, Uint32 color);
+    Material(int id, std::string name, int physicsType, int slipperyness, Uint8 alpha, float density, int iterations, int emit, Uint32 emitColor) : Material(id, name, physicsType, slipperyness, alpha, density, iterations, emit, emitColor, 0xffffffff) {};
+    Material(int id, std::string name, int physicsType, int slipperyness, Uint8 alpha, float density, int iterations) : Material(id, name, physicsType, slipperyness, alpha, density, iterations, 0, 0) {};
+    Material(int id, std::string name, int physicsType, int slipperyness, float density, int iterations) : Material(id, name, physicsType, slipperyness, 0xff, density, iterations) {};
+    Material() : Material(0, "Air", PhysicsType::AIR, 4, 0, 0) {};
 
 };
