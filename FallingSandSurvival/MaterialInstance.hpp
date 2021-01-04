@@ -17,6 +17,7 @@ public:
     Uint32 color;
     int32_t temperature;
     uint32_t id = 0;
+    float fluidAmount = 0;
     MaterialInstance(Material* mat, Uint32 color, int32_t temperature);
     MaterialInstance(Material* mat, Uint32 color) : MaterialInstance(mat, color, 0) {};
     MaterialInstance() : MaterialInstance(&Materials::GENERIC_AIR, 0x000000, 0) {};
