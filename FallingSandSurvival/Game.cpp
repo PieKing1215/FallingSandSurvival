@@ -76,7 +76,7 @@ int Game::init(int argc, char *argv[]) {
         Settings::draw_background = true;
         Settings::draw_background_grid = false;
         Settings::draw_load_zones = false;
-        Settings::draw_physics_meshes = false;
+        Settings::draw_physics_debug = false;
         Settings::draw_chunk_state = false;
         Settings::draw_debug_stats = false;
         Settings::draw_detailed_material_info = false;
@@ -456,6 +456,8 @@ int Game::init(int argc, char *argv[]) {
     #pragma endregion
 
     movingTiles = new uint16_t[Materials::nMaterials];
+
+    b2DebugDraw = new b2DebugDraw_impl(target);
 
     // init the world
     #pragma region
@@ -3790,116 +3792,111 @@ void Game::renderOverlays() {
         EASY_END_BLOCK; // draw load zones
     }
 
-    if(Settings::draw_physics_meshes) {
-        EASY_BLOCK("draw physics meshes", RENDER_PROFILER_COLOR);
-        for(size_t i = 0; i < world->rigidBodies.size(); i++) {
-            RigidBody cur = *world->rigidBodies[i];
+    if(Settings::draw_physics_debug) {
+        //EASY_BLOCK("draw physics meshes", RENDER_PROFILER_COLOR);
+        //for(size_t i = 0; i < world->rigidBodies.size(); i++) {
+        //    RigidBody cur = *world->rigidBodies[i];
 
-            float x = cur.body->GetPosition().x;
-            float y = cur.body->GetPosition().y;
-            x = ((x)*scale + ofsX + camX);
-            y = ((y)*scale + ofsY + camY);
+        //    float x = cur.body->GetPosition().x;
+        //    float y = cur.body->GetPosition().y;
+        //    x = ((x)*scale + ofsX + camX);
+        //    y = ((y)*scale + ofsY + camY);
 
-            /*SDL_Rect* r = new SDL_Rect{ (int)x, (int)y, cur.surface->w * scale, cur.surface->h * scale };
-            SDL_RenderCopyEx(renderer, cur.texture, NULL, r, cur.body->GetAngle() * 180 / M_PI, new SDL_Point{ 0, 0 }, SDL_RendererFlip::SDL_FLIP_NONE);
-            delete r;*/
+        //    /*SDL_Rect* r = new SDL_Rect{ (int)x, (int)y, cur.surface->w * scale, cur.surface->h * scale };
+        //    SDL_RenderCopyEx(renderer, cur.texture, NULL, r, cur.body->GetAngle() * 180 / M_PI, new SDL_Point{ 0, 0 }, SDL_RendererFlip::SDL_FLIP_NONE);
+        //    delete r;*/
 
-            Uint32 color = 0x0000ff;
+        //    Uint32 color = 0x0000ff;
 
-            SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
+        //    SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
 
-            b2Fixture* fix = cur.body->GetFixtureList();
-            while(fix) {
-                b2Shape* shape = fix->GetShape();
+        //    b2Fixture* fix = cur.body->GetFixtureList();
+        //    while(fix) {
+        //        b2Shape* shape = fix->GetShape();
 
-                switch(shape->GetType()) {
-                case b2Shape::Type::e_polygon:
-                    b2PolygonShape* poly = (b2PolygonShape*)shape;
-                    b2Vec2* verts = poly->m_vertices;
+        //        switch(shape->GetType()) {
+        //        case b2Shape::Type::e_polygon:
+        //            b2PolygonShape* poly = (b2PolygonShape*)shape;
+        //            b2Vec2* verts = poly->m_vertices;
 
-                    Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
+        //            Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
 
-                    break;
-                }
+        //            break;
+        //        }
 
-                fix = fix->GetNext();
-            }
-        }
+        //        fix = fix->GetNext();
+        //    }
+        //}
 
-        if(world->player) {
-            RigidBody cur = *world->player->rb;
+        //if(world->player) {
+        //    RigidBody cur = *world->player->rb;
 
-            float x = cur.body->GetPosition().x;
-            float y = cur.body->GetPosition().y;
-            x = ((x)*scale + ofsX + camX);
-            y = ((y)*scale + ofsY + camY);
+        //    float x = cur.body->GetPosition().x;
+        //    float y = cur.body->GetPosition().y;
+        //    x = ((x)*scale + ofsX + camX);
+        //    y = ((y)*scale + ofsY + camY);
 
-            Uint32 color = 0x0000ff;
+        //    Uint32 color = 0x0000ff;
 
-            SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
+        //    SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
 
-            b2Fixture* fix = cur.body->GetFixtureList();
-            while(fix) {
-                b2Shape* shape = fix->GetShape();
-                switch(shape->GetType()) {
-                case b2Shape::Type::e_polygon:
-                    b2PolygonShape* poly = (b2PolygonShape*)shape;
-                    b2Vec2* verts = poly->m_vertices;
+        //    b2Fixture* fix = cur.body->GetFixtureList();
+        //    while(fix) {
+        //        b2Shape* shape = fix->GetShape();
+        //        switch(shape->GetType()) {
+        //        case b2Shape::Type::e_polygon:
+        //            b2PolygonShape* poly = (b2PolygonShape*)shape;
+        //            b2Vec2* verts = poly->m_vertices;
 
-                    Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
+        //            Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
 
-                    break;
-                }
+        //            break;
+        //        }
 
-                fix = fix->GetNext();
-            }
-        }
+        //        fix = fix->GetNext();
+        //    }
+        //}
 
-        for(size_t i = 0; i < world->worldRigidBodies.size(); i++) {
-            RigidBody cur = *world->worldRigidBodies[i];
+        //for(size_t i = 0; i < world->worldRigidBodies.size(); i++) {
+        //    RigidBody cur = *world->worldRigidBodies[i];
 
-            float x = cur.body->GetPosition().x;
-            float y = cur.body->GetPosition().y;
-            x = ((x)*scale + ofsX + camX);
-            y = ((y)*scale + ofsY + camY);
+        //    float x = cur.body->GetPosition().x;
+        //    float y = cur.body->GetPosition().y;
+        //    x = ((x)*scale + ofsX + camX);
+        //    y = ((y)*scale + ofsY + camY);
 
-            Uint32 color = 0x00ff00;
+        //    Uint32 color = 0x00ff00;
 
-            SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
+        //    SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
 
-            b2Fixture* fix = cur.body->GetFixtureList();
-            while(fix) {
-                b2Shape* shape = fix->GetShape();
-                switch(shape->GetType()) {
-                case b2Shape::Type::e_polygon:
-                    b2PolygonShape* poly = (b2PolygonShape*)shape;
-                    b2Vec2* verts = poly->m_vertices;
+        //    b2Fixture* fix = cur.body->GetFixtureList();
+        //    while(fix) {
+        //        b2Shape* shape = fix->GetShape();
+        //        switch(shape->GetType()) {
+        //        case b2Shape::Type::e_polygon:
+        //            b2PolygonShape* poly = (b2PolygonShape*)shape;
+        //            b2Vec2* verts = poly->m_vertices;
 
-                    Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
+        //            Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
 
-                    break;
-                }
+        //            break;
+        //        }
 
-                fix = fix->GetNext();
-            }
+        //        fix = fix->GetNext();
+        //    }
 
-            /*color = 0xff0000;
-            SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff);
-            SDL_RenderDrawPoint(renderer, x, y);
-            color = 0x00ff00;
-            SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff);
-            SDL_RenderDrawPoint(renderer, cur.body->GetLocalCenter().x * scale + ofsX, cur.body->GetLocalCenter().y * scale + ofsY);*/
-        }
+        //    /*color = 0xff0000;
+        //    SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff);
+        //    SDL_RenderDrawPoint(renderer, x, y);
+        //    color = 0x00ff00;
+        //    SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff);
+        //    SDL_RenderDrawPoint(renderer, cur.body->GetLocalCenter().x * scale + ofsX, cur.body->GetLocalCenter().y * scale + ofsY);*/
+        //}
 
         int minChX = (int)floor((world->meshZone.x - world->loadZone.x) / CHUNK_W);
         int minChY = (int)floor((world->meshZone.y - world->loadZone.y) / CHUNK_H);
         int maxChX = (int)ceil((world->meshZone.x + world->meshZone.w - world->loadZone.x) / CHUNK_W);
         int maxChY = (int)ceil((world->meshZone.y + world->meshZone.h - world->loadZone.y) / CHUNK_H);
-
-        /*minChX = 0;
-        minChY = 0;
-        maxChX = 4;
-        maxChY = 4;*/
 
         for(int cx = minChX; cx <= maxChX; cx++) {
             for(int cy = minChY; cy <= maxChY; cy++) {
@@ -3909,17 +3906,28 @@ void Game::renderOverlays() {
                 float x = ((ch->x * CHUNK_W + world->loadZone.x) * scale + ofsX + camX);
                 float y = ((ch->y * CHUNK_H + world->loadZone.y) * scale + ofsY + camY);
 
-                GPU_Rectangle(target, x, y, x + CHUNK_W * scale, y + CHUNK_H * scale, {0, 0, 0, 255});
+                GPU_Rectangle(target, x, y, x + CHUNK_W * scale, y + CHUNK_H * scale, {50, 50, 0, 255});
 
-                for(int i = 0; i < ch->polys.size(); i++) {
-                    Drawing::drawPolygon(target, col, ch->polys[i].m_vertices, (int)x, (int)y, scale, ch->polys[i].m_count, 0/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
-                }
-
-
+                //for(int i = 0; i < ch->polys.size(); i++) {
+                //    Drawing::drawPolygon(target, col, ch->polys[i].m_vertices, (int)x, (int)y, scale, ch->polys[i].m_count, 0/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
+                //}
             }
         }
 
-        EASY_END_BLOCK; // draw physics meshes
+        //EASY_END_BLOCK; // draw physics meshes
+
+        world->b2world->SetDebugDraw(b2DebugDraw);
+        b2DebugDraw->scale = scale;
+        b2DebugDraw->xOfs = ofsX + camX;
+        b2DebugDraw->yOfs = ofsY + camY;
+        b2DebugDraw->SetFlags(0);
+        if(Settings::draw_b2d_shape)      b2DebugDraw->AppendFlags(b2Draw::e_shapeBit);
+        if(Settings::draw_b2d_joint)      b2DebugDraw->AppendFlags(b2Draw::e_jointBit);
+        if(Settings::draw_b2d_aabb)       b2DebugDraw->AppendFlags(b2Draw::e_aabbBit);
+        if(Settings::draw_b2d_pair)       b2DebugDraw->AppendFlags(b2Draw::e_pairBit);
+        if(Settings::draw_b2d_centerMass) b2DebugDraw->AppendFlags(b2Draw::e_centerOfMassBit);
+        world->b2world->DebugDraw();
+
     }
 
     EASY_BLOCK("draw fps", RENDER_PROFILER_COLOR);

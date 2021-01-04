@@ -175,6 +175,8 @@ set(Source_Files__vfx
     "Shaders.hpp"
     "Textures.cpp"
     "Textures.hpp"
+    "b2DebugDraw_impl.cpp"
+    "b2DebugDraw_impl.hpp"
 )
 source_group("Source Files\\vfx" FILES ${Source_Files__vfx})
 

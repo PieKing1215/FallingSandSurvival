@@ -6,7 +6,12 @@ public:
     static bool draw_background;
     static bool draw_background_grid;
     static bool draw_load_zones;
-    static bool draw_physics_meshes;
+    static bool draw_physics_debug;
+    static bool draw_b2d_shape;
+    static bool draw_b2d_joint;
+    static bool draw_b2d_aabb;
+    static bool draw_b2d_pair;
+    static bool draw_b2d_centerMass;
     static bool draw_chunk_state;
     static bool draw_debug_stats;
     static bool draw_material_info;

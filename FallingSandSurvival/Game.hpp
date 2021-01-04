@@ -37,6 +37,8 @@
 #include "Drawing.hpp"
 #include "Shaders.hpp"
 
+#include "b2DebugDraw_impl.hpp"
+
 #if BUILD_WITH_STEAM
 #include "steam_api.h"
 #endif
@@ -165,6 +167,8 @@ public:
     GPU_Image* temperatureMap = nullptr;
     vector< unsigned char > pixelsTemp;
     unsigned char* pixelsTemp_ar = nullptr;
+
+    b2DebugDraw_impl* b2DebugDraw;
 
     int ent_prevLoadZoneX = 0;
     int ent_prevLoadZoneY = 0;

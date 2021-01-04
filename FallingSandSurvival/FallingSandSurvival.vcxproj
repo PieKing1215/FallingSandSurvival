@@ -221,6 +221,7 @@ exit 0</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="b2DebugDraw_impl.cpp" />
     <ClCompile Include="Background.cpp" />
     <ClCompile Include="Biome.cpp" />
     <ClCompile Include="Chunk.cpp" />
@@ -317,6 +318,7 @@ exit 0</Command>
     <ClCompile Include="DefaultGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="b2DebugDraw_impl.h" />
     <ClInclude Include="Background.hpp" />
     <ClInclude Include="Biome.hpp" />
     <ClInclude Include="Chunk.hpp" />

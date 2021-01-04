@@ -27,7 +27,18 @@ void DebugUI::Draw(Game* game) {
     ImGui::Checkbox("Draw Debug Stats"      , &Settings::draw_debug_stats);
     ImGui::Checkbox("Draw Chunk States"     , &Settings::draw_chunk_state);
     ImGui::Checkbox("Draw Load Zones"       , &Settings::draw_load_zones);
-    ImGui::Checkbox("Draw Physics Meshes"   , &Settings::draw_physics_meshes);
+
+    ImGui::Checkbox("Draw Physics Debug"   , &Settings::draw_physics_debug);
+    if(Settings::draw_physics_debug) {
+        ImGui::Indent(10.0f);
+        ImGui::Checkbox("Box2D shape", &Settings::draw_b2d_shape);
+        ImGui::Checkbox("Box2D joint", &Settings::draw_b2d_joint);
+        ImGui::Checkbox("Box2D aabb", &Settings::draw_b2d_aabb);
+        ImGui::Checkbox("Box2D pair", &Settings::draw_b2d_pair);
+        ImGui::Checkbox("Box2D center of mass", &Settings::draw_b2d_centerMass);
+        ImGui::Unindent(10.0f);
+    }
+
     ImGui::Checkbox("Draw Material Info"    , &Settings::draw_material_info);
     ImGui::Indent(10.0f);
     ImGui::Checkbox("Detailed Material Info", &Settings::draw_detailed_material_info);
