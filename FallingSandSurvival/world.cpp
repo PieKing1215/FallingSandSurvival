@@ -19,7 +19,6 @@
 #include "Populators.cpp"
 #include "DefaultGenerator.cpp"
 #include "MaterialTestGenerator.cpp"
-#include <filesystem>
 
 #undef min
 #undef max
@@ -27,23 +26,33 @@
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/filereadstream.h"
+#include "rapidjson/stringbuffer.h"
 
 #define BUILD_WITH_EASY_PROFILER
 #include <easy/profiler.h>
 
 #define W_PI 3.14159265358979323846
 
-bool TestPointOpt(b2PolygonShape* sh, float x, float y);
+ctpl::thread_pool* World::tickPool = nullptr;
+ctpl::thread_pool* World::tickVisitedPool = nullptr;
+ctpl::thread_pool* World::updateRigidBodyHitboxPool = nullptr;
+ctpl::thread_pool* World::loadChunkPool = nullptr;
 
-void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode) {
+template<typename R>
+bool is_ready(std::future<R> const& f){
+    return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+}
+
+void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode) {
     init(worldPath, w, h, target, audioEngine, netMode, new MaterialTestGenerator());
 }
 
-void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode, WorldGenerator* generator) {
+void World::init(std::string worldPath, uint16_t w, uint16_t h, GPU_Target* target, CAudioEngine* audioEngine, int netMode, WorldGenerator* generator) {
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
     this->worldName = worldPath;
     EASY_BLOCK("makedir");
-    experimental::filesystem::create_directories(worldPath);
+    filesystem::create_directories(worldPath);
+    if(!noSaveLoad) filesystem::create_directories(worldPath + "/chunks");
     EASY_END_BLOCK;
 
     metadata = WorldMeta::loadWorldMeta(this->worldName);
@@ -52,26 +61,31 @@ void World::init(char* worldPath, uint16_t w, uint16_t h, GPU_Target* target, CA
     height = h;
 
     EASY_BLOCK("make tickPool");
-    tickPool = new ctpl::thread_pool(6);
+    if(tickPool == nullptr) tickPool = new ctpl::thread_pool(6);
     EASY_END_BLOCK;
 
-    
+    EASY_BLOCK("make loadChunkPool");
+    if(loadChunkPool == nullptr) loadChunkPool = new ctpl::thread_pool(8);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("make tickVisitedPool");
+    if(tickVisitedPool == nullptr) tickVisitedPool = new ctpl::thread_pool(1);
+    EASY_END_BLOCK;
+
     EASY_BLOCK("make updateRigidBodyHitboxPool");
-    updateRigidBodyHitboxPool = new ctpl::thread_pool(8);
+    if(updateRigidBodyHitboxPool == nullptr) updateRigidBodyHitboxPool = new ctpl::thread_pool(8);
     EASY_END_BLOCK;
 
     if(netMode != NetworkMode::SERVER) {
         EASY_BLOCK("audio load Explode event");
         this->audioEngine = audioEngine;
-        audioEngine->LoadEvent("event:/Explode");
+        audioEngine->LoadEvent("event:/World/Explode");
         EASY_END_BLOCK;
     }
 
-    EASY_BLOCK("create newTemps and light arrays");
+    EASY_BLOCK("create newTemp array");
     newTemps = new int32_t[width * height];
-    light = new float[width * height];
     EASY_END_BLOCK;
-
 
     EASY_BLOCK("init generator");
     gen = generator;
@@ -134,7 +148,8 @@ tooClose: {}
     backgroundDirty = new bool[width * height];
     lastActive = new bool[width * height];
     active = new bool[width * height];
-    this->tickVisited = new bool[width * height];
+    this->tickVisited1 = new bool[width * height];
+    this->tickVisited2 = new bool[width * height];
     for(int x = 0; x < width; x++) {
         for(int y = 0; y < height; y++) {
             dirty[x + y * width] = false;
@@ -524,7 +539,8 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     for(auto it = result2.begin(); it != result2.end(); it++) {
         std::list<TPPLPoly> result;
         EASY_BLOCK("Triangulate_EC");
-        part2.Triangulate_EC(&(std::list<TPPLPoly>{ *it }), &result);
+        std::list<TPPLPoly> l = { *it };
+        part2.Triangulate_EC(&l, &result);
         EASY_END_BLOCK;
 
         /*bool* solid = new bool[10 * 10];
@@ -580,7 +596,7 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
             int rem = texture->w % nThreads;
 
             for(int thr = 0; thr < nThreads; thr++) {
-                poolResults.push_back(updateRigidBodyHitboxPool->push([&, thr](int id) {
+                poolResults.push_back(updateRigidBodyHitboxPool->push([&, thr, div, rem](int id) {
                     EASY_THREAD("Update RigidBody Thread");
                     int stx = thr * div;
                     int enx = stx + div + (thr == nThreads - 1 ? rem : 0);
@@ -718,15 +734,6 @@ void World::updateRigidBodyHitbox(RigidBody* rb) {
     SDL_FreeSurface(rb->surface);
     delete rb;
 
-}
-
-bool TestPointOpt(b2PolygonShape* sh, float x, float y) {
-    for(int32 i = 0; i < sh->m_count; ++i) {
-        if(sh->m_normals[i].x * (x - sh->m_vertices[i].x) + sh->m_normals[i].y * (y - sh->m_vertices[i].y) > 0.0f) {
-            return false;
-        }
-    }
-    return true;
 }
 
 void World::updateChunkMesh(Chunk* chunk) {
@@ -999,8 +1006,9 @@ found: {};
     worldRigidBodies.push_back(chunk->rb);
 }
 
-
 void World::updateWorldMesh() {
+    EASY_FUNCTION(WORLD_PROFILER_COLOR);
+
     if(lastMeshZone.x == meshZone.x && lastMeshZone.y == meshZone.y && lastMeshZone.w == meshZone.w && lastMeshZone.h == meshZone.h) {
         if(lastMeshLoadZone.x == loadZone.x && lastMeshLoadZone.y == loadZone.y && lastMeshLoadZone.w == loadZone.w && lastMeshLoadZone.h == loadZone.h) {
             return;
@@ -1034,294 +1042,6 @@ void World::updateWorldMesh() {
 
 }
 
-void World::updateWorldMesh2() {
-    EASY_FUNCTION(WORLD_PROFILER_COLOR);
-
-    if(lastMeshZone.x == meshZone.x && lastMeshZone.y == meshZone.y && lastMeshZone.w == meshZone.w && lastMeshZone.h == meshZone.h) {
-        if(lastMeshLoadZone.x == loadZone.x && lastMeshLoadZone.y == loadZone.y && lastMeshLoadZone.w == loadZone.w && lastMeshLoadZone.h == loadZone.h) {
-            return;
-        }
-    }
-
-    EASY_BLOCK("Destroy old bodies");
-    for(int i = 0; i < worldRigidBodies.size(); i++) {
-        b2world->DestroyBody(worldRigidBodies[i]->body);
-    }
-    worldRigidBodies.clear();
-    EASY_END_BLOCK;
-
-    if(meshZone.w == 0 || meshZone.h == 0) return;
-
-    EASY_BLOCK("foundAnything loop");
-    bool foundAnything = false;
-    for(int x = 0; x < meshZone.w; x++) {
-        for(int y = 0; y < meshZone.h; y++) {
-
-            if(tiles[(x + meshZone.x) + (y + meshZone.y) * width].mat->physicsType == PhysicsType::SOLID) {
-                foundAnything = true;
-                goto found;
-            }
-
-            //bool f = tiles[(x + meshZone.x) + (y + meshZone.y) * width].mat->physicsType == PhysicsType::SOLID;
-            //foundAnything = foundAnything || f;
-        }
-    }
-found: {};
-    EASY_END_BLOCK;
-
-    if(!foundAnything) {
-        return;
-    }
-
-    EASY_BLOCK("alloc data");
-    unsigned char* data = new unsigned char[meshZone.w * meshZone.h];
-    EASY_END_BLOCK;
-
-    EASY_BLOCK("alloc edgeSeen");
-    bool* edgeSeen = new bool[meshZone.w * meshZone.h];
-    EASY_END_BLOCK;
-
-    EASY_BLOCK("iterate init data & edgeSeen");
-    for(int y = 0; y < meshZone.h; y++) {
-        for(int x = 0; x < meshZone.w; x++) {
-            data[x + y * meshZone.w] = tiles[(x + meshZone.x) + (y + meshZone.y) * width].mat->physicsType == PhysicsType::SOLID;
-            edgeSeen[x + y * meshZone.w] = false;
-        }
-    }
-    EASY_END_BLOCK;
-
-    worldMeshes.clear();
-    std::list<TPPLPoly> shapes;
-    std::list<MarchingSquares::Result> results;
-    int inn = 0;
-    int lookIndex = 0;
-
-    EASY_BLOCK("iterate", profiler::ON_WITHOUT_CHILDREN); // don't profile children
-    while(true) {
-        //inn++;
-        int lookX = lookIndex % meshZone.w;
-        int lookY = lookIndex / meshZone.w;
-        /*if (inn == 1) {
-            lookX = meshZone.w / 2;
-            lookY = meshZone.h / 2;
-        }*/
-
-        int edgeX = -1;
-        int edgeY = -1;
-        int size = meshZone.w * meshZone.h;
-
-        EASY_BLOCK("look for edge");
-        for(int i = lookIndex; i < size; i++) {
-            if(data[i] != 0) {
-
-                int numBorders = 0;
-                //if (i % meshZone.w - 1 >= 0) numBorders += data[(i % meshZone.w - 1) + i / meshZone.w * meshZone.w];
-                //if (i / meshZone.w - 1 >= 0) numBorders += data[(i % meshZone.w)+(i / meshZone.w - 1) * meshZone.w];
-                if(i % meshZone.w + 1 < meshZone.w) numBorders += data[(i % meshZone.w + 1) + i / meshZone.w * meshZone.w];
-                if(i / meshZone.w + 1 < meshZone.h) numBorders += data[(i % meshZone.w) + (i / meshZone.w + 1) * meshZone.w];
-                if(i / meshZone.w + 1 < meshZone.h && i % meshZone.w + 1 < meshZone.w) numBorders += data[(i % meshZone.w + 1) + (i / meshZone.w + 1) * meshZone.w];
-
-                //int val = value(i % meshZone.w, i / meshZone.w, meshZone.w, height, data);
-                if(numBorders != 3) {
-                    edgeX = i % meshZone.w;
-                    edgeY = i / meshZone.w;
-                    break;
-                }
-            }
-        }
-        EASY_END_BLOCK;
-
-        if(edgeX == -1) {
-            break;
-        }
-
-        //MarchingSquares::Direction edge = MarchingSquares::FindEdge(meshZone.w, meshZone.h, data, lookX, lookY);
-
-        lookX = edgeX;
-        lookY = edgeY;
-
-        lookIndex = lookX + lookY * meshZone.w + 1;
-
-        if(edgeSeen[lookX + lookY * meshZone.w]) {
-            inn--;
-            continue;
-        }
-
-        EASY_BLOCK("MarchingSquares::value");
-        int val = MarchingSquares::value(lookX, lookY, meshZone.w, meshZone.h, data);
-        EASY_END_BLOCK;
-
-        if(val == 0 || val == 15) {
-            inn--;
-            continue;
-        }
-
-
-        EASY_BLOCK("MarchingSquares::FindPerimeter");
-        MarchingSquares::Result r = MarchingSquares::FindPerimeter(lookX, lookY, meshZone.w, meshZone.h, data);
-        EASY_END_BLOCK;
-        results.push_back(r);
-
-        std::vector<b2Vec2> worldMesh;
-
-        float lastX = (float)r.initialX;
-        float lastY = (float)r.initialY;
-
-        EASY_BLOCK("build mesh");
-        for(int i = 0; i < r.directions.size(); i++) {
-            //if(r.directions[i].x != 0) r.directions[i].x = r.directions[i].x / abs(r.directions[i].x);
-            //if(r.directions[i].y != 0) r.directions[i].y = r.directions[i].y / abs(r.directions[i].y);
-
-
-            for(int ix = 0; ix < SDL_max(abs(r.directions[i].x), 1); ix++) {
-                for(int iy = 0; iy < SDL_max(abs(r.directions[i].y), 1); iy++) {
-                    int ilx = (int)(lastX + ix * (r.directions[i].x < 0 ? -1 : 1));
-                    int ily = (int)(lastY - iy * (r.directions[i].y < 0 ? -1 : 1));
-
-                    if(ilx < 0) ilx = 0;
-                    if(ilx >= meshZone.w) ilx = meshZone.w - 1;
-
-                    if(ily < 0) ily = 0;
-                    if(ily >= meshZone.h) ily = meshZone.h - 1;
-
-                    int ind = ilx + ily * meshZone.w;
-                    if(ind >= size) {
-                        continue;
-                    }
-                    edgeSeen[ind] = true;
-                }
-            }
-
-            lastX += (float)r.directions[i].x;
-            lastY -= (float)r.directions[i].y;
-            worldMesh.push_back({lastX, lastY});
-        }
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("simplify");
-        worldMesh = DouglasPeucker::simplify(worldMesh, 1);
-        EASY_END_BLOCK;
-
-        worldMeshes.push_back(worldMesh);
-
-        TPPLPoly poly;
-
-        EASY_BLOCK("TPPLPoly::Init");
-        poly.Init((long)worldMesh.size());
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("build TPPLPoly");
-        for(int i = 0; i < worldMesh.size(); i++) {
-            poly[(int)worldMesh.size() - i - 1] = {(tppl_float)worldMesh[i].x + (tppl_float)meshZone.x, (tppl_float)worldMesh[i].y + (tppl_float)meshZone.y};
-        }
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("set hole");
-        if(poly.GetOrientation() == TPPL_CW) {
-            poly.SetHole(true);
-        }
-        EASY_END_BLOCK;
-
-        shapes.push_back(poly);
-    }
-    EASY_END_BLOCK;
-
-    delete[] edgeSeen;
-    std::list<TPPLPoly> result;
-    std::list<TPPLPoly> result2;
-
-    TPPLPartition part;
-    TPPLPartition part2;
-    EASY_BLOCK("RemoveHoles");
-    part.RemoveHoles(&shapes, &result2);
-    EASY_END_BLOCK;
-    EASY_BLOCK("Triangulate");
-    part2.Triangulate_EC(&result2, &result);
-    EASY_END_BLOCK;
-
-    /*bool* solid = new bool[10 * 10];
-    for (int x = 0; x < 10; x++) {
-        for (int y = 0; y < 10; y++) {
-            solid[x + y * width] = rand() % 2 == 0;
-        }
-    }*/
-
-    //Ps::MarchingSquares ms = Ps::MarchingSquares(solid, meshZone.w, meshZone.h);
-
-    EASY_BLOCK("loadTexture");
-    SDL_Surface* texture = Textures::loadTexture("assets/objects/testObject3.png");
-    EASY_END_BLOCK;
-    //Ps::MarchingSquares ms = Ps::MarchingSquares(texture);
-    //worldMesh = ms.extract_simple(2);
-
-    worldTris.clear();
-
-    std::vector<b2PolygonShape> polys;
-
-    EASY_BLOCK("conv TPPLPolys to b2PolygonShapes");
-    std::for_each(result.begin(), result.end(), [&](TPPLPoly cur) {
-        std::vector<b2Vec2> vec = {
-            {(float)cur[0].x, (float)cur[0].y},
-            {(float)cur[1].x, (float)cur[1].y},
-            {(float)cur[2].x, (float)cur[2].y}
-        };
-
-        worldTris.push_back(vec);
-        b2PolygonShape sh;
-        sh.Set(&vec[0], 3);
-        polys.push_back(sh);
-    });
-    EASY_END_BLOCK;
-
-    RigidBody* rb = makeRigidBodyMulti(b2_staticBody, 0, 0, 0, polys, 1, 0.3, texture);
-
-    EASY_BLOCK("set filters");
-    for(b2Fixture* f = rb->body->GetFixtureList(); f; f = f->GetNext()) {
-        b2Filter bf = {};
-        bf.categoryBits = 0x0001;
-        f->SetFilterData(bf);
-    }
-    EASY_END_BLOCK;
-
-    worldRigidBodies.push_back(rb);
-
-    lastMeshZone = meshZone;
-    lastMeshLoadZone = loadZone;
-}
-
-bool* World::popDirty() {
-    bool* ret = dirty;
-    dirty = new bool[width * height];
-    for(int x = 0; x < width; x++) {
-        for(int y = 0; y < height; y++) {
-            dirty[x + y * width] = false;
-        }
-    }
-    return ret;
-}
-
-bool* World::popLayer2Dirty() {
-    bool* ret = layer2Dirty;
-    layer2Dirty = new bool[width * height];
-    for(int x = 0; x < width; x++) {
-        for(int y = 0; y < height; y++) {
-            layer2Dirty[x + y * width] = false;
-        }
-    }
-    return ret;
-}
-
-bool* World::popBackgroundDirty() {
-    bool* ret = backgroundDirty;
-    backgroundDirty = new bool[width * height];
-    for(int x = 0; x < width; x++) {
-        for(int y = 0; y < height; y++) {
-            backgroundDirty[x + y * width] = false;
-        }
-    }
-    return ret;
-}
-
 MaterialInstance World::getTile(int x, int y) {
     if(x < 0 || x >= width || y < 0 || y >= height) return Tiles::TEST_SOLID;
     return tiles[x + y * width];
@@ -1347,13 +1067,18 @@ void World::setTileLayer2(int x, int y, MaterialInstance type) {
 void World::tick() {
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
 
-    tickChunks();
-
     // TODO: what if we only check tiles that were marked as dirty last tick?
 
     //#define DEBUG_FRICTION
     #define DO_MULTITHREADING
     #define DO_REVERSE
+
+    #ifdef DO_MULTITHREADING
+    bool whichTickVisited = false;
+    EASY_BLOCK("memset");
+    memset(tickVisited1, false, (size_t)width * height);
+    EASY_END_BLOCK;
+    #endif
 
     for(int iter = 0; iter < 4; iter++) {
         EASY_BLOCK("iteration");
@@ -1371,12 +1096,20 @@ void World::tick() {
             #ifdef DO_MULTITHREADING
             std::vector<std::future<std::vector<Particle*>>> results = {};
             #endif
+            #ifdef DO_MULTITHREADING
+            bool* tickVisited = whichTickVisited ? tickVisited2 : tickVisited1;
+            std::future<void> tickVisitedDone = tickVisitedPool->push([&](int id) {
+                EASY_THREAD("memset tickVisited");
+                EASY_BLOCK("memset");
+                memset(whichTickVisited ? tickVisited1 : tickVisited2, false, (size_t)width * height);
+                EASY_END_BLOCK;
+            });
+            #else
+            bool* tickVisited = tickVisited1;
             EASY_BLOCK("memset");
-            // TODO: Figure out why this memset is so slow sometimes
-            //       If it can't be fixed, it could be micro-optimized by switching back and forth between
-            //       two buffers, memsetting the opposite on another thread, though I feel like this shouldn't be necessary
-            memset(tickVisited, false, width * height);
+            memset(tickVisited1, false, width * height);
             EASY_END_BLOCK;
+            #endif
             EASY_END_BLOCK;
             EASY_BLOCK("loop");
             for(int cx = tickZone.x + chOfsX * CHUNK_W; cx < (tickZone.x + tickZone.w); cx += CHUNK_W * 2) {
@@ -2013,6 +1746,10 @@ void World::tick() {
             particles.insert(particles.end(), pts.begin(), pts.end());
             EASY_END_BLOCK;
         }
+        tickVisitedDone.get();
+
+        whichTickVisited = !whichTickVisited;
+
         EASY_END_BLOCK;
         #endif
 
@@ -2086,47 +1823,47 @@ n += factor;\
 }
 
             if(tiles[(x + -1) + (y + -1) * width].temperature) {
-                factor = abs(tiles[(x + -1) + (y + -1) * width].temperature) / 64 * tiles[(x + -1) + (y + -1) * width].mat->conductionOther;
+                factor = abs(tiles[(x + -1) + (y + -1) * width].temperature) / 64.0f * tiles[(x + -1) + (y + -1) * width].mat->conductionOther;
                 v += tiles[(x + -1) + (y + -1) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + -1) + (y + 0) * width].temperature) {
-                factor = abs(tiles[(x + -1) + (y + 0) * width].temperature) / 64 * tiles[(x + -1) + (y + 0) * width].mat->conductionOther;
+                factor = abs(tiles[(x + -1) + (y + 0) * width].temperature) / 64.0f * tiles[(x + -1) + (y + 0) * width].mat->conductionOther;
                 v += tiles[(x + -1) + (y + 0) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + -1) + (y + 1) * width].temperature) {
-                factor = abs(tiles[(x + -1) + (y + 1) * width].temperature) / 64 * tiles[(x + -1) + (y + 1) * width].mat->conductionOther;
+                factor = abs(tiles[(x + -1) + (y + 1) * width].temperature) / 64.0f * tiles[(x + -1) + (y + 1) * width].mat->conductionOther;
                 v += tiles[(x + -1) + (y + 1) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + 0) + (y + -1) * width].temperature) {
-                factor = abs(tiles[(x + 0) + (y + -1) * width].temperature) / 64 * tiles[(x + 0) + (y + -1) * width].mat->conductionOther;
+                factor = abs(tiles[(x + 0) + (y + -1) * width].temperature) / 64.0f * tiles[(x + 0) + (y + -1) * width].mat->conductionOther;
                 v += tiles[(x + 0) + (y + -1) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + 0) + (y + 0) * width].temperature) {
-                factor = abs(tiles[(x + 0) + (y + 0) * width].temperature) / 64 * tiles[(x + 0) + (y + 0) * width].mat->conductionOther;
+                factor = abs(tiles[(x + 0) + (y + 0) * width].temperature) / 64.0f * tiles[(x + 0) + (y + 0) * width].mat->conductionOther;
                 v += tiles[(x + 0) + (y + 0) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + 0) + (y + 1) * width].temperature) {
-                factor = abs(tiles[(x + 0) + (y + 1) * width].temperature) / 64 * tiles[(x + 0) + (y + 1) * width].mat->conductionOther;
+                factor = abs(tiles[(x + 0) + (y + 1) * width].temperature) / 64.0f * tiles[(x + 0) + (y + 1) * width].mat->conductionOther;
                 v += tiles[(x + 0) + (y + 1) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + 1) + (y + -1) * width].temperature) {
-                factor = abs(tiles[(x + 1) + (y + -1) * width].temperature) / 64 * tiles[(x + 1) + (y + -1) * width].mat->conductionOther;
+                factor = abs(tiles[(x + 1) + (y + -1) * width].temperature) / 64.0f * tiles[(x + 1) + (y + -1) * width].mat->conductionOther;
                 v += tiles[(x + 1) + (y + -1) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + 1) + (y + 0) * width].temperature) {
-                factor = abs(tiles[(x + 1) + (y + 0) * width].temperature) / 64 * tiles[(x + 1) + (y + 0) * width].mat->conductionOther;
+                factor = abs(tiles[(x + 1) + (y + 0) * width].temperature) / 64.0f * tiles[(x + 1) + (y + 0) * width].mat->conductionOther;
                 v += tiles[(x + 1) + (y + 0) * width].temperature * factor;
                 n += factor;
             }
             if(tiles[(x + 1) + (y + 1) * width].temperature) {
-                factor = abs(tiles[(x + 1) + (y + 1) * width].temperature) / 64 * tiles[(x + 1) + (y + 1) * width].mat->conductionOther;
+                factor = abs(tiles[(x + 1) + (y + 1) * width].temperature) / 64.0f * tiles[(x + 1) + (y + 1) * width].mat->conductionOther;
                 v += tiles[(x + 1) + (y + 1) * width].temperature * factor;
                 n += factor;
             }
@@ -2243,57 +1980,83 @@ void World::tickParticles() {
                 return true;
             }
 
-            if(!cur->phase && tiles[(int)(cur->x) + (int)(cur->y) * width].mat->physicsType != PhysicsType::AIR && tiles[(int)(cur->x) + (int)(cur->y) * width].mat->physicsType != PhysicsType::OBJECT) {
-                if(cur->temporary) {
-                    cur->killCallback();
-                    delete cur;
-                    return true;
+            if(!cur->phase && tiles[(int)(cur->x) + (int)(cur->y) * width].mat->physicsType != PhysicsType::AIR) {
+                bool allowCollision = true;
+                bool isObject = tiles[(int)(cur->x) + (int)(cur->y) * width].mat->physicsType == PhysicsType::OBJECT;
+
+                switch(cur->inObjectState) {
+                    case 0: // first frame of particle's life
+                        if(isObject) {
+                            cur->inObjectState = 1;
+                        } else {
+                            cur->inObjectState = 2;
+                        }
+                        break;
+                    case 1: // particle spawned in object and was in object last tick
+                        if(!isObject) cur->inObjectState = 2;
+                        break;
                 }
 
-                if(tiles[(int)(lx)+(int)(ly)* width].mat->physicsType != PhysicsType::AIR) {
-                    /*for (int y = 0; y < 40; y++) {
-                        if (tiles[(int)(cur->x) + (int)(cur->y - y) * width].mat->physicsType == PhysicsType::AIR) {
-                            tiles[(int)(cur->x) + (int)(cur->y - y) * width] = cur->tile;
-                            dirty[(int)(cur->x) + (int)(cur->y - y) * width] = true;
-                            break;
-                        }
-                    }*/
-
-                    {
-                        //printf("=========");
-                        int X = 20;
-                        int Y = 20;
-                        int x = 0, y = 0, dx = 0, dy = -1;
-                        int t = max(X, Y);
-                        int maxI = t * t;
-
-                        for(int j = 0; j < maxI; j++) {
-                            if((-X / 2 <= x) && (x <= X / 2) && (-Y / 2 <= y) && (y <= Y / 2)) {
-                                //printf("%d, %d", x, y);
-                                //DO STUFF
-                                if(tiles[(int)(cur->x + x) + (int)(cur->y + y) * width].mat->physicsType == PhysicsType::AIR) {
-                                    tiles[(int)(cur->x + x) + (int)(cur->y + y) * width] = cur->tile;
-                                    dirty[(int)(cur->x + x) + (int)(cur->y + y) * width] = true;
-                                    break;
-                                }
-                            }
-
-                            if((x == y) || ((x < 0) && (x == -y)) || ((x > 0) && (x == 1 - y))) {
-                                t = dx; dx = -dy; dy = t;
-                            }
-                            x += dx; y += dy;
-                        }
+                if(!isObject || cur->inObjectState == 2) {
+                    if(cur->temporary) {
+                        cur->killCallback();
+                        delete cur;
+                        return true;
                     }
 
-                    cur->killCallback();
-                    delete cur;
-                    return true;
-                } else {
-                    tiles[(int)(lx)+(int)(ly)* width] = cur->tile;
-                    dirty[(int)(lx)+(int)(ly)* width] = true;
-                    cur->killCallback();
-                    delete cur;
-                    return true;
+                    if(tiles[(int)(lx)+(int)(ly)*width].mat->physicsType != PhysicsType::AIR) {
+                        /*for (int y = 0; y < 40; y++) {
+                            if (tiles[(int)(cur->x) + (int)(cur->y - y) * width].mat->physicsType == PhysicsType::AIR) {
+                                tiles[(int)(cur->x) + (int)(cur->y - y) * width] = cur->tile;
+                                dirty[(int)(cur->x) + (int)(cur->y - y) * width] = true;
+                                break;
+                            }
+                        }*/
+
+                        bool succeeded = false;
+                        {
+                            //printf("=========");
+                            int X = 32;
+                            int Y = 32;
+                            int x = 0, y = 0, dx = 0, dy = -1;
+                            int t = max(X, Y);
+                            int maxI = t * t;
+
+                            for(int j = 0; j < maxI; j++) {
+                                if((-X / 2 <= x) && (x <= X / 2) && (-Y / 2 <= y) && (y <= Y / 2)) {
+                                    //printf("%d, %d", x, y);
+                                    //DO STUFF
+                                    if(tiles[(int)(cur->x + x) + (int)(cur->y + y) * width].mat->physicsType == PhysicsType::AIR) {
+                                        tiles[(int)(cur->x + x) + (int)(cur->y + y) * width] = cur->tile;
+                                        dirty[(int)(cur->x + x) + (int)(cur->y + y) * width] = true;
+                                        succeeded = true;
+                                        break;
+                                    }
+                                }
+
+                                if((x == y) || ((x < 0) && (x == -y)) || ((x > 0) && (x == 1 - y))) {
+                                    t = dx; dx = -dy; dy = t;
+                                }
+                                x += dx; y += dy;
+                            }
+                        }
+
+                        if(succeeded) {
+                            cur->killCallback();
+                            delete cur;
+                            return true;
+                        } else {
+                            cur->vy = -4;
+                            cur->y -= 16;
+                            return false;
+                        }
+                    } else {
+                        tiles[(int)(lx)+(int)(ly)*width] = cur->tile;
+                        dirty[(int)(lx)+(int)(ly)*width] = true;
+                        cur->killCallback();
+                        delete cur;
+                        return true;
+                    }
                 }
             }
         }
@@ -2326,9 +2089,21 @@ void World::tickObjectsMesh() {
     std::vector<RigidBody*> rbs = rigidBodies;
     for(int i = 0; i < rbs.size(); i++) {
         RigidBody* cur = rbs[i];
-        if(cur->needsUpdate) {
+        if(cur->needsUpdate && cur->body->IsEnabled()) {
             updateRigidBodyHitbox(cur);
         }
+    }
+}
+
+void World::tickObjectBounds() {
+
+    std::vector<RigidBody*> rbs = rigidBodies;
+    for(int i = 0; i < rbs.size(); i++) {
+        RigidBody* cur = rbs[i];
+
+        float x = cur->body->GetWorldCenter().x;
+        float y = cur->body->GetWorldCenter().y;
+        cur->body->SetEnabled(x >= tickZone.x && y >= tickZone.y && x < tickZone.x + tickZone.w && y < tickZone.y + tickZone.h);
     }
 }
 
@@ -2346,7 +2121,6 @@ void World::tickObjects() {
 
         float x = cur->body->GetWorldCenter().x;
         float y = cur->body->GetWorldCenter().y;
-        cur->body->SetEnabled(x >= tickZone.x && y >= tickZone.y && x < tickZone.x + tickZone.w && y < tickZone.y + tickZone.h);
 
         if(cur->body->IsEnabled()) {
             if(x - 100 < minX) minX = (int)x - 100;
@@ -2377,8 +2151,12 @@ void World::tickObjects() {
         cur->rb->body->SetLinearVelocity({(float)(cur->vx * 1.0), (float)(cur->vy * 1.0)});
     }
 
+    EASY_BLOCK("Box2D step");
     b2world->Step(timeStep, velocityIterations, positionIterations);
+    EASY_END_BLOCK;
+    EASY_BLOCK("Box2D step");
     b2world->Step(timeStep, velocityIterations, positionIterations);
+    EASY_END_BLOCK;
 
     for(auto& cur : entities) {
         /*cur->x = cur->rb->body->GetPosition().x + 0.5 - cur->hw / 2 - loadZone.x;
@@ -2445,7 +2223,12 @@ void World::frame() {
         //fut.wait();
         //readyToMerge.push_back(fut.get());
         //std::vector<std::future<ChunkReadyToMerge>> readyToReadyToMerge;
-        readyToReadyToMerge.push_back(std::async(&World::loadChunk, this, getChunk(para.x, para.y), para.populate, true));
+
+        readyToReadyToMerge.push_back(loadChunkPool->push([&](int id) {
+            EASY_THREAD("loadChunk Thread");
+            return World::loadChunk(getChunk(para.x, para.y), para.populate, true);
+        }));
+        //readyToReadyToMerge.push_back(std::async(&World::loadChunk, this, getChunk(para.x, para.y), para.populate, true));
 
         //std::thread t(&World::loadChunk, this, para.x, para.y, para.populate);
         //t.join();
@@ -2453,7 +2236,7 @@ void World::frame() {
     }
 
     for(int i = 0; i < readyToReadyToMerge.size(); i++) {
-        if(readyToReadyToMerge[i]._Is_ready()) {
+        if(is_ready(readyToReadyToMerge[i])) {
             Chunk* merge = readyToReadyToMerge[i].get();
 
             for(int j = 0; j < readyToMerge.size(); j++) {
@@ -2510,7 +2293,6 @@ void World::frame() {
     }
 }
 
-
 void World::tickChunkGeneration() {
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
 
@@ -2524,7 +2306,7 @@ void World::tickChunkGeneration() {
             if(p2.first == INT_MIN) continue;
             Chunk* m = p2.second;
 
-            if(abs(m->x - cenX) > 15 || abs(m->y - cenY) > 15) {
+            if(abs(m->x - cenX) >= CHUNK_UNLOAD_DIST || abs(m->y - cenY) >= CHUNK_UNLOAD_DIST) {
                 unloadChunk(m);
                 continue;
             }
@@ -2539,13 +2321,11 @@ void World::tickChunkGeneration() {
 
                     if(c->generationPhase < p2.second->generationPhase) {
                         if(c->pleaseDelete) {
-                            delete c->biomes;
                             delete c;
                         }
                         goto nextChunk;
                     }
                     if(c->pleaseDelete) {
-                        delete c->biomes;
                         delete c;
                     }
                 }
@@ -2580,16 +2360,19 @@ void World::tickChunks() {
             EASY_BLOCK("iterate");
             bool revX = changeX > 0;
             bool revY = changeY > 0;
-            for(int x = (revX ? (width - 1) : 0); (revX ? -1 : x) < (revX ? x : width); x += (revX ? -1 : 1)) {
-                for(int y = (revY ? (height - 1) : 0); (revY ? -1 : y) < (revY ? y : height); y += (revY ? -1 : 1)) {
-                    int newX = x + changeX;
-                    int newY = y + changeY;
-                    if(newX >= 0 && newY >= 0 && newX < width && newY < height) {
-                        tiles[newX + newY * width] = tiles[x + y * width];
-                        //dirty[newX + newY * width] = true;
+
+            for(int y = 0; y < height; y++) {
+                int oldY = (revY ? (height - y - 1) : y);
+                int newY = oldY + changeY;
+                if(newY < 0 || newY >= height) continue;
+                for(int x = 0; x < width; x++) {
+                    int oldX = (revX ? (width - x - 1) : x);
+                    int newX = oldX + changeX;
+                    if(newX >= 0 && newX < width) {
+                        tiles[newX + newY * width] = tiles[oldX + oldY * width];
+                        background[newX + newY * width] = background[oldX + oldY * width];
+                        layer2[newX + newY * width] = layer2[oldX + oldY * width];
                     }
-                    //newTiles[x + y * width] = Tiles::NOTHING;
-                    //dirty[x + y * width] = true;
                 }
             }
             EASY_END_BLOCK;
@@ -2613,6 +2396,7 @@ void World::tickChunks() {
                             int cy = floor(y / (float)CHUNK_H);
                             int cx = ceil((-(loadZone.x - changeX + i)) / (float)CHUNK_W);
                             //unloadChunk(cx, cy);
+                            chunkSaveCache(getChunk(cx, cy));
                         }
                     }
                 }
@@ -2635,6 +2419,7 @@ void World::tickChunks() {
                             int cy = floor(y / (float)CHUNK_H);
                             int cx = floor((-(loadZone.x - changeX - i) + tickZone.w) / (float)CHUNK_W) + 1;
                             //unloadChunk(cx, cy);
+                            chunkSaveCache(getChunk(cx, cy));
                         }
                     }
                 }
@@ -2652,6 +2437,17 @@ void World::tickChunks() {
                         }
                     }
                 }
+
+                for(int i = 0; i < abs(changeY); i++) {
+                    if(((loadZone.y - changeY - i - 1) + loadZone.h) % CHUNK_H == 0) {
+                        for(int x = -loadZone.x + tickZone.x; x <= -loadZone.x + tickZone.w + CHUNK_W; x += CHUNK_W) {
+                            int cx = floor(x / (float)CHUNK_W);
+                            int cy = ceil((-(loadZone.y - changeY + i)) / (float)CHUNK_H);
+                            //unloadChunk(cx, cy);
+                            chunkSaveCache(getChunk(cx, cy));
+                        }
+                    }
+                }
             } else if(changeY > 0) {
                 for(int i = 0; i < abs(changeY); i++) {
                     if(((loadZone.y - changeY + i) + loadZone.h) % CHUNK_H == 0) {
@@ -2661,6 +2457,17 @@ void World::tickChunks() {
                             for(int yy = 0; yy <= 4; yy++) {
                                 queueLoadChunk(cx, cy - yy, true, yy == 0 && x >= -loadZone.x + tickZone.x && x <= -loadZone.x + tickZone.w + CHUNK_W);
                             }
+                        }
+                    }
+                }
+
+                for(int i = 0; i < abs(changeY); i++) {
+                    if(((loadZone.y - changeY + i + 1) + loadZone.h) % CHUNK_H == 0) {
+                        for(int x = -loadZone.x + tickZone.x; x <= -loadZone.x + tickZone.w + CHUNK_W; x += CHUNK_W) {
+                            int cx = floor(x / (float)CHUNK_W);
+                            int cy = floor((-(loadZone.y - changeY - i) + tickZone.h) / (float)CHUNK_H) + 1;
+                            //unloadChunk(cx, cy);
+                            chunkSaveCache(getChunk(cx, cy));
                         }
                     }
                 }
@@ -2728,9 +2535,9 @@ void World::queueLoadChunk(int cx, int cy, bool populate, bool render) {
         }
         EASY_END_BLOCK;
 
-        loadChunk(ch, populate, render);
+        //loadChunk(ch, populate, render);
 
-        EASY_BLOCK("postload");
+        /*EASY_BLOCK("postload");
         readyToMerge.push_back(ch);
         if(!chunkCache.count(ch->x)) {
             chunkCache[ch->x] = google::dense_hash_map<int, Chunk*>();
@@ -2739,7 +2546,12 @@ void World::queueLoadChunk(int cx, int cy, bool populate, bool render) {
         }
         chunkCache[ch->x][ch->y] = ch;
         needToTickGeneration = true;
-        EASY_END_BLOCK;
+        EASY_END_BLOCK;*/
+
+        readyToReadyToMerge.push_back(loadChunkPool->push([&, ch](int id) {
+            EASY_THREAD("loadChunk Thread");
+            return World::loadChunk(ch, populate, render);
+        }));
 
         //readyToReadyToMerge.push_back(std::async(&World::loadChunk, this, ch, populate, render));
     }
@@ -2771,14 +2583,14 @@ Chunk* World::loadChunk(Chunk* ch, bool populate, bool render) {
 
     if(ch->hasTileCache) {
         //prop = ch->tiles;
-    } else if(ch->hasFile()) {
+    } else if(ch->hasFile() && !noSaveLoad) {
         ch->read();
     } else {
         generateChunk(ch);
         ch->generationPhase = 0;
         ch->hasTileCache = true;
         populateChunk(ch, 0, false);
-        ch->write(ch->tiles, ch->layer2, ch->background);
+        if(!noSaveLoad) ch->write(ch->tiles, ch->layer2, ch->background);
     }
 
     //if (populate) {
@@ -2846,14 +2658,33 @@ void World::unloadChunk(Chunk* ch) {
     //	}
     //}
     //ch->write(data, layer2);
+
+    chunkSaveCache(ch);
+    if(!noSaveLoad) writeChunkToDisk(ch);
+
     chunkCache[ch->x].erase(ch->y);
-    delete ch->tiles;
-    delete ch->layer2;
-    delete ch->background;
     delete ch;
     /*delete data;
     delete layer2;*/
     //delete data;
+}
+
+void World::writeChunkToDisk(Chunk* ch) {
+    ch->write(ch->tiles, ch->layer2, ch->background);
+}
+
+void World::chunkSaveCache(Chunk* ch) {
+    for (int x = 0; x < CHUNK_W; x++) {
+    	for (int y = 0; y < CHUNK_H; y++) {
+    		int tx = ch->x * CHUNK_W + loadZone.x + x;
+    		int ty = ch->y * CHUNK_H + loadZone.y + y;
+    		if (tx < 0 || tx >= width || ty < 0 || ty >= height) continue;
+            if(tiles[tx + ty * width] == Tiles::TEST_SOLID) continue;
+    		ch->tiles[x + y * CHUNK_W] = tiles[tx + ty * width];
+    		ch->layer2[x + y * CHUNK_W] = layer2[tx + ty * width];
+    		ch->background[x + y * CHUNK_W] = background[tx + ty * width];
+    	}
+    }
 }
 
 void World::generateChunk(Chunk* ch) {
@@ -2920,7 +2751,7 @@ void World::addStructure(PlacedStructure str) {
         for(int y = 0; y < str.base.h; y++) {
             int dx = x + loadZone.x + str.x;
             int dy = y + loadZone.y + str.y;
-            Chunk ch(floor(dx / CHUNK_W), floor(dy / CHUNK_H), worldName);
+            Chunk ch(floor(dx / CHUNK_W), floor(dy / CHUNK_H), (char*)worldName.c_str());
             //if(ch.e)
             if(dx >= 0 && dy >= 0 && dx < width && dy < height) {
                 tiles[dx + dy * width] = str.base.tiles[x + y * str.base.w];
@@ -2977,7 +2808,7 @@ Chunk* World::getChunk(int cx, int cy) {
     /*for (int i = 0; i < chunkCache.size(); i++) {
         if (chunkCache[i]->x == cx && chunkCache[i]->y == cy) return chunkCache[i];
     }*/
-    Chunk* c = new Chunk(cx, cy, worldName);
+    Chunk* c = new Chunk(cx, cy, (char*)worldName.c_str());
     c->generationPhase = -1;
     c->pleaseDelete = true;
     c->biomes = new Biome*[CHUNK_W * CHUNK_H];
@@ -2986,6 +2817,8 @@ Chunk* World::getChunk(int cx, int cy) {
 }
 
 void World::populateChunk(Chunk* ch, int phase, bool render) {
+    EASY_FUNCTION(WORLD_PROFILER_COLOR);
+
     bool has = hasPopulator[phase];
     if(!hasPopulator[phase]) return;
 
@@ -2996,7 +2829,7 @@ void World::populateChunk(Chunk* ch, int phase, bool render) {
     int aw = 1 + (phase * 2);
     int ah = 1 + (phase * 2);
 
-    Chunk* chs = new Chunk[aw * ah];
+    Chunk** chs = new Chunk*[aw * ah];
     bool* dirtyChunk = new bool[aw * ah]();
 
     if(phase == 1) {
@@ -3005,14 +2838,14 @@ void World::populateChunk(Chunk* ch, int phase, bool render) {
 
     for(int cx = ax; cx < ax + aw; cx++) {
         for(int cy = ay; cy < ay + ah; cy++) {
-            chs[(cx - ax) + (cy - ay) * aw] = *getChunk(cx, cy);
+            chs[(cx - ax) + (cy - ay) * aw] = getChunk(cx, cy);
             dirtyChunk[(cx - ax) + (cy - ay) * aw] = false;
         }
     }
 
     for(int i = 0; i < populators.size(); i++) {
         if(populators[i]->getPhase() == phase) {
-            std::vector<PlacedStructure> strs = populators[i]->apply(ch->tiles, ch->layer2, chs, dirtyChunk, ax * CHUNK_W, ay * CHUNK_H, aw * CHUNK_W, ah * CHUNK_H, *ch, this);
+            std::vector<PlacedStructure> strs = populators[i]->apply(ch->tiles, ch->layer2, chs, dirtyChunk, ax * CHUNK_W, ay * CHUNK_H, aw * CHUNK_W, ah * CHUNK_H, ch, this);
             for(int j = 0; j < strs.size(); j++) {
                 for(int tx = 0; tx < strs[j].base.w; tx++) {
                     for(int ty = 0; ty < strs[j].base.h; ty++) {
@@ -3021,7 +2854,7 @@ void World::populateChunk(Chunk* ch, int phase, bool render) {
                         int dxx = (CHUNK_W + ((tx + strs[j].x) % CHUNK_W)) % CHUNK_W;
                         int dyy = (CHUNK_H + ((ty + strs[j].y) % CHUNK_H)) % CHUNK_H;
                         if(strs[j].base.tiles[tx + ty * strs[j].base.w].mat->physicsType != PhysicsType::AIR) {
-                            chs[chx + chy * aw].tiles[dxx + dyy * CHUNK_W] = strs[j].base.tiles[tx + ty * strs[j].base.w];
+                            chs[chx + chy * aw]->tiles[dxx + dyy * CHUNK_W] = strs[j].base.tiles[tx + ty * strs[j].base.w];
                             dirtyChunk[chx + chy * aw] = true;
                         }
                     }
@@ -3034,15 +2867,15 @@ void World::populateChunk(Chunk* ch, int phase, bool render) {
         for(int y = 0; y < ah; y++) {
             if(dirtyChunk[x + y * aw]) {
                 if(x != aw / 2 && y != ah / 2) {
-                    chs[x + y * aw].write(chs[x + y * aw].tiles, chs[x + y * aw].layer2, chs[x + y * aw].background);
+                    chs[x + y * aw]->write(chs[x + y * aw]->tiles, chs[x + y * aw]->layer2, chs[x + y * aw]->background);
                     if(render) {
                         for(int i = 0; i < readyToMerge.size(); i++) {
-                            if(readyToMerge[i] == &chs[x + y * aw]) {
+                            if(readyToMerge[i] == chs[x + y * aw]) {
                                 readyToMerge.erase(readyToMerge.begin() + i);
                                 i--;
                             }
                         }
-                        readyToMerge.push_back(&chs[x + y * aw]);
+                        readyToMerge.push_back(chs[x + y * aw]);
                     }
                 }
             }
@@ -3282,115 +3115,6 @@ void World::tickEntities(GPU_Target* t) {
     }), entities.end());
 }
 
-World::~World() {
-
-    //delete worldName;
-    delete tiles;
-    delete layer2;
-    delete background;
-
-    for(auto& v : particles) {
-        delete v;
-    }
-    particles.clear();
-
-    tickPool->stop(false);
-    delete tickPool;
-
-    updateRigidBodyHitboxPool->stop(false);
-    delete updateRigidBodyHitboxPool;
-
-    delete newTemps;
-
-    delete dirty;
-    delete active;
-    delete lastActive;
-    delete layer2Dirty;
-    delete backgroundDirty;
-
-    delete b2world;
-
-    for(auto& v : rigidBodies) {
-        delete v;
-    }
-    rigidBodies.clear();
-    delete staticBody;
-
-    worldMeshes.clear();
-    worldTris.clear();
-
-    for(auto& v : worldRigidBodies) {
-        delete v;
-    }
-    worldRigidBodies.clear();
-
-    toLoad.clear();
-
-    readyToReadyToMerge.clear();
-
-    for(auto& v : readyToMerge) {
-        delete v;
-    }
-    readyToMerge.clear();
-
-    delete gen;
-    delete noiseSIMD;
-
-    structures.clear();
-
-    distributedPoints.clear();
-
-    for(auto& v : chunkCache) {
-        for(auto& v2 : v.second) {
-            delete v2.second;
-        }
-        v.second.clear();
-    }
-    chunkCache.clear();
-
-    for(auto& v : populators) {
-        delete v;
-    }
-    populators.clear();
-
-    delete hasPopulator;
-
-    for(auto& v : entities) {
-        delete v;
-    }
-    entities.clear();
-    //delete player;
-
-}
-
-void World::setLight(int x, int y, float light) {
-    this->light[x + y * width] = light;
-}
-
-float World::getLight(int x, int y) {
-    return this->light[x + y * width];
-}
-
-float World::getLightBlockingAmountAt(int x, int y) {
-    return this->tiles[x + y * width].mat->physicsType == PhysicsType::AIR ? 0.01 : 0.1;
-}
-
-void World::applyLightRec(int currentx, int currenty, float lastLight) {
-    if(currentx < 0 || currenty < 0 || currentx >= width || currenty >= height) return;
-
-    float newLight = lastLight - getLightBlockingAmountAt(currentx, currenty);
-
-    float ll = getLight(currentx, currenty);
-    if(newLight <= ll) return;
-
-    setLight(currentx, currenty, newLight);
-
-    applyLightRec(currentx + 1, currenty, newLight);
-    applyLightRec(currentx, currenty + 1, newLight);
-    applyLightRec(currentx - 1, currenty, newLight);
-    applyLightRec(currentx, currenty - 1, newLight);
-}
-
 // Adapted from https://stackoverflow.com/a/52859805/8267529
 void World::forLine(int x0, int y0, int x1, int y1, std::function<bool(int)> fn) {
     int dx = x1 - x0;
@@ -3470,14 +3194,14 @@ RigidBody* World::physicsCheck(int x, int y) {
     static bool* visited = new bool[width * height];
     EASY_END_BLOCK;
     EASY_BLOCK("memset");
-    memset(visited, false, width * height);
+    memset(visited, false, (size_t)width * height);
     EASY_END_BLOCK;
 
     EASY_BLOCK("alloc");
     static uint32* cols = new uint32[width * height];
     EASY_END_BLOCK;
     EASY_BLOCK("memset");
-    memset(cols, 0x00, width * height * sizeof(uint32)); // init to all 0s
+    memset(cols, 0x00, (size_t)width * height * sizeof(uint32)); // init to all 0s
     EASY_END_BLOCK;
 
     int count = 0;
@@ -3499,7 +3223,7 @@ RigidBody* World::physicsCheck(int x, int y) {
             for(int yy = minY; yy <= maxY; yy++) {
                 for(int xx = minX; xx <= maxX; xx++) {
                     if(visited[xx + yy * width]) {
-                        PIXEL(tex, xx - minX, yy - minY) = cols[xx + yy * width];
+                        PIXEL(tex, (unsigned long long)(xx) - minX, yy - minY) = cols[xx + yy * width];
                         tiles[xx + yy * width] = Tiles::NOTHING;
                         dirty[xx + yy * width] = true;
                     }
@@ -3510,7 +3234,7 @@ RigidBody* World::physicsCheck(int x, int y) {
             /*delete visited;
             delete cols;*/
 
-            //audioEngine.PlayEvent("event:/Impact");
+            //audioEngine.PlayEvent("event:/Player/Impact");
             b2PolygonShape s;
             s.SetAsBox(1, 1);
             RigidBody* rb = makeRigidBody(b2_dynamicBody, (float)minX, (float)minY, 0, s, 1, (float)0.3, tex);
@@ -3572,14 +3296,14 @@ void World::physicsCheck_flood(int x, int y, bool* visited, int* count, uint32* 
     }
 }
 
-WorldMeta WorldMeta::loadWorldMeta(char* worldFileName) {
+WorldMeta WorldMeta::loadWorldMeta(std::string worldFileName) {
 
     WorldMeta meta = WorldMeta();
 
     rapidjson::Document document;
 
     char* metaFile = new char[255];
-    snprintf(metaFile, 255, "%s/world.txt", worldFileName);
+    snprintf(metaFile, 255, "%s/world.json", worldFileName.c_str());
 
     FILE* fp = fopen(metaFile, "rb"); // non-Windows use "r"
 
@@ -3608,4 +3332,125 @@ WorldMeta WorldMeta::loadWorldMeta(char* worldFileName) {
     }
 
     return meta;
+}
+
+bool WorldMeta::save(std::string worldFileName) {
+
+    char* metaFile = new char[255];
+    snprintf(metaFile, 255, "%s/world.json", worldFileName.c_str());
+
+    ofstream myfile;
+    myfile.open(metaFile);
+
+    rapidjson::Document document;
+    document.SetObject();
+    rapidjson::Document::AllocatorType& docAlloc = document.GetAllocator();
+
+    document.AddMember("name", rapidjson::Value().SetString(this->worldName.c_str(), docAlloc), docAlloc);
+    document.AddMember("lastOpenedVersion", rapidjson::Value().SetString(this->lastOpenedVersion.c_str(), docAlloc), docAlloc);
+    document.AddMember("lastOpenedTime", rapidjson::Value().SetInt64(this->lastOpenedTime), docAlloc);
+
+    rapidjson::StringBuffer buffer;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+    document.Accept(writer);
+
+    myfile << buffer.GetString();
+
+    myfile.close();
+
+    return false;
+}
+
+World::~World() {
+
+    //delete worldName;
+    delete[] tiles;
+    delete[] layer2;
+    delete[] background;
+
+    for(auto& v : particles) {
+        delete v;
+    }
+    particles.clear();
+
+    tickPool->clear_queue();
+    loadChunkPool->clear_queue();
+    tickVisitedPool->clear_queue();
+    updateRigidBodyHitboxPool->clear_queue();
+
+    /*tickPool->stop(false);
+    delete tickPool;
+
+    loadChunkPool->stop(false);
+    delete loadChunkPool;
+
+    tickVisitedPool->stop(false);
+    delete tickVisitedPool;
+
+    updateRigidBodyHitboxPool->stop(false);
+    delete updateRigidBodyHitboxPool;*/
+
+    delete[] newTemps;
+
+    delete[] dirty;
+    delete[] layer2Dirty;
+    delete[] backgroundDirty;
+    delete[] lastActive;
+    delete[] active;
+    delete[] tickVisited1;
+    delete[] tickVisited2;
+
+    delete b2world;
+
+    for(auto& v : rigidBodies) {
+        delete v;
+    }
+    rigidBodies.clear();
+    delete staticBody;
+
+    worldMeshes.clear();
+    worldTris.clear();
+
+    for(auto& v : worldRigidBodies) {
+        delete v;
+    }
+    worldRigidBodies.clear();
+
+    toLoad.clear();
+
+    readyToReadyToMerge.clear();
+
+    for(auto& v : readyToMerge) {
+        delete v;
+    }
+    readyToMerge.clear();
+
+    delete gen;
+    delete noiseSIMD;
+
+    structures.clear();
+
+    distributedPoints.clear();
+
+    for(auto& v : chunkCache) {
+        for(auto& v2 : v.second) {
+            delete v2.second;
+        }
+        v.second.clear();
+    }
+    chunkCache.clear();
+
+    for(auto& v : populators) {
+        delete v;
+    }
+    populators.clear();
+
+    delete[] hasPopulator;
+
+    for(auto& v : entities) {
+        delete v;
+    }
+    entities.clear();
+    //delete player;
+
 }

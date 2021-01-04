@@ -7,8 +7,10 @@ SDL_Surface* Textures::stone1Texture = Textures::loadTexture("assets/textures/te
 
 SDL_Surface* Textures::smoothStone = Textures::loadTexture("assets/textures/smooth_stone_128x.png");
 SDL_Surface* Textures::cobbleStone = Textures::loadTexture("assets/textures/cobble_stone_128x.png");
+SDL_Surface* Textures::flatCobbleStone = Textures::loadTexture("assets/textures/flat_cobble_stone_128x.png");
 SDL_Surface* Textures::smoothDirt = Textures::loadTexture("assets/textures/smooth_dirt_128x.png");
 SDL_Surface* Textures::cobbleDirt = Textures::loadTexture("assets/textures/cobble_dirt_128x.png");
+SDL_Surface* Textures::flatCobbleDirt = Textures::loadTexture("assets/textures/flat_cobble_dirt_128x.png");
 SDL_Surface* Textures::softDirt = Textures::loadTexture("assets/textures/soft_dirt.png");
 SDL_Surface* Textures::cloud = Textures::loadTexture("assets/textures/cloud.png");
 SDL_Surface* Textures::gold = Textures::loadTexture("assets/textures/gold.png");

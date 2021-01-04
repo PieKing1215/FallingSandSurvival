@@ -1,5 +1,17 @@
-# FallingSandSurvival
+<!---
+Repo: FallingSandSurvival
+Author: PieKing1215
+URL: https://github.com/PieKing1215/FallingSandSurvival
+-->
+
+<h1>FallingSandSurvival<br>
+  <a href="https://github.com/PieKing1215/FallingSandSurvival/actions?query=workflow%3A%22AutoBuild+-+dev%22+branch%3Adev+is%3Asuccess"> <img alt="GitHub Workflow Status (branch)" src="https://img.shields.io/github/workflow/status/PieKing1215/FallingSandSurvival/AutoBuild%20-%20dev/dev?label=AutoBuild%20-%20dev"></a>
+  <a href="https://github.com/PieKing1215/FallingSandSurvival/commits/dev"><img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/PieKing1215/FallingSandSurvival"></a>
+  <a href="https://github.com/PieKing1215/FallingSandSurvival/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/PieKing1215/FallingSandSurvival"></a>
+</h1>
+
 2D survival game inspired by Noita and slightly Terraria<br>
+(*name TBD*)
 
 ![](../media/preview_1.gif)<br>
 *Preview (2/4/20)*
@@ -45,20 +57,18 @@ Please use the [GitHub issues](https://github.com/PieKing1215/FallingSandSurviva
 See [Tech & Integrations](../../wiki/Tech-&-Integrations)
 
 ## Building<br>
-See [SETUP.txt](SETUP.txt)
+See [Building](../../wiki/Building)
 
 ## More Images<br>
 ![](../media/preview_2.gif)<br>
-*Containers and temperature (2/10/20)*<br><br>
-![](../media/preview_3.gif)<br>
-*Chisel tool (WIP) (2/27/20)*<br><br>
-![](../media/preview_shader.png)<br>
-*Experimental raycasted lighting shader (4/22/20)*
+*Containers and temperature (2/10/20) (re-recorded 11/16/20)*<br><br>
+<img src="../media/preview_lighting.png" height="auto" width="600"><br>
+*New lighting shader (11/9/20)*<br>
 
 ## Licensing
 
 ### Code
-All original code files are licensed under the [BSD 3-Clause License](LICENSE.md).
+All original code files are licensed under the [BSD 3-Clause License](LICENSE).
 
 ### Assets
 All art assets (everything in FallingSandSurvival/assets/) are licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License](https://creativecommons.org/licenses/by-nc/4.0/).

@@ -46,6 +46,7 @@ public:
 	static int ErrorCheck(FMOD_RESULT result);
 
 	void LoadBank(const std::string& strBankName, FMOD_STUDIO_LOAD_BANK_FLAGS flags);
+    FMOD::Studio::Bank* GetBank(const std::string& strBankName);
 	void LoadEvent(const std::string& strEventName);
 	void LoadSound(const string &strSoundName, bool b3d = true, bool bLooping = false, bool bStream = false);
 	void UnLoadSound(const string &strSoundName);
@@ -57,6 +58,8 @@ public:
 	void StopEvent(const string &strEventName, bool bImmediate = false);
 	void GetEventParameter(const string &strEventName, const string &strEventParameter, float* parameter);
 	void SetEventParameter(const string &strEventName, const string &strParameterName, float fValue);
+	void SetGlobalParameter(const string &strParameterName, float fValue);
+	void GetGlobalParameter(const string& strEventParameter, float* parameter);
 	void StopAllChannels();
 	void SetChannel3dPosition(int nChannelId, const Vector3& vPosition);
 	void SetChannelVolume(int nChannelId, float fVolumedB);

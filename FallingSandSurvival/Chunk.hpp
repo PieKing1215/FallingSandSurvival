@@ -25,19 +25,19 @@
 #include "RigidBody.hpp"
 
 typedef struct {
-    Uint32 index;
+    Uint16 index;
     Uint32 color;
     int32_t temperature;
 } MaterialInstanceData;
 
 class Chunk {
-    const char* fname;
+    std::string fname;
 public:
     int x;
     int y;
     bool hasMeta = false;
     // in order for a chunk to execute phase generationPhase+1, all surrounding chunks must be at least generationPhase
-    int generationPhase = 0;
+    int8_t generationPhase = 0;
     bool pleaseDelete = false;
 
     Chunk(int x, int y, char* worldName);
@@ -46,7 +46,7 @@ public:
 
     void loadMeta();
 
-    static MaterialInstanceData* readBuf;
+    //static MaterialInstanceData* readBuf;
     void read();
     void write(MaterialInstance* tiles, MaterialInstance* layer2, Uint32* background);
     bool hasFile();

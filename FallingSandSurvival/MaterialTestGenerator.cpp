@@ -1,3 +1,4 @@
+#pragma once
 
 #ifndef INC_WorldGenerator
 #include "WorldGenerator.hpp"
@@ -10,7 +11,7 @@
 #include "Populators.cpp"
 
 class MaterialTestGenerator : public WorldGenerator {
-    void WorldGenerator::generateChunk(World* world, Chunk* ch) {
+    void generateChunk(World* world, Chunk* ch) override {
         MaterialInstance* prop = new MaterialInstance[CHUNK_W * CHUNK_H];
         MaterialInstance* layer2 = new MaterialInstance[CHUNK_W * CHUNK_H];
         Uint32* background = new Uint32[CHUNK_W * CHUNK_H];
@@ -18,7 +19,7 @@ class MaterialTestGenerator : public WorldGenerator {
 
         while(true) {
             mat = Materials::MATERIALS[rand() % Materials::MATERIALS.size()];
-            if(mat->id >= 26 && (mat->physicsType == PhysicsType::SAND || mat->physicsType == PhysicsType::SOUP)) break;
+            if(mat->id >= 31 && (mat->physicsType == PhysicsType::SAND || mat->physicsType == PhysicsType::SOUP)) break;
         }
 
         for(int x = 0; x < CHUNK_W; x++) {
@@ -55,7 +56,7 @@ class MaterialTestGenerator : public WorldGenerator {
         ch->background = background;
     }
 
-    std::vector<Populator*> WorldGenerator::getPopulators() {
+    std::vector<Populator*> getPopulators() override {
         return {};
     }
 };

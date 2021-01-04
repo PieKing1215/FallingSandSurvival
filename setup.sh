@@ -1,8 +1,9 @@
 #!/bin/bash
 echo "FallingSandSurvival project setup"
 echo ""
-echo "You should have already done the steps in SETUP.txt under \"Before you start\""
+echo "You should have already done the required steps before running this file."
 echo "Please do these first unless you know what you're doing."
+echo "Instructions: https://github.com/PieKing1215/FallingSandSurvival/wiki/Building"
 echo ""
 read -p "Press [Enter] to start (or Ctrl+C to exit)..."
 echo ""
@@ -38,15 +39,62 @@ fi
 echo "Setting up Conan sdl_gpu..."
 if conan search sdl_gpu | grep sdl_gpu/ -q
 then
-    echo "Conan sdl_gpu already installed."
+    if conan search sdl_gpu | grep sdl_gpu/20201002 -q
+    then
+        echo "There is a new version of sdl_gpu which needs to be installed."
+        
+        echo "Cloning github.com/sixten-hilborn/conan-sdl_gpu..."
+        git clone https://github.com/sixten-hilborn/conan-sdl_gpu ./conan-sdl_gpu
+        cd ./conan-sdl_gpu
+        
+        # Patches to use newer version of sdl_gpu
+        sed -i 's/20171229/20201002/g' ./conanfile.py
+        sed -i 's/143f767adf7d472f81ce890d4692ed29369aa8f3/47a3e2b2a9326c33ad6f177794705987399de8cf/g' ./conanfile.py
+        sed -i 's/2.0.9/2.0.12/g' ./conanfile.py
+        sed -i "s/sdl2 sdl2 sdl-2.0'/SDL2d sdl2 sdl2 sdl-2.0'/g" ./conanfile.py
+        sed -i "s/sdl2 sdl2 sdl-2.0 SDL2d'/SDL2d sdl2 sdl2 sdl-2.0'/g" ./conanfile.py
+        sed -i "s/SDL_gpu_INSTALL/INSTALL_LIBRARY/g" ./conanfile.py
+        sed -i "s/SDL_gpu_BUILD_DEMOS/BUILD_DEMOS/g" ./conanfile.py
+        sed -i "s/SDL_gpu_BUILD_SHARED/BUILD_SHARED/g" ./conanfile.py
+        sed -i "s/SDL_gpu_BUILD_STATIC/BUILD_STATIC/g" ./conanfile.py
+        sed -i "s/SDL_gpu_USE_SDL1/USE_SDL1/g" ./conanfile.py
+        sed -i "s/SDL_gpu_DISABLE_GLES_1/DISABLE_GLES_1/g" ./conanfile.py
+        conan export . sdl_gpu/20201002
+        cd ../
+        
+        if conan search sdl_gpu | grep sdl_gpu/20201002 -q
+        then
+            echo "Successfully installed sdl_gpu into Conan."
+            
+            rm -rf ./conan-sdl_gpu/
+        else
+            echo "Failed to install sdl_gpu into Conan."
+            exit 1; 
+        fi
+    else
+        echo "Conan sdl_gpu already installed."
+    fi
 else
     echo "Cloning github.com/sixten-hilborn/conan-sdl_gpu..."
     git clone https://github.com/sixten-hilborn/conan-sdl_gpu ./conan-sdl_gpu
     cd ./conan-sdl_gpu
-    conan export . sdl_gpu/20171229
+    
+    # Patches to use newer version of sdl_gpu
+    sed -i 's/20171229/20201002/g' ./conanfile.py
+    sed -i 's/143f767adf7d472f81ce890d4692ed29369aa8f3/47a3e2b2a9326c33ad6f177794705987399de8cf/g' ./conanfile.py
+    sed -i 's/2.0.9/2.0.12/g' ./conanfile.py
+    sed -i "s/sdl2 sdl2 sdl-2.0'/SDL2d sdl2 sdl2 sdl-2.0'/g" ./conanfile.py
+    sed -i "s/sdl2 sdl2 sdl-2.0 SDL2d'/SDL2d sdl2 sdl2 sdl-2.0'/g" ./conanfile.py
+    sed -i "s/SDL_gpu_INSTALL/INSTALL_LIBRARY/g" ./conanfile.py
+    sed -i "s/SDL_gpu_BUILD_DEMOS/BUILD_DEMOS/g" ./conanfile.py
+    sed -i "s/SDL_gpu_BUILD_SHARED/BUILD_SHARED/g" ./conanfile.py
+    sed -i "s/SDL_gpu_BUILD_STATIC/BUILD_STATIC/g" ./conanfile.py
+    sed -i "s/SDL_gpu_USE_SDL1/USE_SDL1/g" ./conanfile.py
+    sed -i "s/SDL_gpu_DISABLE_GLES_1/DISABLE_GLES_1/g" ./conanfile.py
+    conan export . sdl_gpu/20201002
     cd ../
     
-    if conan search sdl_gpu | grep sdl_gpu/ -q
+    if conan search sdl_gpu | grep sdl_gpu/20201002 -q
     then
         echo "Successfully installed sdl_gpu into Conan."
         
@@ -233,4 +281,4 @@ fi
 
 echo ""
 echo "== Setup complete! =="
-echo "Continue to the next step in SETUP.txt"
+echo "Continue to the next step"

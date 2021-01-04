@@ -23,6 +23,7 @@ public:
     int hammerY = 0;
 
     void render(GPU_Target* target, int ofsX, int ofsY) override;
+    void renderLQ(GPU_Target* target, int ofsX, int ofsY) override;
     void setItemInHand(Item* item, World* world);
 
     ~Player();

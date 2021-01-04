@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.00.00">
+	<object class="MixerGroup" id="{2c4f1ca4-1eca-41e2-a02b-2aa2517cf5af}">
+		<property name="volume">
+			<value>-80</value>
+		</property>
+		<property name="name">
+			<value>Underwater</value>
+		</property>
+		<relationship name="effectChain">
+			<destination>{1cc73b50-577f-4150-a987-29c6ce46a3b7}</destination>
+		</relationship>
+		<relationship name="panner">
+			<destination>{bd5739e6-d063-46ff-b800-4f70fafc53ae}</destination>
+		</relationship>
+		<relationship name="output">
+			<destination>{5005bc40-a452-4483-ace3-82a5f2525248}</destination>
+		</relationship>
+	</object>
+	<object class="MixerBusEffectChain" id="{1cc73b50-577f-4150-a987-29c6ce46a3b7}">
+		<relationship name="effects">
+			<destination>{c60409aa-9e9c-4e8e-b1e8-678101fef38e}</destination>
+			<destination>{234af5e4-c49c-4deb-9b47-880d72d7f665}</destination>
+		</relationship>
+	</object>
+	<object class="MixerBusPanner" id="{bd5739e6-d063-46ff-b800-4f70fafc53ae}" />
+	<object class="MixerSend" id="{c60409aa-9e9c-4e8e-b1e8-678101fef38e}">
+		<property name="level">
+			<value>0</value>
+		</property>
+		<property name="inputFormat">
+			<value>1</value>
+		</property>
+		<relationship name="mixerReturn">
+			<destination>{16d7b544-c84f-4e19-8025-10f1617d3543}</destination>
+		</relationship>
+	</object>
+	<object class="MixerBusFader" id="{234af5e4-c49c-4deb-9b47-880d72d7f665}" />
+</objects>

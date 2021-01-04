@@ -116,6 +116,10 @@ void CAudioEngine::LoadBank(const std::string& strBankName, FMOD_STUDIO_LOAD_BAN
 	}
 }
 
+FMOD::Studio::Bank* CAudioEngine::GetBank(const std::string& strBankName) {
+    return sgpImplementation->mBanks[strBankName];
+}
+
 void CAudioEngine::LoadEvent(const std::string& strEventName) {
 	auto tFoundit = sgpImplementation->mEvents.find(strEventName);
 	if (tFoundit != sgpImplementation->mEvents.end())
@@ -187,6 +191,14 @@ void CAudioEngine::SetEventParameter(const string &strEventName, const string &s
 	if (tFoundIt == sgpImplementation->mEvents.end())
 		return;
 	CAudioEngine::ErrorCheck(tFoundIt->second->setParameterByName(strParameterName.c_str(), fValue));
+}
+
+void CAudioEngine::SetGlobalParameter(const string& strParameterName, float fValue) {
+    sgpImplementation->mpStudioSystem->setParameterByName(strParameterName.c_str(), fValue);
+}
+
+void CAudioEngine::GetGlobalParameter(const string& strParameterName, float* parameter) {
+    sgpImplementation->mpStudioSystem->getParameterByName(strParameterName.c_str(), parameter);
 }
 
 FMOD_VECTOR CAudioEngine::VectorToFmod(const Vector3& vPosition) {

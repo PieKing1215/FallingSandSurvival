@@ -65,6 +65,9 @@ public:
     static bool mmouse;
     static bool rmouse;
 
+    static Control* STATS_DISPLAY;
+    static Control* STATS_DISPLAY_DETAILED;
+
     static Control* DEBUG_UI;
     static Control* DEBUG_REFRESH;
     static Control* DEBUG_UPDATE_WORLD_MESH;
@@ -85,6 +88,8 @@ public:
     static Control* PLAYER_DOWN;
     static Control* PLAYER_LEFT;
     static Control* PLAYER_RIGHT;
+
+    static Control* PAUSE;
 
     static std::vector<KeyControl*> keyControls;
     //static KeyControl** keyControls;

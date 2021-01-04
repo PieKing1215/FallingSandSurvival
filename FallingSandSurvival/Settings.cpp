@@ -4,15 +4,29 @@
 bool Settings::draw_frame_graph     = true;
 bool Settings::draw_background      = true;
 bool Settings::draw_background_grid = false;
-bool Settings::draw_load_zones      = true;
-bool Settings::draw_physics_meshes  = false;
+bool Settings::draw_load_zones      = false;
+bool Settings::draw_physics_debug   = false;
+bool Settings::draw_b2d_shape       = true;
+bool Settings::draw_b2d_joint       = false;
+bool Settings::draw_b2d_aabb        = false;
+bool Settings::draw_b2d_pair        = false;
+bool Settings::draw_b2d_centerMass  = true;
 bool Settings::draw_chunk_state     = false;
-bool Settings::draw_chunk_queue     = false;
-bool Settings::draw_material_info   = false;
-bool Settings::draw_uinode_bounds   = false;
-bool Settings::draw_light_map       = false;
+bool Settings::draw_debug_stats     = false;
+bool Settings::draw_material_info   = true;
+bool Settings::draw_detailed_material_info = true;
 bool Settings::draw_temperature_map = false;
-bool Settings::draw_shaders		    = false;
+
+bool Settings::draw_shaders		    = true;
+float Settings::lightingQuality     = 0.5f;
+bool Settings::draw_light_overlay   = false;
+bool Settings::simpleLighting       = false;
+bool Settings::lightingEmission     = true;
+bool Settings::lightingDithering    = false;
+
 bool Settings::tick_world           = true;
 bool Settings::tick_box2d           = true;
 bool Settings::tick_temperature     = true;
+bool Settings::hd_objects           = false;
+
+int Settings::hd_objects_size = 3;

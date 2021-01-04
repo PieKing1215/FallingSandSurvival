@@ -10,8 +10,9 @@
 #define INC_MaterialInstance
 
 class MaterialInstance {
-    static int _curID;
 public:
+    static int _curID;
+
     Material* mat;
     Uint32 color;
     int32_t temperature;

@@ -1,21 +1,37 @@
 
 #include "Game.hpp"
 #include <iterator>
-#include <filesystem>
 #include <regex>
 
 #include "DefaultGenerator.cpp"
 #include "MaterialTestGenerator.cpp"
 
+#include "imgui.h"
+#include "imgui_impl_sdl.h"
+#include "imgui_impl_opengl3.h"
+
+#include "UIs.hpp"
+
+#include <GL/gl3w.h>
+
 #define BUILD_WITH_EASY_PROFILER
 #include <easy/profiler.h>
+
+#include "DiscordIntegration.hpp"
 
 #define timegm _mkgmtime
 
 #define W_PI 3.14159265358979323846
 
+void Game::updateMaterialSounds() {
+    uint16_t waterCt = min(movingTiles[Materials::WATER.id], (uint16_t)5000);
+    float water = (float)waterCt / 3000;
+    //logDebug("{} / {} = {}", waterCt, 3000, water);
+    audioEngine.SetEventParameter("event:/World/WaterFlow", "FlowIntensity", water);
+}
+
 int Game::init(int argc, char *argv[]) {
-    //EASY_PROFILER_ENABLE;
+    EASY_PROFILER_ENABLE;
     profiler::startListen();
     EASY_MAIN_THREAD;
     EASY_FUNCTION(GAME_PROFILER_COLOR);
@@ -25,14 +41,20 @@ int Game::init(int argc, char *argv[]) {
     // init console & print title
     #pragma region
     EASY_BLOCK("init console");
+    #ifdef _WIN32
     if(_setmode(_fileno(stdout), _O_WTEXT) == -1) {
         std::wcout << "Error initting console: " << std::strerror(errno) << std::endl;
     }
+    #endif
 
     EASY_BLOCK("print ascii title");
     std::locale ulocale(locale(), new codecvt_utf8<wchar_t>);
     std::wifstream ifs("assets/title.txt");
     std::locale prevlocale = ifs.imbue(ulocale);
+    #ifndef _WIN32
+    std::wcout.sync_with_stdio(false);
+    std::wcout.imbue(std::locale("en_US.utf8"));
+    #endif
     std::wcout << ifs.rdbuf() << std::endl;
     EASY_END_BLOCK;
 
@@ -45,14 +67,28 @@ int Game::init(int argc, char *argv[]) {
 
     logInfo("Starting game...");
 
-    EASY_BLOCK("wait for client/server choice");
-    char ch = getchar();
-    EASY_END_BLOCK;
+    bool openDebugUIs = clArgs->getBool("debug");
+    DebugUI::visible = openDebugUIs;
+    DebugCheatsUI::visible = openDebugUIs;
+    DebugDrawUI::visible = openDebugUIs;
+    Settings::draw_frame_graph = openDebugUIs;
+    if(!openDebugUIs) {
+        Settings::draw_background = true;
+        Settings::draw_background_grid = false;
+        Settings::draw_load_zones = false;
+        Settings::draw_physics_debug = false;
+        Settings::draw_chunk_state = false;
+        Settings::draw_debug_stats = false;
+        Settings::draw_detailed_material_info = false;
+        Settings::draw_temperature_map = false;
 
-    // TODO: commandline option
-    this->gameDir = "gamedir/";
+        //TODO: load video settings from settings file
 
-    networkMode = ch == 's' ? NetworkMode::SERVER : NetworkMode::HOST;
+    }
+
+    this->gameDir = GameDir(clArgs->getString("game-dir"));
+
+    networkMode = clArgs->getBool("server") ? NetworkMode::SERVER : NetworkMode::HOST;
     if(argc >= 2) {
         if(strstr(argv[1], "server")) {
             networkMode = NetworkMode::SERVER;
@@ -130,18 +166,25 @@ int Game::init(int argc, char *argv[]) {
             EASY_END_BLOCK;
 
             EASY_BLOCK("load events");
-            audioEngine.LoadEvent("event:/Title");
-            audioEngine.LoadEvent("event:/Jump");
-            audioEngine.LoadEvent("event:/Fly");
-            audioEngine.LoadEvent("event:/Wind");
-            audioEngine.LoadEvent("event:/Impact");
-            audioEngine.LoadEvent("event:/Sand");
+            audioEngine.LoadEvent("event:/Music/Title");
+
+            audioEngine.LoadEvent("event:/Player/Jump");
+            audioEngine.LoadEvent("event:/Player/Fly");
+            audioEngine.LoadEvent("event:/Player/Wind");
+            audioEngine.LoadEvent("event:/Player/Impact");
+
+            audioEngine.LoadEvent("event:/World/Sand");
+            audioEngine.LoadEvent("event:/World/WaterFlow");
+
+            audioEngine.LoadEvent("event:/GUI/GUI_Hover");
+            audioEngine.LoadEvent("event:/GUI/GUI_Slider");
             EASY_END_BLOCK;
 
             EASY_BLOCK("play events");
-            audioEngine.PlayEvent("event:/Fly");
-            audioEngine.PlayEvent("event:/Wind");
-            audioEngine.PlayEvent("event:/Sand");
+            audioEngine.PlayEvent("event:/Player/Fly");
+            audioEngine.PlayEvent("event:/Player/Wind");
+            audioEngine.PlayEvent("event:/World/Sand");
+            audioEngine.PlayEvent("event:/World/WaterFlow");
             EASY_END_BLOCK;
 
             EASY_END_BLOCK; // init fmod
@@ -161,7 +204,7 @@ int Game::init(int argc, char *argv[]) {
     }
 
     //SDL_SetHintWithPriority(SDL_HINT_RENDER_DRIVER, "direct3d11", SDL_HINT_OVERRIDE);
-    SDL_SetHintWithPriority(SDL_HINT_RENDER_DRIVER, "opengles2", SDL_HINT_OVERRIDE);
+    SDL_SetHintWithPriority(SDL_HINT_RENDER_DRIVER, "opengl", SDL_HINT_OVERRIDE);
     EASY_END_BLOCK;
 
     EASY_BLOCK("TTF_Init");
@@ -234,6 +277,80 @@ int Game::init(int argc, char *argv[]) {
         EASY_END_BLOCK;
         #pragma endregion
 
+        SDL_GLContext& gl_context = target->context->context;
+
+        SDL_GL_MakeCurrent(window, gl_context);
+
+        bool err = gl3wInit() != 0;
+
+        if(err) {
+            fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+            return EXIT_FAILURE;
+        }
+
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+
+        ImGui::GetIO().Fonts->AddFontDefault();
+        ImGui::GetIO().Fonts->AddFontFromFileTTF("assets/fonts/pixel_operator/PixelOperator.ttf", 32);
+        
+        ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+
+        const char* glsl_version = "#version 130";
+        ImGui_ImplOpenGL3_Init(glsl_version);
+
+        ImGui::StyleColorsClassic();
+        ImGui::GetStyle().WindowTitleAlign = ImVec2(0.5f, 0.5f);
+        ImVec4* colors = ImGui::GetStyle().Colors;
+        colors[ImGuiCol_Text]                   = ImVec4(0.90f, 0.90f, 0.90f, 1.00f);
+        colors[ImGuiCol_TextDisabled]           = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
+        colors[ImGuiCol_WindowBg]               = ImVec4(0.11f, 0.11f, 0.11f, 0.72f);
+        colors[ImGuiCol_ChildBg]                = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+        colors[ImGuiCol_PopupBg]                = ImVec4(0.11f, 0.11f, 0.14f, 0.92f);
+        colors[ImGuiCol_Border]                 = ImVec4(1.00f, 1.00f, 1.00f, 0.64f);
+        colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+        colors[ImGuiCol_FrameBg]                = ImVec4(0.43f, 0.43f, 0.43f, 0.43f);
+        colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.47f, 0.47f, 0.69f, 0.40f);
+        colors[ImGuiCol_FrameBgActive]          = ImVec4(0.42f, 0.41f, 0.64f, 0.69f);
+        colors[ImGuiCol_TitleBg]                = ImVec4(0.41f, 0.47f, 0.60f, 0.83f);
+        colors[ImGuiCol_TitleBgActive]          = ImVec4(0.29f, 0.43f, 0.73f, 0.87f);
+        colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.37f, 0.48f, 0.69f, 0.46f);
+        colors[ImGuiCol_MenuBarBg]              = ImVec4(0.27f, 0.32f, 0.44f, 0.87f);
+        colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.20f, 0.25f, 0.30f, 0.60f);
+        colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.44f, 0.60f, 0.86f, 0.44f);
+        colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.54f, 0.67f, 0.87f, 0.44f);
+        colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.64f, 0.74f, 0.90f, 0.44f);
+        colors[ImGuiCol_CheckMark]              = ImVec4(0.76f, 0.91f, 0.75f, 0.58f);
+        colors[ImGuiCol_SliderGrab]             = ImVec4(1.00f, 1.00f, 1.00f, 0.30f);
+        colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.41f, 0.39f, 0.80f, 0.60f);
+        colors[ImGuiCol_Button]                 = ImVec4(0.35f, 0.40f, 0.61f, 0.62f);
+        colors[ImGuiCol_ButtonHovered]          = ImVec4(0.40f, 0.48f, 0.71f, 0.79f);
+        colors[ImGuiCol_ButtonActive]           = ImVec4(0.46f, 0.54f, 0.80f, 1.00f);
+        colors[ImGuiCol_Header]                 = ImVec4(0.40f, 0.44f, 0.90f, 0.45f);
+        colors[ImGuiCol_HeaderHovered]          = ImVec4(0.45f, 0.45f, 0.90f, 0.80f);
+        colors[ImGuiCol_HeaderActive]           = ImVec4(0.53f, 0.53f, 0.87f, 0.80f);
+        colors[ImGuiCol_Separator]              = ImVec4(0.50f, 0.50f, 0.50f, 0.60f);
+        colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.60f, 0.60f, 0.70f, 1.00f);
+        colors[ImGuiCol_SeparatorActive]        = ImVec4(0.70f, 0.70f, 0.90f, 1.00f);
+        colors[ImGuiCol_ResizeGrip]             = ImVec4(1.00f, 1.00f, 1.00f, 0.16f);
+        colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.78f, 0.82f, 1.00f, 0.60f);
+        colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.78f, 0.82f, 1.00f, 0.90f);
+        colors[ImGuiCol_Tab]                    = ImVec4(0.35f, 0.41f, 0.57f, 0.77f);
+        colors[ImGuiCol_TabHovered]             = ImVec4(0.45f, 0.56f, 0.90f, 0.80f);
+        colors[ImGuiCol_TabActive]              = ImVec4(0.31f, 0.41f, 0.86f, 0.84f);
+        colors[ImGuiCol_TabUnfocused]           = ImVec4(0.28f, 0.28f, 0.57f, 0.82f);
+        colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.35f, 0.35f, 0.65f, 0.84f);
+        colors[ImGuiCol_PlotLines]              = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+        colors[ImGuiCol_PlotLinesHovered]       = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+        colors[ImGuiCol_PlotHistogram]          = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+        colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+        colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.66f, 0.77f, 0.99f, 0.35f);
+        colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+        colors[ImGuiCol_NavHighlight]           = ImVec4(0.45f, 0.45f, 0.90f, 0.80f);
+        colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+        colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+        colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
+
         // load splash screen
         #pragma region
         EASY_BLOCK("load splash screen");
@@ -271,7 +388,7 @@ int Game::init(int argc, char *argv[]) {
         initFmodThread.join();
         EASY_END_BLOCK;
         EASY_BLOCK("play audio");
-        audioEngine.PlayEvent("event:/Title");
+        audioEngine.PlayEvent("event:/Music/Title");
         audioEngine.Update();
         EASY_END_BLOCK;
         EASY_END_BLOCK;
@@ -302,41 +419,11 @@ int Game::init(int argc, char *argv[]) {
         #pragma region
         logInfo("Initializing Discord Game SDK...");
         EASY_BLOCK("init discord", DISCORD_PROFILER_COLOR);
-        EASY_BLOCK("discord::Core::Create", DISCORD_PROFILER_COLOR);
-        auto result = discord::Core::Create(DISCORD_CLIENTID, DiscordCreateFlags_NoRequireDiscord, &core);
-        EASY_END_BLOCK;
-        if(discordAPI = (result == discord::Result::Ok)) {
-            logInfo("discord::Core::Create successful.");
-            EASY_BLOCK("SetLogHook", DISCORD_PROFILER_COLOR);
-            core->SetLogHook(discord::LogLevel::Debug, [](auto level, const char* txt) {
-                switch(level) {
-                case discord::LogLevel::Info:
-                    logInfo("[DISCORD SDK] {}", txt);
-                    break;
-                case discord::LogLevel::Debug:
-                    logDebug("[DISCORD SDK] {}", txt);
-                    break;
-                case discord::LogLevel::Warn:
-                    logWarn("[DISCORD SDK] {}", txt);
-                    break;
-                case discord::LogLevel::Error:
-                    logError("[DISCORD SDK] {}", txt);
-                    break;
-                }
-            });
-            EASY_END_BLOCK;
+        if(DiscordIntegration::init()) {
             EASY_BLOCK("set activity", DISCORD_PROFILER_COLOR);
-            discord::Activity activity {};
-            activity.SetDetails("In world: \"chunks\"");
-            activity.GetAssets().SetLargeImage("largeicon");
-            activity.GetAssets().SetLargeText("Falling Sand Survival");
-            activity.SetType(discord::ActivityType::Playing);
-            core->ActivityManager().UpdateActivity(activity, [](discord::Result result) {
-                logInfo("[DISCORD] UpdateActivity returned {0:d}", result);
-            });
+            DiscordIntegration::setActivityState("On Main Menu");
+            DiscordIntegration::flushActivity();
             EASY_END_BLOCK;
-        } else {
-            logError("discord::Core::Create failed.");
         }
         EASY_END_BLOCK;
         #pragma endregion
@@ -368,12 +455,17 @@ int Game::init(int argc, char *argv[]) {
     EASY_END_BLOCK;
     #pragma endregion
 
+    movingTiles = new uint16_t[Materials::nMaterials];
+
+    b2DebugDraw = new b2DebugDraw_impl(target);
+
     // init the world
     #pragma region
     EASY_BLOCK("init world");
     logInfo("Initializing world...");
     world = new World();
-    world->init((char*)getWorldDir("mainMenu").c_str(), (int)ceil(WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode);
+    world->noSaveLoad = true;
+    world->init(gameDir.getWorldPath("mainMenu"), (int)ceil(MAX_WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(MAX_HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode);
     EASY_END_BLOCK;
     #pragma endregion
 
@@ -384,506 +476,6 @@ int Game::init(int argc, char *argv[]) {
         logInfo("Setting up main menu...");
         TTF_Font* labelFont = TTF_OpenFont("assets/fonts/pixel_operator/PixelOperator.ttf", 32);
         TTF_Font* uiFont = TTF_OpenFont("assets/fonts/pixel_operator/PixelOperator.ttf", 16);
-
-        mainMenuUI = new UI(new SDL_Rect {WIDTH / 2 - 200, HEIGHT / 2 - 250, 400, 500});
-        mainMenuUI->background = new SolidBackground(0x80000000);
-        mainMenuUI->drawBorder = true;
-
-        int mainMenuButtonsWidth = 250;
-        int mainMenuButtonsYOffset = 50;
-
-        UILabel* mainMenuTitleLabel = new UILabel(new SDL_Rect {200, 10, 100, 30}, "Falling Sand Survival", labelFont, 0xffffff, ALIGN_CENTER);
-        mainMenuUI->children.push_back(mainMenuTitleLabel);
-
-        int connectWidth = 200;
-        UIButton* connectButton;
-        UITextArea* connectInput = new UITextArea(new SDL_Rect {200 - connectWidth / 2 - 60 / 2, 60, connectWidth, 20}, "", "ip:port", uiFont);
-        connectInput->maxLength = 24;
-        connectInput->callback = [&](std::string text) {
-            regex connectInputRegex("([^:]+):(\\d+)");
-            connectButton->disabled = !regex_match(text, connectInputRegex);
-        };
-        mainMenuUI->children.push_back(connectInput);
-
-        connectButton = new UIButton(new SDL_Rect {connectInput->bounds->x + connectInput->bounds->w + 4, connectInput->bounds->y, 60, 20}, "Connect", uiFont, 0xffffff, ALIGN_CENTER);
-        connectButton->drawBorder = true;
-        connectButton->disabled = true;
-        connectButton->selectCallback = [&]() {
-            logInfo("connectButton select");
-            if(client->connect("172.23.16.150", 1337)) {
-                networkMode = NetworkMode::CLIENT;
-                mainMenuUI->visible = false;
-                state = LOADING;
-                stateAfterLoad = INGAME;
-            }
-        };
-        mainMenuUI->children.push_back(connectButton);
-
-
-        int mainMenuNewButtonWidth = 150;
-        UIButton* mainMenuNewButton = new UIButton(new SDL_Rect {200 - mainMenuNewButtonWidth / 2, 50 + mainMenuButtonsYOffset, mainMenuNewButtonWidth, 36}, "New World", labelFont, 0xffffff, ALIGN_CENTER);
-        mainMenuNewButton->drawBorder = true;
-        mainMenuUI->children.push_back(mainMenuNewButton);
-
-        mainMenuNewButton->selectCallback = [&]() {
-            mainMenuUI->visible = false;
-            createWorldUI->setVisible(true);
-        };
-
-        int nMainMenuButtons = 1;
-        for(auto& p : experimental::filesystem::directory_iterator(getFileInGameDir("worlds/"))) {
-            string worldName = p.path().filename().generic_string();
-
-            WorldMeta meta = WorldMeta::loadWorldMeta((char*)getWorldDir(worldName).c_str());
-
-            UIButton* worldButton = new UIButton(new SDL_Rect {200 - mainMenuButtonsWidth / 2, 60 + mainMenuButtonsYOffset + (nMainMenuButtons++ * 60), mainMenuButtonsWidth, 50}, meta.worldName.c_str(), labelFont, 0xffffff, ALIGN_CENTER);
-
-            tm* tm_utc = gmtime(&meta.lastOpenedTime);
-
-            // convert to local time
-            time_t time_utc = timegm(tm_utc);
-            time_t time_local = mktime(tm_utc);
-            time_local += time_utc - time_local;
-            tm* tm_local = localtime(&time_local);
-
-            char* formattedTime = new char[100];
-            strftime(formattedTime, 100, "%D %I:%M %p", tm_local);
-
-            char* filenameAndTimestamp = new char[200];
-            snprintf(filenameAndTimestamp, 100, "%s (%s)", worldName.c_str(), formattedTime);
-
-            UILabel* worldFileName = new UILabel(new SDL_Rect {mainMenuButtonsWidth / 2, 30, 0, 0}, filenameAndTimestamp, font16, 0xcccccc, ALIGN_CENTER);
-            worldButton->children.push_back(worldFileName);
-            worldButton->drawBorder = true;
-
-            mainMenuUI->children.push_back(worldButton);
-
-            worldButton->selectCallback = [&, worldName]() {
-                logInfo("Selected world: {}", worldName.c_str());
-                mainMenuUI->visible = false;
-                createWorldUI->setVisible(false);
-
-                fadeOutStart = now;
-                fadeOutLength = 250;
-                fadeOutCallback = [&, worldName]() {
-                    state = LOADING;
-                    stateAfterLoad = INGAME;
-
-                    EASY_BLOCK("Close world");
-                    delete world;
-                    world = nullptr;
-                    EASY_END_BLOCK;
-
-                    //std::thread loadWorldThread([&] () {
-                    EASY_BLOCK("Load world");
-                    World* w = new World();
-                    w->init((char*)getWorldDir(worldName).c_str(), (int)ceil(WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode);
-
-                    EASY_BLOCK("Queue chunk loading");
-                    logInfo("Queueing chunk loading...");
-                    for(int x = -CHUNK_W * 4; x < w->width + CHUNK_W * 4; x += CHUNK_W) {
-                        for(int y = -CHUNK_H * 3; y < w->height + CHUNK_H * 8; y += CHUNK_H) {
-                            w->queueLoadChunk(x / CHUNK_W, y / CHUNK_H, true, true);
-                        }
-                    }
-                    EASY_END_BLOCK;
-                    EASY_END_BLOCK;
-
-                    world = w;
-                    //});
-
-                    fadeInStart = now;
-                    fadeInLength = 250;
-                    fadeInWaitFrames = 4;
-                };
-            };
-
-        }
-
-        uis.push_back(mainMenuUI);
-        EASY_END_BLOCK;
-        #pragma endregion
-
-        // set up create world ui
-        #pragma region
-        createWorldUI = new UI(new SDL_Rect {WIDTH / 2 - 200, HEIGHT / 2 - 250, 400, 350});
-        createWorldUI->background = new SolidBackground(0x80000000);
-        createWorldUI->drawBorder = true;
-        createWorldUI->visible = false;
-
-        UILabel* createWorldTitleLabel = new UILabel(new SDL_Rect {200, 10, 100, 30}, "Create World", labelFont, 0xffffff, ALIGN_CENTER);
-        createWorldUI->children.push_back(createWorldTitleLabel);
-
-        ImageButtonNode* createMaterialTestGen = new ImageButtonNode(new SDL_Rect {createWorldUI->bounds->w / 2 - 100 - 24, 170, 100, 100}, Textures::loadTexture("assets/ui/prev_materialtest.png"));
-        createMaterialTestGen->drawBorder = true;
-        createWorldUI->children.push_back(createMaterialTestGen);
-        UILabel* createMaterialTestLabel = new UILabel(new SDL_Rect {createMaterialTestGen->bounds->x + createMaterialTestGen->bounds->w / 2, createMaterialTestGen->bounds->y - 20, 0, 30}, "Material Test World", uiFont, 0xffffff, ALIGN_CENTER);
-        createWorldUI->children.push_back(createMaterialTestLabel);
-
-        ImageButtonNode* createDefaultGen = new ImageButtonNode(new SDL_Rect {createWorldUI->bounds->w / 2 + 24, 170, 100, 100}, Textures::loadTexture("assets/ui/prev_default.png"));
-        createDefaultGen->drawBorder = true;
-        createWorldUI->children.push_back(createDefaultGen);
-        UILabel* createDefaultLabel = new UILabel(new SDL_Rect {createDefaultGen->bounds->x + createDefaultGen->bounds->w / 2, createDefaultGen->bounds->y - 20, 0, 30}, "Default World (WIP)", uiFont, 0xffffff, ALIGN_CENTER);
-        createWorldUI->children.push_back(createDefaultLabel);
-
-        createMaterialTestGen->selectCallback = [&]() {
-            createMaterialTestGen->drawBorder = true;
-            createMaterialTestLabel->textColor = 0xffffff;
-            createMaterialTestLabel->updateTexture();
-            createDefaultGen->drawBorder = false;
-            createDefaultLabel->textColor = 0xcccccc;
-            createDefaultLabel->updateTexture();
-        };
-
-        createDefaultGen->selectCallback = [&]() {
-            createMaterialTestGen->drawBorder = false;
-            createMaterialTestLabel->textColor = 0xcccccc;
-            createMaterialTestLabel->updateTexture();
-            createDefaultGen->drawBorder = true;
-            createDefaultLabel->textColor = 0xffffff;
-            createDefaultLabel->updateTexture();
-        };
-
-        createMaterialTestGen->selectCallback();
-
-        int createWorldWidth = 350;
-        UIButton* createWorldButton;
-        UILabel* worldFolderLabel;
-        UITextArea* worldNameInput = new UITextArea(new SDL_Rect {200 - createWorldWidth / 2, 70, createWorldWidth, 35}, "New World", "New World", labelFont);
-        worldNameInput->maxLength = 24;
-        worldNameInput->callback = [&](std::string text) {
-            regex trimWhitespaceRegex("^ *(.+?) *$");
-            text = regex_replace(text, trimWhitespaceRegex, "$1");
-            if(text.length() == 0 || text == " ") {
-                worldFolderLabel->text = "Saved in: ";
-                worldFolderLabel->updateTexture();
-                createWorldButton->disabled = true;
-                return;
-            }
-
-            regex worldNameInputRegex("^[\\x20-\\x7E]+$");
-            createWorldButton->disabled = !regex_match(text, worldNameInputRegex);
-
-            regex worldFolderRegex("[\\/\\\\:*?\"<>|.]");
-
-            std::string worldFolderName = regex_replace(text, worldFolderRegex, "_");
-            std::string folder = getWorldDir(worldFolderName);
-            struct stat buffer;
-            bool exists = (stat(folder.c_str(), &buffer) == 0);
-
-            std::string newWorldFolderName = worldFolderName;
-            int i = 2;
-            while(exists) {
-                newWorldFolderName = worldFolderName + " (" + std::to_string(i) + ")";
-                folder = getWorldDir(newWorldFolderName);
-
-                exists = (stat(folder.c_str(), &buffer) == 0);
-
-                i++;
-            }
-            
-
-            worldFolderLabel->text = "Saved in: " + newWorldFolderName;
-            worldFolderLabel->updateTexture();
-        };
-        createWorldUI->children.push_back(worldNameInput);
-
-        createWorldUI->setVisibleCallback = [&](bool wasVis, bool nowVis) {
-            if(nowVis && !wasVis) {
-                createWorldUI->bounds->x = mainMenuUI->bounds->x;
-                createWorldUI->bounds->y = mainMenuUI->bounds->y;
-                worldNameInput->text = "New World";
-                worldNameInput->dirty = true;
-                worldNameInput->callback(worldNameInput->text);
-            }
-        };
-
-        UILabel* worldNameLabel = new UILabel(new SDL_Rect {worldNameInput->bounds->x, worldNameInput->bounds->y - 20, 100, 20}, "World Name", uiFont, 0xffffff, ALIGN_LEFT);
-        createWorldUI->children.push_back(worldNameLabel);
-
-        worldFolderLabel = new UILabel(new SDL_Rect {worldNameInput->bounds->x, worldNameInput->bounds->y + worldNameInput->bounds->h + 2, createWorldWidth, 20}, "Saved in: New World", uiFont, 0xcccccc, ALIGN_LEFT);
-        createWorldUI->children.push_back(worldFolderLabel);
-
-        UIButton* createWorldBackButton = new UIButton(new SDL_Rect {8, createWorldUI->bounds->h - 20 - 8, 60, 20}, "Back", uiFont, 0xffffff, ALIGN_CENTER);
-        createWorldBackButton->drawBorder = true;
-        createWorldBackButton->selectCallback = [&]() {
-            mainMenuUI->visible = true;
-            createWorldUI->setVisible(false);
-        };
-        createWorldUI->children.push_back(createWorldBackButton);
-
-        createWorldButton = new UIButton(new SDL_Rect {createWorldUI->bounds->w - 60 - 8, createWorldUI->bounds->h - 20 - 8, 60, 20}, "Create", uiFont, 0xffffff, ALIGN_CENTER);
-        createWorldButton->drawBorder = true;
-        createWorldButton->disabled = true;
-        createWorldButton->selectCallback = [&]() {
-            std::string pref = "Saved in: ";
-
-            std::string worldName = worldFolderLabel->text.substr(pref.length());
-            char* wn = (char*)worldName.c_str();
-
-            std::string worldTitle = worldNameInput->text;
-            regex trimWhitespaceRegex("^ *(.+?) *$");
-            worldTitle = regex_replace(worldTitle, trimWhitespaceRegex, "$1");
-
-            logInfo("Creating world named \"{}\" at \"{}\"", worldTitle, getWorldDir(wn));
-            mainMenuUI->visible = false;
-            createWorldUI->setVisible(false);
-            state = LOADING;
-            stateAfterLoad = INGAME;
-
-            EASY_BLOCK("Close world");
-            delete world;
-            world = nullptr;
-            EASY_END_BLOCK;
-
-            WorldGenerator* generator;
-
-            if(createMaterialTestGen->drawBorder && !createDefaultGen->drawBorder) {
-                generator = new MaterialTestGenerator();
-            }else if(!createMaterialTestGen->drawBorder && createDefaultGen->drawBorder) {
-                generator = new DefaultGenerator();
-            } else {
-                // create world UI is in invalid state
-                generator = new MaterialTestGenerator();
-            }
-
-            EASY_BLOCK("Load world");
-            world = new World();
-            world->init((char*)getWorldDir(wn).c_str(), (int)ceil(WIDTH / 3 / (double)CHUNK_W)* CHUNK_W + CHUNK_W * 3, (int)ceil(HEIGHT / 3 / (double)CHUNK_H)* CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode, generator);
-
-            EASY_BLOCK("Queue chunk loading");
-            logInfo("Queueing chunk loading...");
-            for(int x = -CHUNK_W * 4; x < world->width + CHUNK_W * 4; x += CHUNK_W) {
-                for(int y = -CHUNK_H * 3; y < world->height + CHUNK_H * 8; y += CHUNK_H) {
-                    world->queueLoadChunk(x / CHUNK_W, y / CHUNK_H, true, true);
-                }
-            }
-            EASY_END_BLOCK;
-            EASY_END_BLOCK;
-
-        };
-        createWorldUI->children.push_back(createWorldButton);
-
-        worldNameInput->callback(worldNameInput->text);
-        uis.push_back(createWorldUI);
-        #pragma endregion
-
-        // set up debug ui
-        #pragma region
-        logInfo("Setting up debug UI...");
-        EASY_BLOCK("init debug UI");
-        debugUI = new UI(new SDL_Rect {WIDTH - 200 - 15, 25, 200, 350});
-        debugUI->background = new SolidBackground(0x80000000);
-        debugUI->drawBorder = true;
-
-        UILabel* titleLabel = new UILabel(new SDL_Rect {100, 10, 1, 30}, "Debug", labelFont, 0xffffff, ALIGN_CENTER);
-        debugUI->children.push_back(titleLabel);
-
-        uis.push_back(debugUI);
-        #pragma endregion
-
-        // set up debug ui checkboxes
-        #pragma region
-        int checkIndex = 0;
-
-        #define SETTINGS_CHECK(settingName, v_cb) { \
-	UICheckbox* check = new UICheckbox(new SDL_Rect{ 20, 50 + 18 * checkIndex++, 12, 12 }, Settings::settingName); \
-	check->drawBorder = true; \
-	debugUI->children.push_back(check); \
-	check->callback = [&](bool checked) { \
-	Settings::settingName = checked; \
-	v_cb(checked); }; \
-	UILabel* checkLabel = new UILabel(new SDL_Rect{ 16, 0, 150, 14 }, QUOTE(settingName), uiFont, 0xffffff, ALIGN_LEFT); \
-	check->children.push_back(checkLabel); }
-
-        SETTINGS_CHECK(draw_frame_graph, [](bool checked) {});
-
-        SETTINGS_CHECK(draw_background, [&](bool checked) {
-            for(int x = 0; x < world->width; x++) {
-                for(int y = 0; y < world->height; y++) {
-                    world->dirty[x + y * world->width] = true;
-                    world->layer2Dirty[x + y * world->width] = true;
-                }
-            }
-        });
-
-        SETTINGS_CHECK(draw_background_grid, [&](bool checked) {
-            for(int x = 0; x < world->width; x++) {
-                for(int y = 0; y < world->height; y++) {
-                    world->dirty[x + y * world->width] = true;
-                    world->layer2Dirty[x + y * world->width] = true;
-                }
-            }
-        });
-
-        SETTINGS_CHECK(draw_load_zones, [](bool checked) {});
-        SETTINGS_CHECK(draw_physics_meshes, [](bool checked) {});
-        SETTINGS_CHECK(draw_chunk_state, [](bool checked) {});
-        SETTINGS_CHECK(draw_chunk_queue, [](bool checked) {});
-        SETTINGS_CHECK(draw_material_info, [](bool checked) {});
-        SETTINGS_CHECK(draw_uinode_bounds, [](bool checked) {});
-        SETTINGS_CHECK(draw_light_map, [](bool checked) {});
-        SETTINGS_CHECK(draw_temperature_map, [](bool checked) {});
-        SETTINGS_CHECK(draw_shaders, [](bool checked) {});
-        SETTINGS_CHECK(tick_world, [](bool checked) {});
-        SETTINGS_CHECK(tick_box2d, [](bool checked) {});
-        SETTINGS_CHECK(tick_temperature, [](bool checked) {});
-        #undef SETTINGS_CHECK
-        #pragma endregion
-
-        // set up debug draw ui
-        #pragma region
-        debugDrawUI = new UI(new SDL_Rect {15, 25, 200, (int)(80 + 37 * (Materials::MATERIALS.size() / 5 + 1) + 5)});
-        debugDrawUI->background = new SolidBackground(0x80000000);
-        debugDrawUI->drawBorder = true;
-
-        titleLabel = new UILabel(new SDL_Rect {100, 10, 1, 30}, "Draw", labelFont, 0xffffff, ALIGN_CENTER);
-        debugDrawUI->children.push_back(titleLabel);
-
-        UILabel* hoverMaterialLabelL = new UILabel(new SDL_Rect {15, 40, 1, 30}, "Hover:", uiFont, 0xffffff, ALIGN_LEFT);
-        debugDrawUI->children.push_back(hoverMaterialLabelL);
-
-        UILabel* hoverMaterialLabel = new UILabel(new SDL_Rect {75, 40, 1, 30}, "None", uiFont, 0xffffff, ALIGN_LEFT);
-        debugDrawUI->children.push_back(hoverMaterialLabel);
-
-        UILabel* selectMaterialLabelL = new UILabel(new SDL_Rect {15, 52, 1, 30}, "Selected:", uiFont, 0xffffff, ALIGN_LEFT);
-        debugDrawUI->children.push_back(selectMaterialLabelL);
-
-        UILabel* selectMaterialLabel = new UILabel(new SDL_Rect {75, 52, 1, 30}, "None", uiFont, 0xffffff, ALIGN_LEFT);
-        debugDrawUI->children.push_back(selectMaterialLabel);
-
-        UILabel* brushSizeLabelL = new UILabel(new SDL_Rect {15, 64, 1, 30}, "Brush size:", uiFont, 0xffffff, ALIGN_LEFT);
-        debugDrawUI->children.push_back(brushSizeLabelL);
-
-        this->brushSizeLabel = new UILabel(new SDL_Rect {85, 64, 1, 30}, std::to_string(brushSize), uiFont, 0xffffff, ALIGN_LEFT);
-        debugDrawUI->children.push_back(this->brushSizeLabel);
-
-        for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
-            MaterialNode* mn = new MaterialNode(new SDL_Rect {10 + 37 * (int)(i % 5), 80 + 37 * (int)(i / 5), 16, 16}, Materials::MATERIALS[i]);
-            mn->bounds->w = 32;
-            mn->bounds->h = 32;
-            mn->drawBorder = true;
-            mn->hoverCallback = [hoverMaterialLabel](Material* mat) {
-                hoverMaterialLabel->text = mat->name;
-                hoverMaterialLabel->updateTexture();
-            };
-            mn->selectCallback = [&](Material* mat) {
-                selectMaterialLabel->text = mat->name;
-                selectMaterialLabel->updateTexture();
-                selectedMaterial = mat;
-            };
-            debugDrawUI->children.push_back(mn);
-        }
-
-        uis.push_back(debugDrawUI);
-        EASY_END_BLOCK;
-        #pragma endregion
-
-        // set up debug item ui
-        #pragma region
-        debugItemUI = new UI(new SDL_Rect {15, debugDrawUI->bounds->y + debugDrawUI->bounds->h + 5, 200, 0});
-        debugItemUI->background = new SolidBackground(0x80000000);
-        debugItemUI->drawBorder = true;
-
-        titleLabel = new UILabel(new SDL_Rect {100, 10, 1, 30}, "Items", labelFont, 0xffffff, ALIGN_CENTER);
-        debugItemUI->children.push_back(titleLabel);
-
-        UILabel* hoverItemLabel = new UILabel(new SDL_Rect {15, 40, 1, 30}, "None", uiFont, 0xffffff, ALIGN_LEFT);
-        debugItemUI->children.push_back(hoverItemLabel);
-
-        int itemIndex = 0;
-
-        ImageButtonNode* itemNode = new ImageButtonNode(new SDL_Rect {16 + (48 + 12) * (int)(itemIndex % 3), 60 + (48 + 12) * (int)(itemIndex / 3), 16, 16}, Textures::loadTexture("assets/objects/chisel.png"));
-        itemNode->bounds->w = 48;
-        itemNode->bounds->h = 48;
-        itemNode->drawBorder = false;
-        itemNode->hoverCallback = [&]() {
-            hoverItemLabel->text = "Chisel";
-            hoverItemLabel->updateTexture();
-        };
-        itemNode->selectCallback = [&]() {
-            Item* i3 = new Item();
-            i3->setFlag(ItemFlags::CHISEL);
-            i3->surface = Textures::loadTexture("assets/objects/chisel.png");
-            i3->texture = GPU_CopyImageFromSurface(i3->surface);
-            GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
-            i3->pivotX = 2;
-            world->player->setItemInHand(i3, world);
-        };
-        debugItemUI->children.push_back(itemNode);
-
-        itemIndex++;
-        itemNode = new ImageButtonNode(new SDL_Rect {16 + (48 + 12) * (int)(itemIndex % 3), 60 + (48 + 12) * (int)(itemIndex / 3), 16, 16}, Textures::loadTexture("assets/objects/testHammer.png"));
-        itemNode->bounds->w = 48;
-        itemNode->bounds->h = 48;
-        itemNode->drawBorder = false;
-        itemNode->hoverCallback = [&]() {
-            hoverItemLabel->text = "Hammer";
-            hoverItemLabel->updateTexture();
-        };
-        itemNode->selectCallback = [&]() {
-            Item* i3 = new Item();
-            i3->setFlag(ItemFlags::HAMMER);
-            i3->surface = Textures::loadTexture("assets/objects/testHammer.png");
-            i3->texture = GPU_CopyImageFromSurface(i3->surface);
-            GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
-            i3->pivotX = 2;
-            world->player->setItemInHand(i3, world);
-        };
-        debugItemUI->children.push_back(itemNode);
-
-        itemIndex++;
-        itemNode = new ImageButtonNode(new SDL_Rect {16 + (48 + 12) * (int)(itemIndex % 3), 60 + (48 + 12) * (int)(itemIndex / 3), 16, 16}, Textures::loadTexture("assets/objects/testVacuum.png"));
-        itemNode->bounds->w = 48;
-        itemNode->bounds->h = 48;
-        itemNode->drawBorder = false;
-        itemNode->hoverCallback = [&]() {
-            hoverItemLabel->text = "Vacuum";
-            hoverItemLabel->updateTexture();
-        };
-        itemNode->selectCallback = [&]() {
-            if(world->player == nullptr) return;
-
-            Item* i3 = new Item();
-            i3->setFlag(ItemFlags::VACUUM);
-            i3->surface = Textures::loadTexture("assets/objects/testVacuum.png");
-            i3->texture = GPU_CopyImageFromSurface(i3->surface);
-            GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
-            i3->pivotX = 6;
-            world->player->setItemInHand(i3, world);
-        };
-        debugItemUI->children.push_back(itemNode);
-
-        itemIndex++;
-        itemNode = new ImageButtonNode(new SDL_Rect {16 + (48 + 12) * (int)(itemIndex % 3), 60 + (48 + 12) * (int)(itemIndex / 3), 16, 16}, Textures::loadTexture("assets/objects/testBucket.png"));
-        itemNode->bounds->w = 48;
-        itemNode->bounds->h = 48;
-        itemNode->drawBorder = false;
-        itemNode->hoverCallback = [&]() {
-            hoverItemLabel->text = "Container";
-            hoverItemLabel->updateTexture();
-        };
-        itemNode->selectCallback = [&]() {
-            if(world->player == nullptr) return;
-
-            Item* i3 = new Item();
-            i3->setFlag(ItemFlags::FLUID_CONTAINER);
-            i3->surface = Textures::loadTexture("assets/objects/testBucket.png");
-            i3->capacity = 100;
-            i3->loadFillTexture(Textures::loadTexture("assets/objects/testBucket_fill.png"));
-            i3->texture = GPU_CopyImageFromSurface(i3->surface);
-            GPU_SetImageFilter(i3->texture, GPU_FILTER_NEAREST);
-            i3->pivotX = 0;
-            world->player->setItemInHand(i3, world);
-        };
-
-        itemIndex++;
-        debugItemUI->bounds->h = 60 + (48 + 12) * ((itemIndex + 2) / 3) + 10;
-
-        debugItemUI->children.push_back(itemNode);
-
-        uis.push_back(debugItemUI);
-        #pragma endregion
 
         // create textures
         #pragma region
@@ -913,7 +505,7 @@ int Game::init(int argc, char *argv[]) {
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         worldTexture = GPU_CreateImage(
-            world->width, world->height,
+            world->width * Settings::hd_objects_size, world->height * Settings::hd_objects_size,
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
@@ -935,6 +527,16 @@ int Game::init(int argc, char *argv[]) {
         EASY_END_BLOCK;
         EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
         GPU_LoadTarget(lightingTexture);
+        EASY_END_BLOCK;
+
+        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+        emissionTexture = GPU_CreateImage(
+            world->width, world->height,
+            GPU_FormatEnum::GPU_FORMAT_RGBA
+        );
+        EASY_END_BLOCK;
+        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+        GPU_SetImageFilter(emissionTexture, GPU_FILTER_NEAREST);
         EASY_END_BLOCK;
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
@@ -982,7 +584,7 @@ int Game::init(int argc, char *argv[]) {
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         textureObjects = GPU_CreateImage(
-            world->width, world->height,
+            world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
@@ -991,8 +593,18 @@ int Game::init(int argc, char *argv[]) {
         EASY_END_BLOCK;
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureObjectsBack = GPU_CreateImage(
+        textureObjectsLQ = GPU_CreateImage(
             world->width, world->height,
+            GPU_FormatEnum::GPU_FORMAT_RGBA
+        );
+        EASY_END_BLOCK;
+        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+        GPU_SetImageFilter(textureObjectsLQ, GPU_FILTER_NEAREST);
+        EASY_END_BLOCK;
+
+        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+        textureObjectsBack = GPU_CreateImage(
+            world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
@@ -1002,6 +614,9 @@ int Game::init(int argc, char *argv[]) {
 
         EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
         GPU_LoadTarget(textureObjects);
+        EASY_END_BLOCK;
+        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+        GPU_LoadTarget(textureObjectsLQ);
         EASY_END_BLOCK;
         EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
         GPU_LoadTarget(textureObjectsBack);
@@ -1019,7 +634,7 @@ int Game::init(int argc, char *argv[]) {
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         textureEntities = GPU_CreateImage(
-            world->width, world->height,
+            world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
@@ -1031,13 +646,16 @@ int Game::init(int argc, char *argv[]) {
         EASY_END_BLOCK;
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        lightMap = GPU_CreateImage(
-            world->width - CHUNK_W * 2, world->height - CHUNK_H * 2,
+        textureEntitiesLQ = GPU_CreateImage(
+            world->width, world->height,
             GPU_FormatEnum::GPU_FORMAT_RGBA
         );
         EASY_END_BLOCK;
+        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+        GPU_LoadTarget(textureEntitiesLQ);
+        EASY_END_BLOCK;
         EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(lightMap, GPU_FILTER_NEAREST);
+        GPU_SetImageFilter(textureEntitiesLQ, GPU_FILTER_NEAREST);
         EASY_END_BLOCK;
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
@@ -1081,6 +699,8 @@ int Game::init(int argc, char *argv[]) {
         pixelsLoading_ar = &pixelsLoading[0];
         pixelsFire = vector<unsigned char>(world->width * world->height * 4, 0);
         pixelsFire_ar = &pixelsFire[0];
+        pixelsEmission = vector<unsigned char>(world->width * world->height * 4, 0);
+        pixelsEmission_ar = &pixelsEmission[0];
         EASY_END_BLOCK;
         EASY_END_BLOCK;
         #pragma endregion
@@ -1095,25 +715,11 @@ int Game::init(int argc, char *argv[]) {
     #pragma endregion
 
     if(networkMode != NetworkMode::SERVER) {
-        // load light texture
-        #pragma region
-        EASY_BLOCK("load light texture");
-        lightSurf = Textures::loadTexture("assets/light.png");
-        lightTex = GPU_CopyImageFromSurface(lightSurf);
-        GPU_SetImageFilter(lightTex, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-        #pragma endregion
-
         // load shaders
         #pragma region
         EASY_BLOCK("load shaders");
-        water_shader = 0;
-        water_shader_block = Shaders::load_shader_program(&water_shader, "data/shaders/common.vert", "data/shaders/water.frag");
-        Shaders::prepare_water_shader(water_shader, target, texture);
-
-        raycastLightingShader = new RaycastLightingShader();
-        simpleLightingShader = new SimpleLightingShader();
-        simpleLighting2Shader = new SimpleLighting2Shader();
+        waterShader = new WaterShader();
+        newLightingShader = new NewLightingShader();
         fireShader = new FireShader();
         fire2Shader = new Fire2Shader();
         EASY_END_BLOCK;
@@ -1124,6 +730,327 @@ int Game::init(int argc, char *argv[]) {
     EASY_END_BLOCK;
 
     return this->run(argc, argv);
+}
+
+
+void Game::handleWindowSizeChange(int newWidth, int newHeight) {
+    int prevWidth = WIDTH;
+    int prevHeight = HEIGHT;
+
+    WIDTH = newWidth;
+    HEIGHT = newHeight;
+
+    GPU_FreeImage(loadingTexture);
+    GPU_FreeImage(texture);
+    GPU_FreeImage(worldTexture);
+    GPU_FreeImage(lightingTexture);
+    GPU_FreeImage(emissionTexture);
+    GPU_FreeImage(textureFire);
+    GPU_FreeImage(texture2Fire);
+    GPU_FreeImage(textureLayer2);
+    GPU_FreeImage(textureBackground);
+    GPU_FreeImage(textureObjects);
+    GPU_FreeImage(textureObjectsLQ);
+    GPU_FreeImage(textureObjectsBack);
+    GPU_FreeImage(textureParticles);
+    GPU_FreeImage(textureEntities);
+    GPU_FreeImage(textureEntitiesLQ);
+    GPU_FreeImage(temperatureMap);
+    GPU_FreeImage(backgroundImage);
+
+    // create textures
+    #pragma region
+    EASY_BLOCK("create textures");
+    logInfo("Creating world textures...");
+    loadingOnColor = 0xFFFFFFFF;
+    loadingOffColor = 0x000000FF;
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    loadingTexture = GPU_CreateImage(
+        loadingScreenW = (WIDTH / 20), loadingScreenH = (HEIGHT / 20),
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(loadingTexture, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    texture = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(texture, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    worldTexture = GPU_CreateImage(
+        world->width * Settings::hd_objects_size, world->height * Settings::hd_objects_size,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(worldTexture, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(worldTexture);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    lightingTexture = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(lightingTexture, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(lightingTexture);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    emissionTexture = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(emissionTexture, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureFire = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureFire, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    texture2Fire = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(texture2Fire, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(texture2Fire);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureLayer2 = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureLayer2, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureBackground = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureBackground, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureObjects = GPU_CreateImage(
+        world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureObjects, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureObjectsLQ = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureObjectsLQ, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureObjectsBack = GPU_CreateImage(
+        world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureObjectsBack, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(textureObjects);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(textureObjectsLQ);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(textureObjectsBack);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureParticles = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureParticles, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureEntities = GPU_CreateImage(
+        world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(textureEntities);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureEntities, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureEntitiesLQ = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(textureEntitiesLQ);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureEntitiesLQ, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    temperatureMap = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(temperatureMap, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    backgroundImage = GPU_CreateImage(
+        WIDTH, HEIGHT,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(backgroundImage, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(backgroundImage);
+    EASY_END_BLOCK;
+
+    // create texture pixel buffers
+    EASY_BLOCK("create texture pixel buffers");
+    pixels = vector<unsigned char>(world->width * world->height * 4, 0);
+    pixels_ar = &pixels[0];
+    pixelsLayer2 = vector<unsigned char>(world->width * world->height * 4, 0);
+    pixelsLayer2_ar = &pixelsLayer2[0];
+    pixelsBackground = vector<unsigned char>(world->width * world->height * 4, 0);
+    pixelsBackground_ar = &pixelsBackground[0];
+    pixelsObjects = vector<unsigned char>(world->width * world->height * 4, SDL_ALPHA_TRANSPARENT);
+    pixelsObjects_ar = &pixelsObjects[0];
+    pixelsTemp = vector<unsigned char>(world->width * world->height * 4, SDL_ALPHA_TRANSPARENT);
+    pixelsTemp_ar = &pixelsTemp[0];
+    pixelsParticles = vector<unsigned char>(world->width * world->height * 4, SDL_ALPHA_TRANSPARENT);
+    pixelsParticles_ar = &pixelsParticles[0];
+    pixelsLoading = vector<unsigned char>(loadingTexture->w * loadingTexture->h * 4, SDL_ALPHA_TRANSPARENT);
+    pixelsLoading_ar = &pixelsLoading[0];
+    pixelsFire = vector<unsigned char>(world->width * world->height * 4, 0);
+    pixelsFire_ar = &pixelsFire[0];
+    pixelsEmission = vector<unsigned char>(world->width * world->height * 4, 0);
+    pixelsEmission_ar = &pixelsEmission[0];
+    EASY_END_BLOCK;
+    EASY_END_BLOCK;
+    #pragma endregion
+
+    accLoadX -= (newWidth - prevWidth) / 2.0f / scale;
+    accLoadY -= (newHeight - prevHeight) / 2.0f / scale;
+
+    tickChunkLoading();
+
+    for(int x = 0; x < world->width; x++) {
+        for(int y = 0; y < world->height; y++) {
+            world->dirty[x + y * world->width] = true;
+            world->layer2Dirty[x + y * world->width] = true;
+            world->backgroundDirty[x + y * world->width] = true;
+        }
+    }
+
+}
+
+void Game::setDisplayMode(DisplayMode mode) {
+    switch(mode) {
+    case DisplayMode::WINDOWED:
+        SDL_SetWindowDisplayMode(window, NULL);
+        SDL_SetWindowFullscreen(window, 0);
+        OptionsUI::item_current_idx = 0;
+        break;
+    case DisplayMode::BORDERLESS:
+        SDL_SetWindowDisplayMode(window, NULL);
+        SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+        OptionsUI::item_current_idx = 1;
+        break;
+    case DisplayMode::FULLSCREEN:
+        SDL_MaximizeWindow(window);
+
+        int w;
+        int h;
+        SDL_GetWindowSize(window, &w, &h);
+
+        SDL_DisplayMode disp;
+        SDL_GetWindowDisplayMode(window, &disp);
+
+        disp.w = w;
+        disp.h = h;
+
+        SDL_SetWindowDisplayMode(window, &disp);
+        SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+        OptionsUI::item_current_idx = 2;
+        break;
+    }
+
+    int w;
+    int h;
+    SDL_GetWindowSize(window, &w, &h);
+
+    GPU_SetWindowResolution(w, h);
+    GPU_ResetProjection(realTarget);
+
+    handleWindowSizeChange(w, h);
+
+}
+
+void Game::setVSync(bool vsync) {
+    SDL_GL_SetSwapInterval(vsync ? 1 : 0);
+    OptionsUI::vsync = vsync;
+}
+
+void Game::setMinimizeOnLostFocus(bool minimize) {
+    SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, minimize ? "1" : "0");
+    OptionsUI::minimizeOnFocus = minimize;
 }
 
 int Game::run(int argc, char *argv[]) {
@@ -1147,8 +1074,8 @@ int Game::run(int argc, char *argv[]) {
     EASY_BLOCK("start game loop");
     logInfo("Starting game loop...");
 
-    freeCamX = world->width / 2 - CHUNK_W / 2;
-    freeCamY = world->height / 2 - (int)(CHUNK_H * 0.75);
+    freeCamX = world->width / 2.0f - CHUNK_W / 2;
+    freeCamY = world->height / 2.0f - (int)(CHUNK_H * 0.75);
     if(world->player) {
         plPosX = world->player->x;
         plPosY = world->player->y;
@@ -1170,9 +1097,27 @@ int Game::run(int argc, char *argv[]) {
     mspt = 33;
     long msptPhysics = 16;
 
-    scale = 2;
-    ofsX = (int)(-CHUNK_W * 2);
+    scale = 3;
+    ofsX = (int)(-CHUNK_W * 4);
     ofsY = (int)(-CHUNK_H * 2.5);
+
+    ofsX = (ofsX - WIDTH / 2) / 2 * 3 + WIDTH / 2;
+    ofsY = (ofsY - HEIGHT / 2) / 2 * 3 + HEIGHT / 2;
+
+    std::string displayMode = clArgs->getString("display-mode");
+
+    if(displayMode == "windowed") {
+        setDisplayMode(DisplayMode::WINDOWED);
+    } else if(displayMode == "borderless") {
+        setDisplayMode(DisplayMode::BORDERLESS);
+    } else if(displayMode == "fullscreen") {
+        setDisplayMode(DisplayMode::FULLSCREEN);
+    }
+
+    setVSync(clArgs->getBool("vsync"));
+
+    // TODO: load settings from settings file
+    setMinimizeOnLostFocus(false);
 
     for(int i = 0; i < frameTimeNum; i++) {
         frameTime[i] = 0;
@@ -1188,18 +1133,14 @@ int Game::run(int argc, char *argv[]) {
 
     // game loop
     EASY_EVENT("Start of Game Loop", profiler::colors::Magenta);
-    while(true) {
+    while(this->running) {
         EASY_BLOCK("frame");
         now = Time::millis();
         deltaTime = now - lastTime;
 
         if(networkMode != NetworkMode::SERVER) {
             #if BUILD_WITH_DISCORD
-            if(discordAPI) {
-                EASY_BLOCK("DiscordGameSDK tick");
-                core->RunCallbacks();
-                EASY_END_BLOCK;
-            }
+            DiscordIntegration::tick();
             #endif
 
             #if BUILD_WITH_STEAM
@@ -1212,21 +1153,26 @@ int Game::run(int argc, char *argv[]) {
 
             // handle window events
             #pragma region
-            EASY_BLOCK("poll SDL events");
+            EASY_BLOCK("poll SDL events", SDL_PROFILER_COLOR);
             while(SDL_PollEvent(&windowEvent)) {
 
                 if(windowEvent.type == SDL_QUIT) {
                     goto exit;
                 }
 
-                bool discardEvent = false;
-                for(auto& v : uis) {
-                    if(v->visible && v->checkEvent(windowEvent, target, world, 0, 0)) {
-                        discardEvent = true;
-                        break;
+                ImGui_ImplSDL2_ProcessEvent(&windowEvent);
+
+                if(ImGui::GetIO().WantCaptureMouse) {
+                    if(windowEvent.type == SDL_MOUSEBUTTONDOWN || windowEvent.type == SDL_MOUSEBUTTONUP || windowEvent.type == SDL_MOUSEMOTION || windowEvent.type == SDL_MOUSEWHEEL) {
+                        continue;
                     }
                 }
-                if(discardEvent) continue;
+
+                if(ImGui::GetIO().WantCaptureKeyboard) {
+                    if(windowEvent.type == SDL_KEYDOWN || windowEvent.type == SDL_KEYUP) {
+                        continue;
+                    }
+                }
 
                 if(windowEvent.type == SDL_MOUSEWHEEL) {
                     // zoom in/out
@@ -1239,88 +1185,124 @@ int Game::run(int argc, char *argv[]) {
                     ofsX = (ofsX - WIDTH / 2) / oldScale * scale + WIDTH / 2;
                     ofsY = (ofsY - HEIGHT / 2) / oldScale * scale + HEIGHT / 2;
                     #pragma endregion
-                } else if(windowEvent.type == SDL_MOUSEMOTION && Controls::DEBUG_DRAW->get()) {
-                    // draw material
-                    #pragma region
-                    int x = (int)((windowEvent.motion.x - ofsX - camX) / scale);
-                    int y = (int)((windowEvent.motion.y - ofsY - camY) / scale);
-                    for(int xx = -brushSize / 2; xx < (int)(ceil(brushSize / 2.0)); xx++) {
-                        for(int yy = -brushSize / 2; yy < (int)(ceil(brushSize / 2.0)); yy++) {
-                            MaterialInstance tp = Tiles::create(selectedMaterial, x + xx, y + yy);
-                            world->tiles[(x + xx) + (y + yy) * world->width] = tp;
-                            world->dirty[(x + xx) + (y + yy) * world->width] = true;
-                            /*Particle* p = new Particle(tp, x + xx, y + yy, 0, 0, 0, (float)0.01f);
-                            p->targetX = world->width/2;
-                            p->targetY = world->height/2;
-                            p->targetForce = 0.1f;
-                            p->phase = true;
-                            world->addParticle(p);*/
+                } else if(windowEvent.type == SDL_MOUSEMOTION) {
+                    if(Controls::DEBUG_DRAW->get()) {
+                        // draw material
+                        #pragma region
+                        int x = (int)((windowEvent.motion.x - ofsX - camX) / scale);
+                        int y = (int)((windowEvent.motion.y - ofsY - camY) / scale);
+
+                        if(lastDrawMX == 0 && lastDrawMY == 0) {
+                            lastDrawMX = x;
+                            lastDrawMY = y;
                         }
-                    }
-                    #pragma endregion
-                } else if(windowEvent.type == SDL_MOUSEMOTION && Controls::mmouse) {
-                    // erase material
-                    #pragma region
-                    // erase from world
-                    int x = (int)((windowEvent.motion.x - ofsX - camX) / scale);
-                    int y = (int)((windowEvent.motion.y - ofsY - camY) / scale);
-                    for(int xx = -brushSize / 2; xx < (int)(ceil(brushSize / 2.0)); xx++) {
-                        for(int yy = -brushSize / 2; yy < (int)(ceil(brushSize / 2.0)); yy++) {
 
-                            if(abs(xx) + abs(yy) == brushSize) continue;
-                            if(world->getTile(x + xx, y + yy).mat->physicsType != PhysicsType::AIR) {
-                                world->setTile(x + xx, y + yy, Tiles::NOTHING);
-                                world->lastMeshZone.x--;
-                            }
-                            if(world->getTileLayer2(x + xx, y + yy).mat->physicsType != PhysicsType::AIR) {
-                                world->setTileLayer2(x + xx, y + yy, Tiles::NOTHING);
-                            }
-                        }
-                    }
+                        world->forLine(lastDrawMX, lastDrawMY, x, y, [&](int index) {
+                            int lineX = index % world->width;
+                            int lineY = index / world->width;
 
-                    // erase from rigidbodies
-                    // this copies the vector
-                    vector<RigidBody*> rbs = world->rigidBodies;
-
-                    for(size_t i = 0; i < rbs.size(); i++) {
-                        RigidBody* cur = rbs[i];
-                        if(cur->body->IsEnabled()) {
-                            float s = sin(-cur->body->GetAngle());
-                            float c = cos(-cur->body->GetAngle());
-                            bool upd = false;
-                            for(float xx = -3; xx <= 3; xx += 0.5) {
-                                for(float yy = -3; yy <= 3; yy += 0.5) {
-                                    if(abs(xx) + abs(yy) == 6) continue;
-                                    // rotate point
-
-                                    float tx = x + xx - cur->body->GetPosition().x;
-                                    float ty = y + yy - cur->body->GetPosition().y;
-
-                                    int ntx = (int)(tx * c - ty * s);
-                                    int nty = (int)(tx * s + ty * c);
-
-                                    if(ntx >= 0 && nty >= 0 && ntx < cur->surface->w && nty < cur->surface->h) {
-                                        Uint32 pixel = PIXEL(cur->surface, ntx, nty);
-                                        if(((pixel >> 24) & 0xff) != 0x00) {
-                                            PIXEL(cur->surface, ntx, nty) = 0x00000000;
-                                            upd = true;
-                                        }
-
-                                    }
+                            for(int xx = -DebugDrawUI::brushSize / 2; xx < (int)(ceil(DebugDrawUI::brushSize / 2.0)); xx++) {
+                                for(int yy = -DebugDrawUI::brushSize / 2; yy < (int)(ceil(DebugDrawUI::brushSize / 2.0)); yy++) {
+                                    if(lineX + xx < 0 || lineY + yy < 0 || lineX + xx >= world->width || lineY + yy >= world->height) continue;
+                                    MaterialInstance tp = Tiles::create(DebugDrawUI::selectedMaterial, lineX + xx, lineY + yy);
+                                    world->tiles[(lineX + xx) + (lineY + yy) * world->width] = tp;
+                                    world->dirty[(lineX + xx) + (lineY + yy) * world->width] = true;
                                 }
                             }
 
-                            if(upd) {
-                                GPU_FreeImage(cur->texture);
-                                cur->texture = GPU_CopyImageFromSurface(cur->surface);
-                                GPU_SetImageFilter(cur->texture, GPU_FILTER_NEAREST);
-                                //world->updateRigidBodyHitbox(cur);
-                                cur->needsUpdate = true;
-                            }
-                        }
+                            return false;
+                        });
+
+                        lastDrawMX = x;
+                        lastDrawMY = y;
+                        #pragma endregion
+                    } else {
+                        lastDrawMX = 0;
+                        lastDrawMY = 0;
                     }
 
-                    #pragma endregion
+                    if(Controls::mmouse) {
+                        // erase material
+                        #pragma region
+                        // erase from world
+                        int x = (int)((windowEvent.motion.x - ofsX - camX) / scale);
+                        int y = (int)((windowEvent.motion.y - ofsY - camY) / scale);
+
+                        if(lastEraseMX == 0 && lastEraseMY == 0) {
+                            lastEraseMX = x;
+                            lastEraseMY = y;
+                        }
+
+                        world->forLine(lastEraseMX, lastEraseMY, x, y, [&](int index) {
+                            int lineX = index % world->width;
+                            int lineY = index / world->width;
+
+                            for(int xx = -DebugDrawUI::brushSize / 2; xx < (int)(ceil(DebugDrawUI::brushSize / 2.0)); xx++) {
+                                for(int yy = -DebugDrawUI::brushSize / 2; yy < (int)(ceil(DebugDrawUI::brushSize / 2.0)); yy++) {
+
+                                    if(abs(xx) + abs(yy) == DebugDrawUI::brushSize) continue;
+                                    if(world->getTile(lineX + xx, lineY + yy).mat->physicsType != PhysicsType::AIR) {
+                                        world->setTile(lineX + xx, lineY + yy, Tiles::NOTHING);
+                                        world->lastMeshZone.x--;
+                                    }
+                                    if(world->getTileLayer2(lineX + xx, lineY + yy).mat->physicsType != PhysicsType::AIR) {
+                                        world->setTileLayer2(lineX + xx, lineY + yy, Tiles::NOTHING);
+                                    }
+                                }
+                            }
+                            return false;
+                        });
+
+                        lastEraseMX = x;
+                        lastEraseMY = y;
+
+                        // erase from rigidbodies
+                        // this copies the vector
+                        vector<RigidBody*> rbs = world->rigidBodies;
+
+                        for(size_t i = 0; i < rbs.size(); i++) {
+                            RigidBody* cur = rbs[i];
+                            if(cur->body->IsEnabled()) {
+                                float s = sin(-cur->body->GetAngle());
+                                float c = cos(-cur->body->GetAngle());
+                                bool upd = false;
+                                for(float xx = -3; xx <= 3; xx += 0.5) {
+                                    for(float yy = -3; yy <= 3; yy += 0.5) {
+                                        if(abs(xx) + abs(yy) == 6) continue;
+                                        // rotate point
+
+                                        float tx = x + xx - cur->body->GetPosition().x;
+                                        float ty = y + yy - cur->body->GetPosition().y;
+
+                                        int ntx = (int)(tx * c - ty * s);
+                                        int nty = (int)(tx * s + ty * c);
+
+                                        if(ntx >= 0 && nty >= 0 && ntx < cur->surface->w && nty < cur->surface->h) {
+                                            Uint32 pixel = PIXEL(cur->surface, ntx, nty);
+                                            if(((pixel >> 24) & 0xff) != 0x00) {
+                                                PIXEL(cur->surface, ntx, nty) = 0x00000000;
+                                                upd = true;
+                                            }
+
+                                        }
+                                    }
+                                }
+
+                                if(upd) {
+                                    GPU_FreeImage(cur->texture);
+                                    cur->texture = GPU_CopyImageFromSurface(cur->surface);
+                                    GPU_SetImageFilter(cur->texture, GPU_FILTER_NEAREST);
+                                    //world->updateRigidBodyHitbox(cur);
+                                    cur->needsUpdate = true;
+                                }
+                            }
+                        }
+
+                        #pragma endregion
+                    } else {
+                        lastEraseMX = 0;
+                        lastEraseMY = 0;
+                    }
                 } else if(windowEvent.type == SDL_KEYDOWN) {
                     EASY_BLOCK("Controls::keyEvent");
                     Controls::keyEvent(windowEvent.key);
@@ -1400,27 +1382,7 @@ int Game::run(int argc, char *argv[]) {
 
                                     if(connect) {
 
-                                        chiselUI = new UI(new SDL_Rect {0, 0, cur->surface->w * 4 + 10 + 10, cur->surface->h * 4 + 10 + 40});
-                                        chiselUI->bounds->x = WIDTH / 2 - chiselUI->bounds->w / 2;
-                                        chiselUI->bounds->y = HEIGHT / 2 - chiselUI->bounds->h / 2;
-
-                                        UILabel* chiselUITitleLabel = new UILabel(new SDL_Rect {chiselUI->bounds->w / 2, 10, 1, 30}, "Chisel", TTF_OpenFont("assets/fonts/pixel_operator/PixelOperator.ttf", 32), 0xffffff, ALIGN_CENTER);
-                                        chiselUI->children.push_back(chiselUITitleLabel);
-
-                                        chiselUI->background = new SolidBackground(0xC0505050);
-                                        chiselUI->drawBorder = true;
-
-                                        ChiselNode* chisel = new ChiselNode(new SDL_Rect {10, 40, chiselUI->bounds->w - 20, chiselUI->bounds->h - 10 - 40});
-                                        chisel->drawBorder = true;
-                                        chisel->rb = cur;
-                                        SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(cur->surface->flags, cur->surface->w, cur->surface->h, cur->surface->format->BitsPerPixel, cur->surface->format->format);
-                                        SDL_BlitSurface(cur->surface, NULL, surf, NULL);
-                                        chisel->surface = surf;
-                                        chisel->texture = GPU_CopyImageFromSurface(surf);
-                                        GPU_SetImageFilter(chisel->texture, GPU_FILTER_NEAREST);
-                                        chiselUI->children.push_back(chisel);
-
-                                        uis.push_back(chiselUI);
+                                        // previously: open chisel ui
 
                                         break;
                                     }
@@ -1432,8 +1394,8 @@ int Game::run(int argc, char *argv[]) {
                                 #pragma region
                                 float breakSize = world->player->heldItem->breakSize;
 
-                                int x = (int)(world->player->x + world->player->hw / 2 + world->loadZone.x + 10 * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
-                                int y = (int)(world->player->y + world->player->hh / 2 + world->loadZone.y + 10 * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
+                                int x = (int)(world->player->x + world->player->hw / 2.0f + world->loadZone.x + 10 * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
+                                int y = (int)(world->player->y + world->player->hh / 2.0f + world->loadZone.y + 10 * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
 
                                 SDL_Surface* tex = SDL_CreateRGBSurfaceWithFormat(0, (int)breakSize, (int)breakSize, 32, SDL_PIXELFORMAT_ARGB8888);
 
@@ -1456,7 +1418,7 @@ int Game::run(int argc, char *argv[]) {
                                 }
 
                                 if(n > 0) {
-                                    audioEngine.PlayEvent("event:/Impact");
+                                    audioEngine.PlayEvent("event:/Player/Impact");
                                     b2PolygonShape s;
                                     s.SetAsBox(1, 1);
                                     RigidBody* rb = world->makeRigidBody(b2_dynamicBody, (float)x, (float)y, 0, s, 1, (float)0.3, tex);
@@ -1521,7 +1483,7 @@ int Game::run(int argc, char *argv[]) {
                                         }
 
                                         int nTilesChanged = 0;
-                                        for(int i = 0; i < points.size(); i++) {
+                                        for(size_t i = 0; i < points.size(); i++) {
                                             int segSx = i == 0 ? world->player->hammerX : std::get<0>(points[i - 1]);
                                             int segSy = i == 0 ? world->player->hammerY : std::get<1>(points[i - 1]);
                                             int segEx = std::get<0>(points[i]);
@@ -1563,7 +1525,7 @@ int Game::run(int argc, char *argv[]) {
                                         }
 
                                         if(nTilesChanged > 0) {
-                                            audioEngine.PlayEvent("event:/Impact");
+                                            audioEngine.PlayEvent("event:/Player/Impact");
                                         }
 
                                         //world->setTile((int)(hx), (int)(hy), MaterialInstance(&Materials::GENERIC_SOLID, 0xffffffff));
@@ -1687,6 +1649,125 @@ int Game::run(int argc, char *argv[]) {
             renderLate();
             target = realTarget;
 
+            // render ImGui
+
+            EASY_BLOCK("render ImGui", UI_PROFILER_COLOR);
+
+            GPU_ActivateShaderProgram(0, NULL);
+            GPU_FlushBlitBuffer();
+
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplSDL2_NewFrame(window);
+            ImGui::NewFrame();
+
+            DebugUI::Draw(this);
+            DebugDrawUI::Draw(this);
+            DebugCheatsUI::Draw(this);
+            MainMenuUI::Draw(this);
+            IngameUI::Draw(this);
+            //  ImGui::ShowDemoWindow();
+
+            if(DebugUI::visible) {
+                ImGui::Begin("Debug Info");
+                ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+                GPU_Renderer* renderer = GPU_GetCurrentRenderer();
+                GPU_RendererID id = renderer->id;
+
+                ImGui::Text("Using renderer: %s (%d.%d)\n", id.name, id.major_version, id.minor_version);
+                ImGui::Text("  Shader versions supported: %d to %d\n\n", renderer->min_shader_version, renderer->max_shader_version);
+
+                ImGui::End();
+            }
+
+            if(Settings::draw_material_info && !ImGui::GetIO().WantCaptureMouse) {
+                EASY_BLOCK("draw material info", RENDER_PROFILER_COLOR);
+                int msx = (int)((mx - ofsX - camX) / scale);
+                int msy = (int)((my - ofsY - camY) / scale);
+
+                MaterialInstance tile;
+
+                if(msx >= 0 && msy >= 0 && msx < world->width && msy < world->height) {
+                    tile = world->tiles[msx + msy * world->width];
+                    //Drawing::drawText(target, tile.mat->name.c_str(), font16, mx + 14, my, 0xff, 0xff, 0xff, ALIGN_LEFT);
+
+                    if(tile.mat->id == Materials::GENERIC_AIR.id) {
+                        vector<RigidBody*> rbs = world->rigidBodies;
+
+                        for(size_t i = 0; i < rbs.size(); i++) {
+                            RigidBody* cur = rbs[i];
+                            if(cur->body->IsEnabled()) {
+                                float s = sin(-cur->body->GetAngle());
+                                float c = cos(-cur->body->GetAngle());
+                                bool upd = false;
+
+                                float tx = msx - cur->body->GetPosition().x;
+                                float ty = msy - cur->body->GetPosition().y;
+
+                                int ntx = (int)(tx * c - ty * s);
+                                int nty = (int)(tx * s + ty * c);
+
+                                if(ntx >= 0 && nty >= 0 && ntx < cur->surface->w && nty < cur->surface->h) {
+                                    tile = cur->tiles[ntx + nty * cur->matWidth];
+                                }
+                            }
+                        }
+                    }
+
+                    if(tile.mat->id != Materials::GENERIC_AIR.id) {
+
+                        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.11f, 0.11f, 0.11f, 0.4f));
+                        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.00f, 1.00f, 1.00f, 0.2f));
+                        ImGui::BeginTooltip();
+                        ImGui::Text("%s", tile.mat->name.c_str());
+
+                        if(Settings::draw_detailed_material_info) {
+                            int ln = 0;
+                            if(tile.mat->interact) {
+                                for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
+                                    if(tile.mat->nInteractions[i] > 0) {
+                                        char buff2[40];
+                                        snprintf(buff2, sizeof(buff2), "    %s", Materials::MATERIALS[i]->name.c_str());
+                                        //Drawing::drawText(target, buff2, font16, mx + 14, my + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
+                                        ImGui::Text("%s", buff2);
+
+                                        for(int j = 0; j < tile.mat->nInteractions[i]; j++) {
+                                            MaterialInteraction inter = tile.mat->interactions[i][j];
+                                            char buff1[40];
+                                            if(inter.type == INTERACT_TRANSFORM_MATERIAL) {
+                                                snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "TRANSFORM", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
+                                            } else if(inter.type == INTERACT_SPAWN_MATERIAL) {
+                                                snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "SPAWN", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
+                                            }
+                                            //Drawing::drawText(target, buff1, font16, mx + 14, my + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
+                                            ImGui::Text("%s", buff1);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        ImGui::EndTooltip();
+                        ImGui::PopStyleColor();
+                        ImGui::PopStyleColor();
+                    }
+                }
+
+                EASY_END_BLOCK; // draw material info
+            }
+
+            EASY_BLOCK("ImGui::Render()", UI_PROFILER_COLOR);
+            ImGui::Render();
+            EASY_END_BLOCK;
+            SDL_GL_MakeCurrent(window, realTarget->context->context);
+            EASY_BLOCK("ImGui_ImplOpenGL3_RenderDrawData", UI_PROFILER_COLOR);
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            EASY_END_BLOCK;
+
+            EASY_END_BLOCK;
+
+            // render fade in/out
+
             EASY_BLOCK("fades");
             if(fadeInWaitFrames > 0) {
                 fadeInWaitFrames--;
@@ -1731,7 +1812,11 @@ int Game::run(int argc, char *argv[]) {
         }
 
         if(Time::millis() - now < 2) {
+            #ifdef _WIN32
             Sleep(2 - (Time::millis() - now));
+            #else
+            sleep((2 - (Time::millis() - now))/1000.0f);
+            #endif
         }
 
         EASY_BLOCK("frameCounter");
@@ -1745,6 +1830,21 @@ int Game::run(int argc, char *argv[]) {
             fps = frames;
             dt_fps.w = -1;
             frames = 0;
+
+            // calculate "feels like" fps
+
+            float sum = 0;
+            float num = 0.01;
+
+            for(int i = 0; i < frameTimeNum; i++) {
+                float weight = frameTime[i];
+                sum += weight * frameTime[i];
+                num += weight;
+            }
+
+            feelsLikeFps = 1000 / (sum / num);
+
+            dt_feelsLikeFps.w = -1;
         }
 
         for(int i = 1; i < frameTimeNum; i++) {
@@ -1761,6 +1861,28 @@ int Game::run(int argc, char *argv[]) {
 
 exit:
     EASY_END_BLOCK; // frame??
+
+    logInfo("Shutting down...");
+
+    std::vector<std::future<void>> results = {};
+
+    for(auto& p : world->chunkCache) {
+        if(p.first == INT_MIN) continue;
+        for(auto& p2 : p.second) {
+            if(p2.first == INT_MIN) continue;
+
+            results.push_back(updateDirtyPool->push([&](int id) {
+                Chunk* m = p2.second;
+                world->unloadChunk(m);
+            }));
+        }
+    }
+
+    EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
+    for(int i = 0; i < results.size(); i++) {
+        results[i].get();
+    }
+    EASY_END_BLOCK;
 
     // release resources & shutdown
     #pragma region
@@ -1783,6 +1905,8 @@ exit:
     #pragma endregion
 
     if(profiler::isEnabled()) {
+        logDebug("Dumping profile data");
+    
         // dump profiler data
         time_t rawtime;
         struct tm * timeinfo;
@@ -1791,20 +1915,21 @@ exit:
         time(&rawtime);
         timeinfo = localtime(&rawtime);
 
-        strftime(buf, sizeof(buf), getFileInGameDir("profiler/%Y-%m-%d_%H-%M-%S.prof").c_str(), timeinfo);
+        strftime(buf, sizeof(buf), gameDir.getPath("profiler/%Y-%m-%d_%H-%M-%S.prof").c_str(), timeinfo);
         std::string str(buf);
+        logDebug("{}", str.c_str());
 
         profiler::dumpBlocksToFile(str.c_str());
         struct stat buffer;
         if(stat(str.c_str(), &buffer) == 0) {
 
             std::ifstream src(str.c_str(), std::ios::binary);
-            std::ofstream dst(getFileInGameDir("profiler/latest.prof").c_str(), std::ios::binary);
+            std::ofstream dst(gameDir.getPath("profiler/latest.prof").c_str(), std::ios::binary);
 
             dst << src.rdbuf();
         }
     }
-
+    
     return EXIT_SUCCESS;
 }
 
@@ -1815,16 +1940,38 @@ void Game::updateFrameEarly() {
     #pragma region
     EASY_BLOCK("controls");
     if(Controls::DEBUG_UI->get()) {
-        debugUI->visible = !debugUI->visible;
-        debugDrawUI->visible = !debugDrawUI->visible;
-        debugItemUI->visible = !debugItemUI->visible;
+        DebugUI::visible ^= true;
+        DebugDrawUI::visible ^= true;
+        DebugCheatsUI::visible ^= true;
     }
+
+    if(Settings::draw_frame_graph) {
+        if(Controls::STATS_DISPLAY->get()) {
+            Settings::draw_frame_graph = false;
+            Settings::draw_debug_stats = false;
+            Settings::draw_chunk_state = false;
+            Settings::draw_detailed_material_info = false;
+        }
+    } else {
+        if(Controls::STATS_DISPLAY->get()) {
+            Settings::draw_frame_graph = true;
+            Settings::draw_debug_stats = true;
+
+            if(Controls::STATS_DISPLAY_DETAILED->get()) {
+                Settings::draw_chunk_state = true;
+                Settings::draw_detailed_material_info = true;
+            }
+        }
+    }
+
+    
 
     if(Controls::DEBUG_REFRESH->get()) {
         for(int x = 0; x < world->width; x++) {
             for(int y = 0; y < world->height; y++) {
                 world->dirty[x + y * world->width] = true;
                 world->layer2Dirty[x + y * world->width] = true;
+                world->backgroundDirty[x + y * world->width] = true;
             }
         }
     }
@@ -1929,36 +2076,32 @@ void Game::updateFrameEarly() {
     }
 
     if(Controls::DEBUG_BRUSHSIZE_INC->get()) {
-        brushSize = brushSize < 50 ? brushSize + 1 : brushSize;
-        brushSizeLabel->text = std::to_string(brushSize);
-        brushSizeLabel->updateTexture();
+        DebugDrawUI::brushSize = DebugDrawUI::brushSize < 50 ? DebugDrawUI::brushSize + 1 : DebugDrawUI::brushSize;
     }
 
     if(Controls::DEBUG_BRUSHSIZE_DEC->get()) {
-        brushSize = brushSize > 1 ? brushSize - 1 : brushSize;
-        brushSizeLabel->text = std::to_string(brushSize);
-        brushSizeLabel->updateTexture();
+        DebugDrawUI::brushSize = DebugDrawUI::brushSize > 1 ? DebugDrawUI::brushSize - 1 : DebugDrawUI::brushSize;
     }
 
     if(Controls::DEBUG_TOGGLE_PLAYER->get()) {
         if(world->player) {
-            freeCamX = world->player->x + world->player->hw / 2;
-            freeCamY = world->player->y - world->player->hh / 2;
+            freeCamX = world->player->x + world->player->hw / 2.0f;
+            freeCamY = world->player->y - world->player->hh / 2.0f;
             world->entities.erase(std::remove(world->entities.begin(), world->entities.end(), world->player), world->entities.end());
             world->b2world->DestroyBody(world->player->rb->body);
             delete world->player;
             world->player = nullptr;
         } else {
             Player* e = new Player();
-            e->x = freeCamX;
-            e->y = freeCamY - 4;
+            e->x = -world->loadZone.x + world->tickZone.x + world->tickZone.w/2.0f;
+            e->y = -world->loadZone.y + world->tickZone.y + world->tickZone.h/2.0f;
             e->vx = 0;
             e->vy = 0;
             e->hw = 10;
             e->hh = 20;
             b2PolygonShape sh;
-            sh.SetAsBox(e->hw / 2 + 1, e->hh / 2);
-            e->rb = world->makeRigidBody(b2BodyType::b2_kinematicBody, e->x + e->hw / 2 - 0.5, e->y + e->hh / 2 - 0.5, 0, sh, 1, 1, NULL);
+            sh.SetAsBox(e->hw / 2.0f + 1, e->hh / 2.0f);
+            e->rb = world->makeRigidBody(b2BodyType::b2_kinematicBody, e->x + e->hw / 2.0f - 0.5, e->y + e->hh / 2.0f - 0.5, 0, sh, 1, 1, NULL);
             e->rb->body->SetGravityScale(0);
             e->rb->body->SetLinearDamping(0);
             e->rb->body->SetAngularDamping(0);
@@ -1979,8 +2122,18 @@ void Game::updateFrameEarly() {
 
             world->entities.push_back(e);
             world->player = e;
+
+            /*accLoadX = 0;
+            accLoadY = 0;*/
         }
     }
+
+    if(Controls::PAUSE->get()) {
+        if(this->state == GameState::INGAME) {
+            IngameUI::visible = !IngameUI::visible;
+        }
+    }
+
     EASY_END_BLOCK;
     #pragma endregion
 
@@ -1991,13 +2144,13 @@ void Game::updateFrameEarly() {
     if(state == LOADING) {
 
     } else {
-        audioEngine.SetEventParameter("event:/Sand", "Sand", 0);
+        audioEngine.SetEventParameter("event:/World/Sand", "Sand", 0);
         if(world->player && world->player->heldItem != NULL && world->player->heldItem->getFlag(ItemFlags::FLUID_CONTAINER)) {
             if(Controls::lmouse && world->player->heldItem->carry.size() > 0) {
                 // shoot fluid from container
                 #pragma region
-                int x = (int)(world->player->x + world->player->hw / 2 + world->loadZone.x + 10 * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f));
-                int y = (int)(world->player->y + world->player->hh / 2 + world->loadZone.y + 10 * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f));
+                int x = (int)(world->player->x + world->player->hw / 2.0f + world->loadZone.x + 10 * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f));
+                int y = (int)(world->player->y + world->player->hh / 2.0f + world->loadZone.y + 10 * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f));
 
                 MaterialInstance mat = world->player->heldItem->carry[world->player->heldItem->carry.size() - 1];
                 world->player->heldItem->carry.pop_back();
@@ -2011,15 +2164,15 @@ void Game::updateFrameEarly() {
                 world->player->heldItem->texture = GPU_CopyImageFromSurface(world->player->heldItem->surface);
                 GPU_SetImageFilter(world->player->heldItem->texture, GPU_FILTER_NEAREST);
 
-                audioEngine.SetEventParameter("event:/Sand", "Sand", 1);
+                audioEngine.SetEventParameter("event:/World/Sand", "Sand", 1);
                 #pragma endregion
             } else {
                 // pick up fluid into container
                 #pragma region
                 float breakSize = world->player->heldItem->breakSize;
 
-                int x = (int)(world->player->x + world->player->hw / 2 + world->loadZone.x + 10 * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
-                int y = (int)(world->player->y + world->player->hh / 2 + world->loadZone.y + 10 * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
+                int x = (int)(world->player->x + world->player->hw / 2.0f + world->loadZone.x + 10 * (float)cos((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
+                int y = (int)(world->player->y + world->player->hh / 2.0f + world->loadZone.y + 10 * (float)sin((world->player->holdAngle + 180) * 3.1415f / 180.0f) - breakSize / 2);
 
                 int n = 0;
                 for(int xx = 0; xx < breakSize; xx++) {
@@ -2051,7 +2204,7 @@ void Game::updateFrameEarly() {
                 }
 
                 if(n > 0) {
-                    audioEngine.PlayEvent("event:/Impact");
+                    audioEngine.PlayEvent("event:/Player/Impact");
                 }
                 #pragma endregion
             }
@@ -2147,181 +2300,11 @@ void Game::tick() {
             }
         }
     } else {
-        // check chunk loading
-        #pragma region
-        EASY_BLOCK("chunk loading");
+
         int lastReadyToMergeSize = (int)world->readyToMerge.size();
 
-        // if need to load chunks
-        if((abs(accLoadX) > CHUNK_W / 2 || abs(accLoadY) > CHUNK_H / 2)) {
-            while(world->toLoad.size() > 0) {
-                // tick chunkloading
-                world->frame();
-            }
-
-            //iterate
-            #pragma region
-            EASY_BLOCK("iterate");
-            for(int i = 0; i < world->width * world->height; i++) {
-                const unsigned int offset = i * 4;
-
-                #define UCH_SET_PIXEL(pix_ar, ofs, c_r, c_g, c_b, c_a) \
-				pix_ar[ofs + 0] = c_b;\
-				pix_ar[ofs + 1] = c_g;\
-				pix_ar[ofs + 2] = c_r;\
-				pix_ar[ofs + 3] = c_a;
-
-                if(world->dirty[i]) {
-                    if(world->tiles[i].mat->physicsType == PhysicsType::AIR) {
-                        UCH_SET_PIXEL(pixels_ar, offset, 0, 0, 0, SDL_ALPHA_TRANSPARENT);
-                    } else {
-                        Uint32 color = world->tiles[i].color;
-                        UCH_SET_PIXEL(pixels_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, world->tiles[i].mat->alpha);
-                    }
-                }
-
-                if(world->layer2Dirty[i]) {
-                    if(world->layer2[i].mat->physicsType == PhysicsType::AIR) {
-                        if(Settings::draw_background_grid) {
-                            Uint32 color = ((i) % 2) == 0 ? 0x888888 : 0x444444;
-                            UCH_SET_PIXEL(pixelsLayer2_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, SDL_ALPHA_OPAQUE);
-                        } else {
-                            UCH_SET_PIXEL(pixelsLayer2_ar, offset, 0, 0, 0, SDL_ALPHA_TRANSPARENT);
-                        }
-                        continue;
-                    }
-                    Uint32 color = world->layer2[i].color;
-                    UCH_SET_PIXEL(pixelsLayer2_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, world->layer2[i].mat->alpha);
-                }
-
-                if(world->backgroundDirty[i]) {
-                    Uint32 color = world->background[i];
-                    UCH_SET_PIXEL(pixelsBackground_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, (color >> 24) & 0xff);
-                }
-                #undef UCH_SET_PIXEL
-            }
-            EASY_END_BLOCK;
-            #pragma endregion
-
-            EASY_BLOCK("memset");
-            memset(world->dirty, false, world->width * world->height);
-            memset(world->layer2Dirty, false, world->width * world->height);
-            memset(world->backgroundDirty, false, world->width * world->height);
-            EASY_END_BLOCK;
-
-            EASY_BLOCK("loop");
-            while((abs(accLoadX) > CHUNK_W / 2 || abs(accLoadY) > CHUNK_H / 2)) {
-                int subX = std::fmax(std::fmin(accLoadX, CHUNK_W / 2), -CHUNK_W / 2);
-                if(abs(subX) < CHUNK_W / 2) subX = 0;
-                int subY = std::fmax(std::fmin(accLoadY, CHUNK_H / 2), -CHUNK_H / 2);
-                if(abs(subY) < CHUNK_H / 2) subY = 0;
-
-                world->loadZone.x += subX;
-                world->loadZone.y += subY;
-
-                int delta = 4 * (subX + subY * world->width);
-                EASY_BLOCK("rotate");
-                std::vector<std::future<void>> results = {};
-                if(delta > 0) {
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixels_ar[0]), &(pixels_ar[world->width * world->height * 4]) - delta, &(pixels_ar[world->width * world->height * 4]));
-                        //rotate(pixels.begin(), pixels.end() - delta, pixels.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsLayer2_ar[0]), &(pixelsLayer2_ar[world->width * world->height * 4]) - delta, &(pixelsLayer2_ar[world->width * world->height * 4]));
-                        //rotate(pixelsLayer2.begin(), pixelsLayer2.end() - delta, pixelsLayer2.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsBackground_ar[0]), &(pixelsBackground_ar[world->width * world->height * 4]) - delta, &(pixelsBackground_ar[world->width * world->height * 4]));
-                        //rotate(pixelsBackground.begin(), pixelsBackground.end() - delta, pixelsBackground.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsFire_ar[0]), &(pixelsFire_ar[world->width * world->height * 4]) - delta, &(pixelsFire_ar[world->width * world->height * 4]));
-                        //rotate(pixelsFire_ar.begin(), pixelsFire_ar.end() - delta, pixelsFire_ar.end());
-                    }));
-                } else if(delta < 0) {
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixels_ar[0]), &(pixels_ar[0]) - delta, &(pixels_ar[world->width * world->height * 4]));
-                        //rotate(pixels.begin(), pixels.begin() - delta, pixels.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsLayer2_ar[0]), &(pixelsLayer2_ar[0]) - delta, &(pixelsLayer2_ar[world->width * world->height * 4]));
-                        //rotate(pixelsLayer2.begin(), pixelsLayer2.begin() - delta, pixelsLayer2.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsBackground_ar[0]), &(pixelsBackground_ar[0]) - delta, &(pixelsBackground_ar[world->width * world->height * 4]));
-                        //rotate(pixelsBackground.begin(), pixelsBackground.begin() - delta, pixelsBackground.end());
-                    }));
-                    results.push_back(updateDirtyPool->push([&](int id) {
-                        rotate(&(pixelsFire_ar[0]), &(pixelsFire_ar[0]) - delta, &(pixelsFire_ar[world->width * world->height * 4]));
-                        //rotate(pixelsFire_ar.begin(), pixelsFire_ar.begin() - delta, pixelsFire_ar.end());
-                    }));
-                }
-                EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
-                for(auto& v : results) {
-                    v.get();
-                }
-                EASY_END_BLOCK; // wait for threads
-
-                EASY_END_BLOCK; // rotate
-
-                #define CLEARPIXEL(pixels, ofs) \
-pixels[ofs + 0] = pixels[ofs + 1] = pixels[ofs + 2] = 0xff; \
-pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
-
-                EASY_BLOCK("CLEARPIXEL X");
-                for(int x = 0; x < abs(subX); x++) {
-                    for(int y = 0; y < world->height; y++) {
-                        const unsigned int offset = (world->width * 4 * y) + x * 4;
-                        if(offset < world->width * world->height * 4) {
-                            CLEARPIXEL(pixels_ar, offset);
-                            CLEARPIXEL(pixelsLayer2_ar, offset);
-                            CLEARPIXEL(pixelsObjects_ar, offset);
-                            CLEARPIXEL(pixelsBackground_ar, offset);
-                            CLEARPIXEL(pixelsFire_ar, offset);
-                        }
-                    }
-                }
-                EASY_END_BLOCK;
-
-                EASY_BLOCK("CLEARPIXEL Y");
-                for(int y = 0; y < abs(subY); y++) {
-                    for(int x = 0; x < world->width; x++) {
-                        const unsigned int offset = (world->width * 4 * y) + x * 4;
-                        if(offset < world->width * world->height * 4) {
-                            CLEARPIXEL(pixels_ar, offset);
-                            CLEARPIXEL(pixelsLayer2_ar, offset);
-                            CLEARPIXEL(pixelsObjects_ar, offset);
-                            CLEARPIXEL(pixelsBackground_ar, offset);
-                            CLEARPIXEL(pixelsFire_ar, offset);
-                        }
-                    }
-                }
-                EASY_END_BLOCK;
-
-                #undef CLEARPIXEL
-
-                accLoadX -= subX;
-                accLoadY -= subY;
-
-                ofsX -= subX * scale;
-                ofsY -= subY * scale;
-            }
-
-            EASY_END_BLOCK;
-
-            if(Settings::draw_light_map) renderLightmap(world);
-            world->tickChunks();
-            world->updateWorldMesh();
-            world->dirty[0] = true;
-            world->layer2Dirty[0] = true;
-            world->backgroundDirty[0] = true;
-
-        } else {
-            world->frame();
-        }
-        EASY_END_BLOCK;
-        #pragma endregion
+        // check chunk loading
+        tickChunkLoading();
 
         if(world->needToTickGeneration) world->tickChunkGeneration();
 
@@ -2330,16 +2313,24 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
         GPU_Clear(textureObjects->target);
 
         GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
+        GPU_Clear(textureObjectsLQ->target);
+
+        GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
         GPU_Clear(textureObjectsBack->target);
+
+        if(Settings::tick_world && world->readyToMerge.size() == 0) {
+            world->tickChunks();
+        }
 
         // render objects
         #pragma region
         EASY_BLOCK("memset objectDelete");
-        memset(objectDelete, false, world->width * world->height * sizeof(bool));
+        memset(objectDelete, false, (size_t)world->width * world->height * sizeof(bool));
         EASY_END_BLOCK;
 
         EASY_BLOCK("render rigidbodies");
         GPU_SetBlendMode(textureObjects, GPU_BLEND_NORMAL);
+        GPU_SetBlendMode(textureObjectsLQ, GPU_BLEND_NORMAL);
         GPU_SetBlendMode(textureObjectsBack, GPU_BLEND_NORMAL);
 
         for(size_t i = 0; i < world->rigidBodies.size(); i++) {
@@ -2354,8 +2345,10 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
             // draw
             #pragma region
             GPU_Target* tgt = cur->back ? textureObjectsBack->target : textureObjects->target;
+            GPU_Target* tgtLQ = cur->back ? textureObjectsBack->target : textureObjectsLQ->target;
+            int scaleObjTex = Settings::hd_objects ? Settings::hd_objects_size : 1;
 
-            GPU_Rect r = {x, y, (float)cur->surface->w, (float)cur->surface->h};
+            GPU_Rect r = {x * scaleObjTex, y * scaleObjTex, (float)cur->surface->w * scaleObjTex, (float)cur->surface->h * scaleObjTex};
 
             if(cur->texNeedsUpdate) {
                 if(cur->texture != nullptr) {
@@ -2380,7 +2373,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                     for(int j = 0; j < l.GetNumPoints(); j++) {
                         vec[j] = {(float)l.GetPoint(j).x / scale, (float)l.GetPoint(j).y / scale};
                     }
-                    Drawing::drawPolygon(tgt, col, vec, (int)x, (int)y, scale, l.GetNumPoints(), cur->body->GetAngle(), 0, 0);
+                    Drawing::drawPolygon(tgtLQ, col, vec, (int)x, (int)y, scale, l.GetNumPoints(), cur->body->GetAngle(), 0, 0);
                     delete[] vec;
                 }
                 GPU_SetShapeBlendMode(GPU_BLEND_NORMAL); // SDL_BLENDMODE_NONE
@@ -2400,8 +2393,8 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                     if(rmat.mat->id == Materials::GENERIC_AIR.id) continue;
 
                     // rotate point
-                    int wx = (int)(tx * c - ty * s + x);
-                    int wy = (int)(tx * s + ty * c + y);
+                    int wx = (int)(tx * c - (ty + 1) * s + x);
+                    int wy = (int)(tx * s + (ty + 1) * c + y);
 
                     for(auto& dir : checkDirs) {
                         int wxd = wx + dir.first;
@@ -2448,7 +2441,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                 if(world->player->holdHammer) {
                     int x = (int)((mx - ofsX - camX) / scale);
                     int y = (int)((my - ofsY - camY) / scale);
-                    GPU_Line(textureEntities->target, x, y, world->player->hammerX, world->player->hammerY, {0xff, 0xff, 0x00, 0xff});
+                    GPU_Line(textureEntitiesLQ->target, x, y, world->player->hammerX, world->player->hammerY, {0xff, 0xff, 0x00, 0xff});
                 }
             }
         }
@@ -2490,264 +2483,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
         }
 
         // player movement
-        #pragma region
-        if(world->player) {
-            if(Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) {
-                if(world->player->ground) {
-                    world->player->vy = -4;
-                    audioEngine.PlayEvent("event:/Jump");
-                }
-            }
-
-            world->player->vy += (float)(((Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) ? (world->player->vy > -1 ? -0.8 : -0.35) : 0) + (Controls::PLAYER_DOWN->get() ? 0.1 : 0));
-            if(Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) {
-                audioEngine.SetEventParameter("event:/Fly", "Intensity", 1);
-                for(int i = 0; i < 4; i++) {
-                    Particle* p = new Particle(Tiles::createLava(), (float)(world->player->x + world->loadZone.x + world->player->hw / 2 + rand() % 5 - 2 + world->player->vx), (float)(world->player->y + world->loadZone.y + world->player->hh + world->player->vy), (float)((rand() % 10 - 5) / 10.0f + world->player->vx / 2.0f), (float)((rand() % 10) / 10.0f + 1 + world->player->vy / 2.0f), 0, (float)0.025);
-                    p->temporary = true;
-                    p->lifetime = 120;
-                    world->addParticle(p);
-                }
-            } else {
-                audioEngine.SetEventParameter("event:/Fly", "Intensity", 0);
-            }
-
-            if(world->player->vy > 0) {
-                audioEngine.SetEventParameter("event:/Wind", "Wind", (float)(world->player->vy / 12.0));
-            } else {
-                audioEngine.SetEventParameter("event:/Wind", "Wind", 0);
-            }
-
-            world->player->vx += (float)((Controls::PLAYER_LEFT->get() ? (world->player->vx > 0 ? -0.4 : -0.2) : 0) + (Controls::PLAYER_RIGHT->get() ? (world->player->vx < 0 ? 0.4 : 0.2) : 0));
-            if(!Controls::PLAYER_LEFT->get() && !Controls::PLAYER_RIGHT->get()) world->player->vx *= (float)(world->player->ground ? 0.85 : 0.96);
-            if(world->player->vx > 4.5) world->player->vx = 4.5;
-            if(world->player->vx < -4.5) world->player->vx = -4.5;
-        } else {
-            if(state == INGAME) {
-                freeCamX += (float)((Controls::PLAYER_LEFT->get() ? -5 : 0) + (Controls::PLAYER_RIGHT->get() ? 5 : 0));
-                freeCamY += (float)((Controls::PLAYER_UP->get() ? -5 : 0) + (Controls::PLAYER_DOWN->get() ? 5 : 0));
-            } else {
-
-            }
-        }
-        #pragma endregion
-
-        #pragma region
-        if(world->player) {
-            desCamX = (float)(-(mx - (WIDTH / 2)) / 4);
-            desCamY = (float)(-(my - (HEIGHT / 2)) / 4);
-
-            world->player->holdAngle = (float)(atan2(desCamY, desCamX) * 180 / (float)W_PI);
-
-            desCamX = 0;
-            desCamY = 0;
-        } else {
-            desCamX = 0;
-            desCamY = 0;
-        }
-        #pragma endregion
-
-        #pragma region
-        if(world->player) {
-            if(world->player->heldItem) {
-                if(world->player->heldItem->getFlag(ItemFlags::VACUUM)) {
-                    if(world->player->holdVacuum) {
-
-                        int wcx = (int)((WIDTH / 2 - ofsX - camX) / scale);
-                        int wcy = (int)((HEIGHT / 2 - ofsY - camY) / scale);
-
-                        int wmx = (int)((mx - ofsX - camX) / scale);
-                        int wmy = (int)((my - ofsY - camY) / scale);
-
-                        int mdx = wmx - wcx;
-                        int mdy = wmy - wcy;
-
-                        int distSq = mdx * mdx + mdy * mdy;
-                        if(distSq <= 256 * 256) {
-
-                            int sind = -1;
-                            bool inObject = true;
-                            world->forLine(wcx, wcy, wmx, wmy, [&](int ind) {
-                                if(world->tiles[ind].mat->physicsType == PhysicsType::OBJECT) {
-                                    if(!inObject) {
-                                        sind = ind;
-                                        return true;
-                                    }
-                                } else {
-                                    inObject = false;
-                                }
-
-                                if(world->tiles[ind].mat->physicsType == PhysicsType::SOLID || world->tiles[ind].mat->physicsType == PhysicsType::SAND || world->tiles[ind].mat->physicsType == PhysicsType::SOUP) {
-                                    sind = ind;
-                                    return true;
-                                }
-                                return false;
-                            });
-
-                            int x = sind == -1 ? wmx : sind % world->width;
-                            int y = sind == -1 ? wmy : sind / world->width;
-
-                            std::function<void(MaterialInstance, int, int)> makeParticle = [&](MaterialInstance tile, int xPos, int yPos) {
-                                Particle* par = new Particle(tile, xPos, yPos, 0, 0, 0, (float)0.01f);
-                                par->vx = (rand() % 10 - 5) / 5.0f * 1.0f;
-                                par->vy = (rand() % 10 - 5) / 5.0f * 1.0f;
-                                par->ax = -par->vx / 10.0f;
-                                par->ay = -par->vy / 10.0f;
-                                if(par->ay == 0 && par->ax == 0) par->ay = 0.01f;
-
-                                //par->targetX = world->player->x + world->player->hw / 2 + world->loadZone.x;
-                                //par->targetY = world->player->y + world->player->hh / 2 + world->loadZone.y;
-                                //par->targetForce = 0.35f;
-
-                                par->lifetime = 6;
-
-                                par->phase = true;
-
-                                world->player->heldItem->vacuumParticles.push_back(par);
-
-                                par->killCallback = [&]() {
-                                    auto v = world->player->heldItem->vacuumParticles;
-                                    v.erase(std::remove(v.begin(), v.end(), par), v.end());
-                                };
-
-                                world->addParticle(par);
-                            };
-
-                            int rad = 5;
-                            int clipRadSq = rad * rad;
-                            clipRadSq += rand() % clipRadSq / 4;
-                            for(int xx = -rad; xx <= rad; xx++) {
-                                for(int yy = -rad; yy <= rad; yy++) {
-                                    if(xx*xx + yy*yy > clipRadSq) continue;
-                                    if((yy == -rad || yy == rad) && (xx == -rad || xx == rad)) {
-                                        continue;
-                                    }
-
-                                    MaterialInstance tile = world->tiles[(x + xx) + (y + yy) * world->width];
-                                    if(tile.mat->physicsType == PhysicsType::SOLID || tile.mat->physicsType == PhysicsType::SAND || tile.mat->physicsType == PhysicsType::SOUP) {
-                                        makeParticle(tile, x + xx, y + yy);
-                                        world->tiles[(x + xx) + (y + yy) * world->width] = Tiles::NOTHING;
-                                        //world->tiles[(x + xx) + (y + yy) * world->width] = Tiles::createFire();
-                                        world->dirty[(x + xx) + (y + yy) * world->width] = true;
-                                    }
-
-
-                                }
-                            }
-
-                            world->particles.erase(std::remove_if(world->particles.begin(), world->particles.end(), [&](Particle* cur) {
-                                if(cur->targetForce == 0 && !cur->phase) {
-                                    int rad = 5;
-                                    for(int xx = -rad; xx <= rad; xx++) {
-                                        for(int yy = -rad; yy <= rad; yy++) {
-                                            if((yy == -rad || yy == rad) && (xx == -rad || x == rad)) continue;
-
-                                            if(((int)(cur->x) == (x + xx)) && ((int)(cur->y) == (y + yy))) {
-
-                                                cur->vx = (rand() % 10 - 5) / 5.0f * 1.0f;
-                                                cur->vy = (rand() % 10 - 5) / 5.0f * 1.0f;
-                                                cur->ax = -cur->vx / 10.0f;
-                                                cur->ay = -cur->vy / 10.0f;
-                                                if(cur->ay == 0 && cur->ax == 0) cur->ay = 0.01f;
-
-                                                //par->targetX = world->player->x + world->player->hw / 2 + world->loadZone.x;
-                                                //par->targetY = world->player->y + world->player->hh / 2 + world->loadZone.y;
-                                                //par->targetForce = 0.35f;
-
-                                                cur->lifetime = 6;
-
-                                                cur->phase = true;
-
-                                                world->player->heldItem->vacuumParticles.push_back(cur);
-
-                                                cur->killCallback = [&]() {
-                                                    auto v = world->player->heldItem->vacuumParticles;
-                                                    v.erase(std::remove(v.begin(), v.end(), cur), v.end());
-                                                };
-
-                                                return false;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                return false;
-                            }), world->particles.end());
-
-                            vector<RigidBody*> rbs = world->rigidBodies;
-
-                            for(size_t i = 0; i < rbs.size(); i++) {
-                                RigidBody* cur = rbs[i];
-                                if(cur->body->IsEnabled()) {
-                                    float s = sin(-cur->body->GetAngle());
-                                    float c = cos(-cur->body->GetAngle());
-                                    bool upd = false;
-                                    for(int xx = -rad; xx <= rad; xx++) {
-                                        for(int yy = -rad; yy <= rad; yy++) {
-                                            if((yy == -rad || yy == rad) && (xx == -rad || x == rad)) continue;
-                                            // rotate point
-
-                                            float tx = x + xx - cur->body->GetPosition().x;
-                                            float ty = y + yy - cur->body->GetPosition().y;
-
-                                            int ntx = (int)(tx * c - ty * s);
-                                            int nty = (int)(tx * s + ty * c);
-
-                                            if(ntx >= 0 && nty >= 0 && ntx < cur->surface->w && nty < cur->surface->h) {
-                                                Uint32 pixel = PIXEL(cur->surface, ntx, nty);
-                                                if(((pixel >> 24) & 0xff) != 0x00) {
-                                                    PIXEL(cur->surface, ntx, nty) = 0x00000000;
-                                                    upd = true;
-
-                                                    makeParticle(MaterialInstance(&Materials::GENERIC_SOLID, pixel), (x + xx), (y + yy));
-                                                }
-
-                                            }
-                                        }
-                                    }
-
-                                    if(upd) {
-                                        GPU_FreeImage(cur->texture);
-                                        cur->texture = GPU_CopyImageFromSurface(cur->surface);
-                                        GPU_SetImageFilter(cur->texture, GPU_FILTER_NEAREST);
-                                        //world->updateRigidBodyHitbox(cur);
-                                        cur->needsUpdate = true;
-                                    }
-                                }
-                            }
-
-                        }
-                    }
-
-                    if(world->player->heldItem->vacuumParticles.size() > 0) {
-                        world->player->heldItem->vacuumParticles.erase(std::remove_if(world->player->heldItem->vacuumParticles.begin(), world->player->heldItem->vacuumParticles.end(), [&](Particle* cur) {
-
-                            if(cur->lifetime <= 0) {
-                                cur->targetForce = 0.45f;
-                                cur->targetX = world->player->x + world->player->hw / 2 + world->loadZone.x;
-                                cur->targetY = world->player->y + world->player->hh / 2 + world->loadZone.y;
-                                cur->ax = 0;
-                                cur->ay = 0.01f;
-                            }
-
-                            float tdx = cur->targetX - cur->x;
-                            float tdy = cur->targetY - cur->y;
-
-                            if(tdx * tdx + tdy * tdy < 10 * 10) {
-                                cur->temporary = true;
-                                cur->lifetime = 0;
-                                //logDebug("vacuum {}", cur->tile.mat->name.c_str());
-                                return true;
-                            }
-
-                            return false;
-                        }), world->player->heldItem->vacuumParticles.end());
-                    }
-
-                }
-            }
-        }
-        #pragma endregion
+        tickPlayer();
 
         // update particles, tickObjects, update dirty
         // TODO: this is not entirely thread safe since tickParticles changes World::tiles and World::dirty
@@ -2763,6 +2499,35 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
         //unsigned char* dpixels_ar = (unsigned char*)vdpixels_ar;
         unsigned char* dpixels_ar = pixels_ar;
         unsigned char* dpixelsFire_ar = pixelsFire_ar;
+        unsigned char* dpixelsEmission_ar = pixelsEmission_ar;
+
+        std::vector<std::future<void>> results = {};
+
+        results.push_back(updateDirtyPool->push([&](int id) {
+            EASY_BLOCK("particles");
+            //SDL_SetRenderTarget(renderer, textureParticles);
+            void* particlePixels = pixelsParticles_ar;
+            EASY_BLOCK("memset");
+            memset(particlePixels, 0, (size_t)world->width * world->height * 4);
+            EASY_END_BLOCK; // memset
+            world->renderParticles((unsigned char**)&particlePixels);
+            world->tickParticles();
+
+            //SDL_SetRenderTarget(renderer, NULL);
+            EASY_END_BLOCK; // particles
+        }));
+
+        if(world->readyToMerge.size() == 0) {
+            results.push_back(updateDirtyPool->push([&](int id) {
+                world->tickObjectBounds();
+            }));
+        }
+
+        EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
+        for(int i = 0; i < results.size(); i++) {
+            results[i].get();
+        }
+        EASY_END_BLOCK;
 
         for(size_t i = 0; i < world->rigidBodies.size(); i++) {
             RigidBody* cur = world->rigidBodies[i];
@@ -2783,8 +2548,8 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                     if(rmat.mat->id == Materials::GENERIC_AIR.id) continue;
 
                     // rotate point
-                    int wx = (int)(tx * c - ty * s + x);
-                    int wy = (int)(tx * s + ty * c + y);
+                    int wx = (int)(tx * c - (ty + 1) * s + x);
+                    int wy = (int)(tx * s + (ty + 1) * c + y);
 
                     bool found = false;
                     for(auto& dir : checkDirs) {
@@ -2797,6 +2562,31 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                             world->tiles[wxd + wyd * world->width] = Tiles::NOTHING;
                             world->dirty[wxd + wyd * world->width] = true;
                             found = true;
+
+                            //for(int dxx = -1; dxx <= 1; dxx++) {
+                            //    for(int dyy = -1; dyy <= 1; dyy++) {
+                            //        if(world->tiles[(wxd + dxx) + (wyd + dyy) * world->width].mat->physicsType == PhysicsType::SAND || world->tiles[(wxd + dxx) + (wyd + dyy) * world->width].mat->physicsType == PhysicsType::SOUP) {
+                            //            uint32_t color = world->tiles[(wxd + dxx) + (wyd + dyy) * world->width].color;
+
+                            //            unsigned int offset = ((wxd + dxx) + (wyd + dyy) * world->width) * 4;
+
+                            //            dpixels_ar[offset + 2] = ((color >> 0) & 0xff);        // b
+                            //            dpixels_ar[offset + 1] = ((color >> 8) & 0xff);        // g
+                            //            dpixels_ar[offset + 0] = ((color >> 16) & 0xff);        // r
+                            //            dpixels_ar[offset + 3] = world->tiles[(wxd + dxx) + (wyd + dyy) * world->width].mat->alpha;    // a
+                            //        }
+                            //    }
+                            //}
+
+                            //if(!Settings::draw_load_zones) {
+                            //    unsigned int offset = (wxd + wyd * world->width) * 4;
+                            //    dpixels_ar[offset + 2] = 0;        // b
+                            //    dpixels_ar[offset + 1] = 0;        // g
+                            //    dpixels_ar[offset + 0] = 0xff;        // r
+                            //    dpixels_ar[offset + 3] = 0xff;    // a
+                            //}
+                            	
+
                             break;
                         }
                     }
@@ -2827,35 +2617,13 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
             cur->needsUpdate = true;
         }
 
-        std::vector<std::future<void>> results = {};
-
-        results.push_back(updateDirtyPool->push([&](int id) {
-            EASY_BLOCK("particles");
-            //SDL_SetRenderTarget(renderer, textureParticles);
-            void* particlePixels = pixelsParticles_ar;
-            EASY_BLOCK("memset");
-            memset(particlePixels, 0, world->width * world->height * 4);
-            EASY_END_BLOCK; // memset
-            world->renderParticles((unsigned char**)&particlePixels);
-            world->tickParticles();
-
-            //SDL_SetRenderTarget(renderer, NULL);
-            EASY_END_BLOCK; // particles
-        }));
-
-        if(Settings::tick_box2d && world->readyToMerge.size() == 0) {
-            results.push_back(updateDirtyPool->push([&](int id) {
-                world->tickObjects();
-            }));
+        if(world->readyToMerge.size() == 0) {
+            if(Settings::tick_box2d) world->tickObjects();
         }
-
-        EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
-        for(int i = 0; i < results.size(); i++) {
-            results[i].get();
-        }
-        EASY_END_BLOCK;
 
         if(tickTime % 10 == 0) world->tickObjectsMesh();
+
+        for(int i = 0; i < Materials::nMaterials; i++) movingTiles[i] = 0;
 
         results.clear();
         results.push_back(updateDirtyPool->push([&](int id) {
@@ -2865,6 +2633,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
 
                 if(world->dirty[i]) {
                     hadDirty = true;
+                    movingTiles[world->tiles[i].mat->id]++;
                     if(world->tiles[i].mat->physicsType == PhysicsType::AIR) {
                         dpixels_ar[offset + 0] = 0;        // b
                         dpixels_ar[offset + 1] = 0;        // g
@@ -2874,14 +2643,25 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                         dpixelsFire_ar[offset + 0] = 0;        // b
                         dpixelsFire_ar[offset + 1] = 0;        // g
                         dpixelsFire_ar[offset + 2] = 0;        // r
-                        dpixelsFire_ar[offset + 3] = SDL_ALPHA_TRANSPARENT;    // a		
+                        dpixelsFire_ar[offset + 3] = SDL_ALPHA_TRANSPARENT;    // a
+
+                        dpixelsEmission_ar[offset + 0] = 0;        // b
+                        dpixelsEmission_ar[offset + 1] = 0;        // g
+                        dpixelsEmission_ar[offset + 2] = 0;        // r
+                        dpixelsEmission_ar[offset + 3] = SDL_ALPHA_TRANSPARENT;    // a		
                     } else {
                         Uint32 color = world->tiles[i].color;
+                        Uint32 emit = world->tiles[i].mat->emitColor;
                         //float br = world->light[i];
                         dpixels_ar[offset + 2] = ((color >> 0) & 0xff);        // b
                         dpixels_ar[offset + 1] = ((color >> 8) & 0xff);        // g
                         dpixels_ar[offset + 0] = ((color >> 16) & 0xff);        // r
                         dpixels_ar[offset + 3] = world->tiles[i].mat->alpha;    // a
+
+                        dpixelsEmission_ar[offset + 2] = ((emit >> 0) & 0xff);        // b
+                        dpixelsEmission_ar[offset + 1] = ((emit >> 8) & 0xff);        // g
+                        dpixelsEmission_ar[offset + 0] = ((emit >> 16) & 0xff);        // r
+                        dpixelsEmission_ar[offset + 3] = ((emit >> 24) & 0xff);    // a
 
                         if(world->tiles[i].mat->id == Materials::FIRE.id) {
                             dpixelsFire_ar[offset + 2] = ((color >> 0) & 0xff);        // b
@@ -2981,6 +2761,8 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
         }
         EASY_END_BLOCK;
 
+        updateMaterialSounds();
+
         EASY_BLOCK("particle GPU_UpdateImageBytes");
         GPU_UpdateImageBytes(
             textureParticles,
@@ -2991,15 +2773,14 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
         EASY_END_BLOCK; // GPU_UpdateImageBytes
 
         EASY_BLOCK("dirty memset");
-        if(hadDirty)		   memset(world->dirty, false, world->width * world->height);
-        if(hadLayer2Dirty)	   memset(world->layer2Dirty, false, world->width * world->height);
-        if(hadBackgroundDirty) memset(world->backgroundDirty, false, world->width * world->height);
+        if(hadDirty)		   memset(world->dirty, false, (size_t)world->width * world->height);
+        if(hadLayer2Dirty)	   memset(world->layer2Dirty, false, (size_t)world->width * world->height);
+        if(hadBackgroundDirty) memset(world->backgroundDirty, false, (size_t)world->width * world->height);
         EASY_END_BLOCK;
 
         EASY_END_BLOCK; // post World::tick
         #pragma endregion
 
-        if(Settings::draw_light_map && tickTime % 4 == 0) renderLightmap(world);
         if(Settings::tick_temperature && tickTime % 4 == 2) {
             world->tickTemperature();
         }
@@ -3013,6 +2794,13 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                 texture,
                 NULL,
                 &pixels[0],
+                world->width * 4
+            );
+
+            GPU_UpdateImageBytes(
+                emissionTexture,
+                NULL,
+                &pixelsEmission[0],
                 world->width * 4
             );
         }
@@ -3067,6 +2855,454 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
     }
 }
 
+void Game::tickChunkLoading() {
+    EASY_FUNCTION(GAME_PROFILER_COLOR);
+
+    // if need to load chunks
+    if((abs(accLoadX) > CHUNK_W / 2 || abs(accLoadY) > CHUNK_H / 2)) {
+        while(world->toLoad.size() > 0) {
+            // tick chunkloading
+            world->frame();
+        }
+
+        //iterate
+        #pragma region
+        EASY_BLOCK("iterate");
+        for(int i = 0; i < world->width * world->height; i++) {
+            const unsigned int offset = i * 4;
+
+            #define UCH_SET_PIXEL(pix_ar, ofs, c_r, c_g, c_b, c_a) \
+				pix_ar[ofs + 0] = c_b;\
+				pix_ar[ofs + 1] = c_g;\
+				pix_ar[ofs + 2] = c_r;\
+				pix_ar[ofs + 3] = c_a;
+
+            if(world->dirty[i]) {
+                if(world->tiles[i].mat->physicsType == PhysicsType::AIR) {
+                    UCH_SET_PIXEL(pixels_ar, offset, 0, 0, 0, SDL_ALPHA_TRANSPARENT);
+                } else {
+                    Uint32 color = world->tiles[i].color;
+                    Uint32 emit = world->tiles[i].mat->emitColor;
+                    UCH_SET_PIXEL(pixels_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, world->tiles[i].mat->alpha);
+                    UCH_SET_PIXEL(pixelsEmission_ar, offset, (emit >> 0) & 0xff, (emit >> 8) & 0xff, (emit >> 16) & 0xff, (emit >> 24) & 0xff);
+                }
+            }
+
+            if(world->layer2Dirty[i]) {
+                if(world->layer2[i].mat->physicsType == PhysicsType::AIR) {
+                    if(Settings::draw_background_grid) {
+                        Uint32 color = ((i) % 2) == 0 ? 0x888888 : 0x444444;
+                        UCH_SET_PIXEL(pixelsLayer2_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, SDL_ALPHA_OPAQUE);
+                    } else {
+                        UCH_SET_PIXEL(pixelsLayer2_ar, offset, 0, 0, 0, SDL_ALPHA_TRANSPARENT);
+                    }
+                    continue;
+                }
+                Uint32 color = world->layer2[i].color;
+                UCH_SET_PIXEL(pixelsLayer2_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, world->layer2[i].mat->alpha);
+            }
+
+            if(world->backgroundDirty[i]) {
+                Uint32 color = world->background[i];
+                UCH_SET_PIXEL(pixelsBackground_ar, offset, (color >> 0) & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff, (color >> 24) & 0xff);
+            }
+            #undef UCH_SET_PIXEL
+        }
+        EASY_END_BLOCK;
+        #pragma endregion
+
+        EASY_BLOCK("memset");
+        memset(world->dirty, false, (size_t)world->width * world->height);
+        memset(world->layer2Dirty, false, (size_t)world->width * world->height);
+        memset(world->backgroundDirty, false, (size_t)world->width * world->height);
+        EASY_END_BLOCK;
+
+        EASY_BLOCK("loop");
+        while((abs(accLoadX) > CHUNK_W / 2 || abs(accLoadY) > CHUNK_H / 2)) {
+            int subX = std::fmax(std::fmin(accLoadX, CHUNK_W / 2), -CHUNK_W / 2);
+            if(abs(subX) < CHUNK_W / 2) subX = 0;
+            int subY = std::fmax(std::fmin(accLoadY, CHUNK_H / 2), -CHUNK_H / 2);
+            if(abs(subY) < CHUNK_H / 2) subY = 0;
+
+            world->loadZone.x += subX;
+            world->loadZone.y += subY;
+
+            int delta = 4 * (subX + subY * world->width);
+            EASY_BLOCK("rotate");
+            std::vector<std::future<void>> results = {};
+            if(delta > 0) {
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixels_ar[0]), &(pixels_ar[world->width * world->height * 4]) - delta, &(pixels_ar[world->width * world->height * 4]));
+                    //rotate(pixels.begin(), pixels.end() - delta, pixels.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsLayer2_ar[0]), &(pixelsLayer2_ar[world->width * world->height * 4]) - delta, &(pixelsLayer2_ar[world->width * world->height * 4]));
+                    //rotate(pixelsLayer2.begin(), pixelsLayer2.end() - delta, pixelsLayer2.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsBackground_ar[0]), &(pixelsBackground_ar[world->width * world->height * 4]) - delta, &(pixelsBackground_ar[world->width * world->height * 4]));
+                    //rotate(pixelsBackground.begin(), pixelsBackground.end() - delta, pixelsBackground.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsFire_ar[0]), &(pixelsFire_ar[world->width * world->height * 4]) - delta, &(pixelsFire_ar[world->width * world->height * 4]));
+                    //rotate(pixelsFire_ar.begin(), pixelsFire_ar.end() - delta, pixelsFire_ar.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsEmission_ar[0]), &(pixelsEmission_ar[world->width * world->height * 4]) - delta, &(pixelsEmission_ar[world->width * world->height * 4]));
+                    //rotate(pixelsEmission_ar.begin(), pixelsEmission_ar.end() - delta, pixelsEmission_ar.end());
+                }));
+            } else if(delta < 0) {
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixels_ar[0]), &(pixels_ar[0]) - delta, &(pixels_ar[world->width * world->height * 4]));
+                    //rotate(pixels.begin(), pixels.begin() - delta, pixels.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsLayer2_ar[0]), &(pixelsLayer2_ar[0]) - delta, &(pixelsLayer2_ar[world->width * world->height * 4]));
+                    //rotate(pixelsLayer2.begin(), pixelsLayer2.begin() - delta, pixelsLayer2.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsBackground_ar[0]), &(pixelsBackground_ar[0]) - delta, &(pixelsBackground_ar[world->width * world->height * 4]));
+                    //rotate(pixelsBackground.begin(), pixelsBackground.begin() - delta, pixelsBackground.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsFire_ar[0]), &(pixelsFire_ar[0]) - delta, &(pixelsFire_ar[world->width * world->height * 4]));
+                    //rotate(pixelsFire_ar.begin(), pixelsFire_ar.begin() - delta, pixelsFire_ar.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsEmission_ar[0]), &(pixelsEmission_ar[0]) - delta, &(pixelsEmission_ar[world->width * world->height * 4]));
+                    //rotate(pixelsEmission_ar.begin(), pixelsEmission_ar.begin() - delta, pixelsEmission_ar.end());
+                }));
+            }
+            EASY_BLOCK("wait for threads", THREAD_WAIT_PROFILER_COLOR);
+            for(auto& v : results) {
+                v.get();
+            }
+            EASY_END_BLOCK; // wait for threads
+
+            EASY_END_BLOCK; // rotate
+
+            #define CLEARPIXEL(pixels, ofs) \
+pixels[ofs + 0] = pixels[ofs + 1] = pixels[ofs + 2] = 0xff; \
+pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
+
+            EASY_BLOCK("CLEARPIXEL X");
+            for(int x = 0; x < abs(subX); x++) {
+                for(int y = 0; y < world->height; y++) {
+                    const unsigned int offset = (world->width * 4 * y) + x * 4;
+                    if(offset < world->width * world->height * 4) {
+                        CLEARPIXEL(pixels_ar, offset);
+                        CLEARPIXEL(pixelsLayer2_ar, offset);
+                        CLEARPIXEL(pixelsObjects_ar, offset);
+                        CLEARPIXEL(pixelsBackground_ar, offset);
+                        CLEARPIXEL(pixelsFire_ar, offset);
+                        CLEARPIXEL(pixelsEmission_ar, offset);
+                    }
+                }
+            }
+            EASY_END_BLOCK;
+
+            EASY_BLOCK("CLEARPIXEL Y");
+            for(int y = 0; y < abs(subY); y++) {
+                for(int x = 0; x < world->width; x++) {
+                    const unsigned int offset = (world->width * 4 * y) + x * 4;
+                    if(offset < world->width * world->height * 4) {
+                        CLEARPIXEL(pixels_ar, offset);
+                        CLEARPIXEL(pixelsLayer2_ar, offset);
+                        CLEARPIXEL(pixelsObjects_ar, offset);
+                        CLEARPIXEL(pixelsBackground_ar, offset);
+                        CLEARPIXEL(pixelsFire_ar, offset);
+                        CLEARPIXEL(pixelsEmission_ar, offset);
+                    }
+                }
+            }
+            EASY_END_BLOCK;
+
+            #undef CLEARPIXEL
+
+            accLoadX -= subX;
+            accLoadY -= subY;
+
+            ofsX -= subX * scale;
+            ofsY -= subY * scale;
+        }
+
+        EASY_END_BLOCK;
+
+        world->tickChunks();
+        world->updateWorldMesh();
+        world->dirty[0] = true;
+        world->layer2Dirty[0] = true;
+        world->backgroundDirty[0] = true;
+
+    } else {
+        world->frame();
+    }
+}
+
+void Game::tickPlayer() {
+    EASY_FUNCTION(GAME_PROFILER_COLOR);
+
+    #pragma region
+    if(world->player) {
+        if(Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) {
+            if(world->player->ground) {
+                world->player->vy = -4;
+                audioEngine.PlayEvent("event:/Player/Jump");
+            }
+        }
+
+        world->player->vy += (float)(((Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) ? (world->player->vy > -1 ? -0.8 : -0.35) : 0) + (Controls::PLAYER_DOWN->get() ? 0.1 : 0));
+        if(Controls::PLAYER_UP->get() && !Controls::DEBUG_DRAW->get()) {
+            audioEngine.SetEventParameter("event:/Player/Fly", "Intensity", 1);
+            for(int i = 0; i < 4; i++) {
+                Particle* p = new Particle(Tiles::createLava(), (float)(world->player->x + world->loadZone.x + world->player->hw / 2 + rand() % 5 - 2 + world->player->vx), (float)(world->player->y + world->loadZone.y + world->player->hh + world->player->vy), (float)((rand() % 10 - 5) / 10.0f + world->player->vx / 2.0f), (float)((rand() % 10) / 10.0f + 1 + world->player->vy / 2.0f), 0, (float)0.025);
+                p->temporary = true;
+                p->lifetime = 120;
+                world->addParticle(p);
+            }
+        } else {
+            audioEngine.SetEventParameter("event:/Player/Fly", "Intensity", 0);
+        }
+
+        if(world->player->vy > 0) {
+            audioEngine.SetEventParameter("event:/Player/Wind", "Wind", (float)(world->player->vy / 12.0));
+        } else {
+            audioEngine.SetEventParameter("event:/Player/Wind", "Wind", 0);
+        }
+
+        world->player->vx += (float)((Controls::PLAYER_LEFT->get() ? (world->player->vx > 0 ? -0.4 : -0.2) : 0) + (Controls::PLAYER_RIGHT->get() ? (world->player->vx < 0 ? 0.4 : 0.2) : 0));
+        if(!Controls::PLAYER_LEFT->get() && !Controls::PLAYER_RIGHT->get()) world->player->vx *= (float)(world->player->ground ? 0.85 : 0.96);
+        if(world->player->vx > 4.5) world->player->vx = 4.5;
+        if(world->player->vx < -4.5) world->player->vx = -4.5;
+    } else {
+        if(state == INGAME) {
+            freeCamX += (float)((Controls::PLAYER_LEFT->get() ? -5 : 0) + (Controls::PLAYER_RIGHT->get() ? 5 : 0));
+            freeCamY += (float)((Controls::PLAYER_UP->get() ? -5 : 0) + (Controls::PLAYER_DOWN->get() ? 5 : 0));
+        } else {
+
+        }
+    }
+    #pragma endregion
+
+    #pragma region
+    if(world->player) {
+        desCamX = (float)(-(mx - (WIDTH / 2)) / 4);
+        desCamY = (float)(-(my - (HEIGHT / 2)) / 4);
+
+        world->player->holdAngle = (float)(atan2(desCamY, desCamX) * 180 / (float)W_PI);
+
+        desCamX = 0;
+        desCamY = 0;
+    } else {
+        desCamX = 0;
+        desCamY = 0;
+    }
+    #pragma endregion
+
+    #pragma region
+    if(world->player) {
+        if(world->player->heldItem) {
+            if(world->player->heldItem->getFlag(ItemFlags::VACUUM)) {
+                if(world->player->holdVacuum) {
+
+                    int wcx = (int)((WIDTH / 2.0f - ofsX - camX) / scale);
+                    int wcy = (int)((HEIGHT / 2.0f - ofsY - camY) / scale);
+
+                    int wmx = (int)((mx - ofsX - camX) / scale);
+                    int wmy = (int)((my - ofsY - camY) / scale);
+
+                    int mdx = wmx - wcx;
+                    int mdy = wmy - wcy;
+
+                    int distSq = mdx * mdx + mdy * mdy;
+                    if(distSq <= 256 * 256) {
+
+                        int sind = -1;
+                        bool inObject = true;
+                        world->forLine(wcx, wcy, wmx, wmy, [&](int ind) {
+                            if(world->tiles[ind].mat->physicsType == PhysicsType::OBJECT) {
+                                if(!inObject) {
+                                    sind = ind;
+                                    return true;
+                                }
+                            } else {
+                                inObject = false;
+                            }
+
+                            if(world->tiles[ind].mat->physicsType == PhysicsType::SOLID || world->tiles[ind].mat->physicsType == PhysicsType::SAND || world->tiles[ind].mat->physicsType == PhysicsType::SOUP) {
+                                sind = ind;
+                                return true;
+                            }
+                            return false;
+                        });
+
+                        int x = sind == -1 ? wmx : sind % world->width;
+                        int y = sind == -1 ? wmy : sind / world->width;
+
+                        std::function<void(MaterialInstance, int, int)> makeParticle = [&](MaterialInstance tile, int xPos, int yPos) {
+                            Particle* par = new Particle(tile, xPos, yPos, 0, 0, 0, (float)0.01f);
+                            par->vx = (rand() % 10 - 5) / 5.0f * 1.0f;
+                            par->vy = (rand() % 10 - 5) / 5.0f * 1.0f;
+                            par->ax = -par->vx / 10.0f;
+                            par->ay = -par->vy / 10.0f;
+                            if(par->ay == 0 && par->ax == 0) par->ay = 0.01f;
+
+                            //par->targetX = world->player->x + world->player->hw / 2 + world->loadZone.x;
+                            //par->targetY = world->player->y + world->player->hh / 2 + world->loadZone.y;
+                            //par->targetForce = 0.35f;
+
+                            par->lifetime = 6;
+
+                            par->phase = true;
+
+                            world->player->heldItem->vacuumParticles.push_back(par);
+
+                            par->killCallback = [&]() {
+                                auto& v = world->player->heldItem->vacuumParticles;
+                                v.erase(std::remove(v.begin(), v.end(), par), v.end());
+                            };
+
+                            world->addParticle(par);
+                        };
+
+                        int rad = 5;
+                        int clipRadSq = rad * rad;
+                        clipRadSq += rand() % clipRadSq / 4;
+                        for(int xx = -rad; xx <= rad; xx++) {
+                            for(int yy = -rad; yy <= rad; yy++) {
+                                if(xx * xx + yy * yy > clipRadSq) continue;
+                                if((yy == -rad || yy == rad) && (xx == -rad || xx == rad)) {
+                                    continue;
+                                }
+
+                                MaterialInstance tile = world->tiles[(x + xx) + (y + yy) * world->width];
+                                if(tile.mat->physicsType == PhysicsType::SOLID || tile.mat->physicsType == PhysicsType::SAND || tile.mat->physicsType == PhysicsType::SOUP) {
+                                    makeParticle(tile, x + xx, y + yy);
+                                    world->tiles[(x + xx) + (y + yy) * world->width] = Tiles::NOTHING;
+                                    //world->tiles[(x + xx) + (y + yy) * world->width] = Tiles::createFire();
+                                    world->dirty[(x + xx) + (y + yy) * world->width] = true;
+                                }
+
+
+                            }
+                        }
+
+                        world->particles.erase(std::remove_if(world->particles.begin(), world->particles.end(), [&](Particle* cur) {
+                            if(cur->targetForce == 0 && !cur->phase) {
+                                int rad = 5;
+                                for(int xx = -rad; xx <= rad; xx++) {
+                                    for(int yy = -rad; yy <= rad; yy++) {
+                                        if((yy == -rad || yy == rad) && (xx == -rad || x == rad)) continue;
+
+                                        if(((int)(cur->x) == (x + xx)) && ((int)(cur->y) == (y + yy))) {
+
+                                            cur->vx = (rand() % 10 - 5) / 5.0f * 1.0f;
+                                            cur->vy = (rand() % 10 - 5) / 5.0f * 1.0f;
+                                            cur->ax = -cur->vx / 10.0f;
+                                            cur->ay = -cur->vy / 10.0f;
+                                            if(cur->ay == 0 && cur->ax == 0) cur->ay = 0.01f;
+
+                                            //par->targetX = world->player->x + world->player->hw / 2 + world->loadZone.x;
+                                            //par->targetY = world->player->y + world->player->hh / 2 + world->loadZone.y;
+                                            //par->targetForce = 0.35f;
+
+                                            cur->lifetime = 6;
+
+                                            cur->phase = true;
+
+                                            world->player->heldItem->vacuumParticles.push_back(cur);
+
+                                            cur->killCallback = [&]() {
+                                                auto& v = world->player->heldItem->vacuumParticles;
+                                                v.erase(std::remove(v.begin(), v.end(), cur), v.end());
+                                            };
+
+                                            return false;
+                                        }
+                                    }
+                                }
+                            }
+
+                            return false;
+                        }), world->particles.end());
+
+                        vector<RigidBody*> rbs = world->rigidBodies;
+
+                        for(size_t i = 0; i < rbs.size(); i++) {
+                            RigidBody* cur = rbs[i];
+                            if(cur->body->IsEnabled()) {
+                                float s = sin(-cur->body->GetAngle());
+                                float c = cos(-cur->body->GetAngle());
+                                bool upd = false;
+                                for(int xx = -rad; xx <= rad; xx++) {
+                                    for(int yy = -rad; yy <= rad; yy++) {
+                                        if((yy == -rad || yy == rad) && (xx == -rad || x == rad)) continue;
+                                        // rotate point
+
+                                        float tx = x + xx - cur->body->GetPosition().x;
+                                        float ty = y + yy - cur->body->GetPosition().y;
+
+                                        int ntx = (int)(tx * c - ty * s);
+                                        int nty = (int)(tx * s + ty * c);
+
+                                        if(ntx >= 0 && nty >= 0 && ntx < cur->surface->w && nty < cur->surface->h) {
+                                            Uint32 pixel = PIXEL(cur->surface, ntx, nty);
+                                            if(((pixel >> 24) & 0xff) != 0x00) {
+                                                PIXEL(cur->surface, ntx, nty) = 0x00000000;
+                                                upd = true;
+
+                                                makeParticle(MaterialInstance(&Materials::GENERIC_SOLID, pixel), (x + xx), (y + yy));
+                                            }
+
+                                        }
+                                    }
+                                }
+
+                                if(upd) {
+                                    GPU_FreeImage(cur->texture);
+                                    cur->texture = GPU_CopyImageFromSurface(cur->surface);
+                                    GPU_SetImageFilter(cur->texture, GPU_FILTER_NEAREST);
+                                    //world->updateRigidBodyHitbox(cur);
+                                    cur->needsUpdate = true;
+                                }
+                            }
+                        }
+
+                    }
+                }
+
+                if(world->player->heldItem->vacuumParticles.size() > 0) {
+                    world->player->heldItem->vacuumParticles.erase(std::remove_if(world->player->heldItem->vacuumParticles.begin(), world->player->heldItem->vacuumParticles.end(), [&](Particle* cur) {
+
+                        if(cur->lifetime <= 0) {
+                            cur->targetForce = 0.45f;
+                            cur->targetX = world->player->x + world->player->hw / 2.0f + world->loadZone.x;
+                            cur->targetY = world->player->y + world->player->hh / 2.0f + world->loadZone.y;
+                            cur->ax = 0;
+                            cur->ay = 0.01f;
+                        }
+
+                        float tdx = cur->targetX - cur->x;
+                        float tdy = cur->targetY - cur->y;
+
+                        if(tdx * tdx + tdy * tdy < 10 * 10) {
+                            cur->temporary = true;
+                            cur->lifetime = 0;
+                            //logDebug("vacuum {}", cur->tile.mat->name.c_str());
+                            return true;
+                        }
+
+                        return false;
+                    }), world->player->heldItem->vacuumParticles.end());
+                }
+
+            }
+        }
+    }
+    #pragma endregion
+
+}
+
 void Game::updateFrameLate() {
     EASY_FUNCTION(GAME_PROFILER_COLOR);
     if(state == LOADING) {
@@ -3099,8 +3335,8 @@ void Game::updateFrameLate() {
             plPosX = (float)(plPosX + (freeCamX - plPosX) / 50.0f);
             plPosY = (float)(plPosY + (freeCamY - plPosY) / 50.0f);
 
-            nofsX = (int)(-(plPosX + 0 + world->loadZone.x) * scale + WIDTH / 2);
-            nofsY = (int)(-(plPosY + 0 + world->loadZone.y) * scale + HEIGHT / 2);
+            nofsX = (int)(-(plPosX + 0 + world->loadZone.x) * scale + WIDTH / 2.0f);
+            nofsY = (int)(-(plPosY + 0 + world->loadZone.y) * scale + HEIGHT / 2.0f);
         }
 
         accLoadX += (nofsX - ofsX) / (float)scale;
@@ -3188,7 +3424,11 @@ void Game::renderEarly() {
 
             lastLoadingTick = now;
         } else {
+            #ifdef _WIN32
             Sleep(5);
+            #else
+            sleep(5/1000.0f);
+            #endif
         }
         GPU_ActivateShaderProgram(0, NULL);
         GPU_BlitRect(loadingTexture, NULL, target, NULL);
@@ -3199,13 +3439,18 @@ void Game::renderEarly() {
     } else {
         // render entities with LERP
         #pragma region
-        if(world->player) {
-            if(now - lastTick <= mspt) {
+        if(now - lastTick <= mspt) {
+            GPU_Clear(textureEntities->target);
+            GPU_Clear(textureEntitiesLQ->target);
+            if(world->player) {
                 float thruTick = (float)((now - lastTick) / (double)mspt);
                 EASY_BLOCK("render entities LERP");
                 GPU_SetBlendMode(textureEntities, GPU_BLEND_ADD);
-                GPU_Clear(textureEntities->target);
+                GPU_SetBlendMode(textureEntitiesLQ, GPU_BLEND_ADD);
+                int scaleEnt = Settings::hd_objects ? Settings::hd_objects_size : 1;
+
                 for(auto& v : world->entities) {
+                    v->renderLQ(textureEntitiesLQ->target, world->loadZone.x + (int)(v->vx * thruTick), world->loadZone.y + (int)(v->vy * thruTick));
                     v->render(textureEntities->target, world->loadZone.x + (int)(v->vx * thruTick), world->loadZone.y + (int)(v->vy * thruTick));
                 }
 
@@ -3223,23 +3468,37 @@ void Game::renderEarly() {
                                 dy = dy / len * 40;
                             }
 
-                            GPU_Line(textureEntities->target, world->player->hammerX + dx, world->player->hammerY + dy, world->player->hammerX, world->player->hammerY, {0xff, 0xff, 0x00, 0xff});
+                            GPU_Line(textureEntitiesLQ->target, world->player->hammerX + dx, world->player->hammerY + dy, world->player->hammerX, world->player->hammerY, {0xff, 0xff, 0x00, 0xff});
                         } else {
                             int startInd = getAimSolidSurface(64);
 
                             if(startInd != -1) {
                                 int x = startInd % world->width;
                                 int y = startInd / world->width;
-                                GPU_Rectangle(textureEntities->target, x - 1, y - 1, x + 1, y + 1, {0xff, 0xff, 0x00, 0xE0});
+                                GPU_Rectangle(textureEntitiesLQ->target, x - 1, y - 1, x + 1, y + 1, {0xff, 0xff, 0x00, 0xE0});
                             }
                         }
                     }
                 }
                 GPU_SetBlendMode(textureEntities, GPU_BLEND_NORMAL);
+                GPU_SetBlendMode(textureEntitiesLQ, GPU_BLEND_NORMAL);
                 EASY_END_BLOCK;
             }
         }
         #pragma endregion
+
+        if(Controls::mmouse) {
+            int x = (int)((mx - ofsX - camX) / scale);
+            int y = (int)((my - ofsY - camY) / scale);
+            GPU_RectangleFilled(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2.0f, y - DebugDrawUI::brushSize / 2.0f, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)), y + (int)(ceil(DebugDrawUI::brushSize / 2.0)), {0xff, 0x40, 0x40, 0x90});
+            GPU_Rectangle(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2.0f, y - DebugDrawUI::brushSize / 2.0f, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, y + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, {0xff, 0x40, 0x40, 0xE0});
+        }else if(Controls::DEBUG_DRAW->get()) {
+            int x = (int)((mx - ofsX - camX) / scale);
+            int y = (int)((my - ofsY - camY) / scale);
+            GPU_RectangleFilled(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2.0f, y - DebugDrawUI::brushSize / 2.0f, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)), y + (int)(ceil(DebugDrawUI::brushSize / 2.0)), {0x00, 0xff, 0xB0, 0x80});
+            GPU_Rectangle(textureEntitiesLQ->target, x - DebugDrawUI::brushSize / 2.0f, y - DebugDrawUI::brushSize / 2.0f, x + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, y + (int)(ceil(DebugDrawUI::brushSize / 2.0)) + 1, {0x00, 0xff, 0xB0, 0xE0});
+        }
+
     }
 }
 
@@ -3273,9 +3532,9 @@ void Game::renderLate() {
             for(size_t i = 0; i < bg.layers.size(); i++) {
                 BackgroundLayer cur = bg.layers[i];
 
-                SDL_Surface* texture = cur.surface[scale - 1];
+                SDL_Surface* texture = cur.surface[(size_t)scale - 1];
 
-                GPU_Image* tex = cur.texture[scale - 1];
+                GPU_Image* tex = cur.texture[(size_t)scale - 1];
                 GPU_SetBlendMode(tex, GPU_BLEND_NORMAL);
 
                 int tw = texture->w;
@@ -3289,8 +3548,8 @@ void Game::renderLate() {
                     src->w = tw;
                     src->h = th;
 
-                    dst->x = (((ofsX + camX) + world->loadZone.x*scale) + n * tw / cur.parralaxX) * cur.parralaxX + world->width / 2 * scale - tw / 2;
-                    dst->y = ((ofsY + camY) + world->loadZone.y*scale) * cur.parralaxY + world->height / 2 * scale - th / 2 - HEIGHT / 3 * (scale - 1);
+                    dst->x = (((ofsX + camX) + world->loadZone.x*scale) + n * tw / cur.parralaxX) * cur.parralaxX + world->width / 2.0f * scale - tw / 2.0f;
+                    dst->y = ((ofsY + camY) + world->loadZone.y*scale) * cur.parralaxY + world->height / 2.0f * scale - th / 2.0f - HEIGHT / 3.0f * (scale - 1);
                     dst->w = (float)tw;
                     dst->h = (float)th;
 
@@ -3348,9 +3607,11 @@ void Game::renderLate() {
 
         // shader
         EASY_BLOCK("water shader");
-        GPU_ActivateShaderProgram(water_shader, &water_shader_block);
-        float t = (now - startTime) / 1000.0;
-        //Shaders::update_marching_ants_shader(marching_ants_shader, t, target->w * scale, target->h * scale, texture, r1.x, HEIGHT - r1.y, r1.w, r1.h, scale);
+        if(Settings::draw_shaders) {
+            waterShader->activate();
+            float t = (now - startTime) / 1000.0;
+            waterShader->update(t, target->w * scale, target->h * scale, texture, r1.x, HEIGHT - r1.y, r1.w, r1.h, scale);
+        }
 
         target = realTarget;
 
@@ -3362,7 +3623,7 @@ void Game::renderLate() {
 
         // done shader
 
-        EASY_BLOCK("lighting shader");
+        EASY_BLOCK("draw world");
         int lmsx = (int)((mx - ofsX - camX) / scale);
         int lmsy = (int)((my - ofsY - camY) / scale);
 
@@ -3372,501 +3633,587 @@ void Game::renderLate() {
 
         GPU_SetBlendMode(textureObjects, GPU_BLEND_NORMAL);
         GPU_BlitRect(textureObjects, NULL, worldTexture->target, NULL);
+        GPU_SetBlendMode(textureObjectsLQ, GPU_BLEND_NORMAL);
+        GPU_BlitRect(textureObjectsLQ, NULL, worldTexture->target, NULL);
 
         GPU_SetBlendMode(textureParticles, GPU_BLEND_NORMAL);
         GPU_BlitRect(textureParticles, NULL, worldTexture->target, NULL);
 
+        GPU_SetBlendMode(textureEntitiesLQ, GPU_BLEND_NORMAL);
+        GPU_BlitRect(textureEntitiesLQ, NULL, worldTexture->target, NULL);
         GPU_SetBlendMode(textureEntities, GPU_BLEND_NORMAL);
         GPU_BlitRect(textureEntities, NULL, worldTexture->target, NULL);
 
-        //if (Settings::draw_shaders) raycastLightingShader->activate();
-        //if (Settings::draw_shaders) raycastLightingShader->update(worldTexture, msx / (float)world->width, msy / (float)world->height);
-        if(Settings::draw_shaders) simpleLightingShader->activate();
-        if(Settings::draw_shaders) simpleLightingShader->update(worldTexture, lmsx / (float)world->width, lmsy / (float)world->height);
+        EASY_BLOCK("lighting shader");
+        if(Settings::draw_shaders) newLightingShader->activate();
 
-        GPU_Clear(lightingTexture->target);
-        GPU_BlitRect(worldTexture, NULL, lightingTexture->target, NULL);
-        //GPU_BlitRect(worldTexture, NULL, target, &r1);
+        // I use this to only rerender the lighting when a parameter changes or N times per second anyway
+        // Doing this massively reduces the GPU load of the shader
+        bool needToRerenderLighting = false;
 
-        if(Settings::draw_shaders) simpleLighting2Shader->activate();
-        if(Settings::draw_shaders) simpleLighting2Shader->update(worldTexture, lightingTexture, lmsx / (float)world->width, lmsy / (float)world->height);
+        static long long lastLightingForceRefresh = 0;
+        long long now = Time::millis();
+        if(now - lastLightingForceRefresh > 100) {
+            lastLightingForceRefresh = now;
+            needToRerenderLighting = true;
+        }
+
+        if(Settings::draw_shaders && world) {
+            float lightTx;
+            float lightTy;
+
+            if(world->player) {
+                lightTx = (world->loadZone.x + world->player->x + world->player->hw / 2.0f) / (float)world->width;
+                lightTy = (world->loadZone.y + world->player->y + world->player->hh / 2.0f) / (float)world->height;
+            } else {
+                lightTx = lmsx / (float)world->width;
+                lightTy = lmsy / (float)world->height;
+            }
+
+            if(newLightingShader->lastLx != lightTx || newLightingShader->lastLy != lightTy) needToRerenderLighting = true;
+            newLightingShader->update(worldTexture, emissionTexture, lightTx, lightTy);
+            if(newLightingShader->lastQuality != Settings::lightingQuality) {
+                needToRerenderLighting = true;
+            }
+            newLightingShader->setQuality(Settings::lightingQuality);
+
+            int nBg = 0;
+            int range = 64;
+            for(int xx = max(0, (int)(lightTx * world->width) - range); xx <= min((int)(lightTx * world->width) + range, world->width - 1); xx++) {
+                for(int yy = max(0, (int)(lightTy * world->height) - range); yy <= min((int)(lightTy * world->height) + range, world->height - 1); yy++) {
+                    if(world->background[xx + yy * world->width] != 0x00) {
+                        nBg++;
+                    }
+                }
+            }
+
+            newLightingShader_insideDes = min(max(0.0f, (float)nBg / ((range * 2) * (range * 2))), 1.0f);
+            newLightingShader_insideCur += (newLightingShader_insideDes - newLightingShader_insideCur) / 2.0f * (deltaTime / 1000.0f);
+
+            float ins = newLightingShader_insideCur < 0.05 ? 0.0 : newLightingShader_insideCur;
+            if(newLightingShader->lastInside != ins) needToRerenderLighting = true;
+            newLightingShader->setInside(ins);
+            newLightingShader->setBounds(world->tickZone.x * Settings::hd_objects_size, world->tickZone.y * Settings::hd_objects_size, (world->tickZone.x + world->tickZone.w) * Settings::hd_objects_size, (world->tickZone.y + world->tickZone.h) * Settings::hd_objects_size);
+
+            if(newLightingShader->lastSimpleMode != Settings::simpleLighting) needToRerenderLighting = true;
+            newLightingShader->setSimpleMode(Settings::simpleLighting);
+
+            if(newLightingShader->lastEmissionEnabled != Settings::lightingEmission) needToRerenderLighting = true;
+            newLightingShader->setEmissionEnabled(Settings::lightingEmission);
+
+            if(newLightingShader->lastDitheringEnabled != Settings::lightingDithering) needToRerenderLighting = true;
+            newLightingShader->setDitheringEnabled(Settings::lightingDithering);
+        }
+        
+        if(Settings::draw_shaders && needToRerenderLighting) {
+            GPU_Clear(lightingTexture->target);
+            GPU_BlitRect(worldTexture, NULL, lightingTexture->target, NULL);
+        }
+        if(Settings::draw_shaders) GPU_ActivateShaderProgram(0, NULL);
+
+        EASY_END_BLOCK; // lighting shader
 
         GPU_BlitRect(worldTexture, NULL, target, &r1);
 
-        if(Settings::draw_shaders) GPU_ActivateShaderProgram(0, NULL);
+        if(Settings::draw_shaders) {
+            GPU_SetBlendMode(lightingTexture, Settings::draw_light_overlay ? GPU_BLEND_NORMAL : GPU_BLEND_MULTIPLY);
+            GPU_BlitRect(lightingTexture, NULL, target, &r1);
+        }
 
-        EASY_END_BLOCK; //lighting shader
+        EASY_END_BLOCK; // draw world
 
-        GPU_Clear(texture2Fire->target);
-        EASY_BLOCK("fire shader 1");
-        fireShader->activate();
-        fireShader->update(textureFire);
-        GPU_BlitRect(textureFire, NULL, texture2Fire->target, NULL);
-        GPU_ActivateShaderProgram(0, NULL);
-        EASY_END_BLOCK;
+        if(Settings::draw_shaders) {
+            GPU_Clear(texture2Fire->target);
+            EASY_BLOCK("fire shader 1");
+            fireShader->activate();
+            fireShader->update(textureFire);
+            GPU_BlitRect(textureFire, NULL, texture2Fire->target, NULL);
+            GPU_ActivateShaderProgram(0, NULL);
+            EASY_END_BLOCK;
 
-        EASY_BLOCK("fire shader 2");
-        fire2Shader->activate();
-        fire2Shader->update(texture2Fire);
-        GPU_BlitRect(texture2Fire, NULL, target, &r1);
-        GPU_ActivateShaderProgram(0, NULL);
-        EASY_END_BLOCK;
+            EASY_BLOCK("fire shader 2");
+            fire2Shader->activate();
+            fire2Shader->update(texture2Fire);
+            GPU_BlitRect(texture2Fire, NULL, target, &r1);
+            GPU_ActivateShaderProgram(0, NULL);
+            EASY_END_BLOCK;
+        }
 
         // done light
 
-
-
-        GPU_Rect r2 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x*scale), (float)(ofsY + camY + world->tickZone.y*scale), (float)(world->tickZone.w * scale), (float)(world->tickZone.h * scale)};
-        if(Settings::draw_light_map) {
-            GPU_SetBlendMode(lightMap, GPU_BLEND_MULTIPLY);
-            GPU_BlitRect(lightMap, NULL, target, &r2);
-        }
-
-        if(Settings::draw_temperature_map) {
-            GPU_SetBlendMode(temperatureMap, GPU_BLEND_NORMAL);
-            GPU_BlitRect(temperatureMap, NULL, target, &r1);
-        }
-        EASY_END_BLOCK; // draw world textures
-
-        if(Settings::draw_load_zones) {
-            GPU_Rect r2m = GPU_Rect {(float)(ofsX + camX + world->meshZone.x*scale),
-                (float)(ofsY + camY + world->meshZone.y*scale),
-                (float)(world->meshZone.w * scale),
-                (float)(world->meshZone.h * scale)};
-
-            GPU_Rectangle2(target, r2m, {0x00, 0xff, 0xff, 0xff});
-            GPU_Rectangle2(target, r2, {0xff, 0x00, 0x00, 0xff});
-        }
-
-        if(Settings::draw_load_zones) {
-            EASY_BLOCK("draw load zones", RENDER_PROFILER_COLOR);
-            SDL_Color col = {0xff, 0x00, 0x00, 0x20};
-            GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
-
-            GPU_Rect r3 = GPU_Rect {(float)(0), (float)(0), (float)((ofsX + camX + world->tickZone.x*scale)), (float)(HEIGHT)};
-            GPU_Rectangle2(target, r3, col);
-
-            GPU_Rect r4 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x*scale + world->tickZone.w * scale), (float)(0), (float)((WIDTH)-(ofsX + camX + world->tickZone.x*scale + world->tickZone.w * scale)), (float)(HEIGHT)};
-            GPU_Rectangle2(target, r3, col);
-
-            GPU_Rect r5 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x*scale), (float)(0), (float)(world->tickZone.w * scale), (float)(ofsY + camY + world->tickZone.y*scale)};
-            GPU_Rectangle2(target, r3, col);
-
-            GPU_Rect r6 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x*scale), (float)(ofsY + camY + world->tickZone.y*scale + world->tickZone.h * scale), (float)(world->tickZone.w * scale), (float)(HEIGHT - (ofsY + camY + world->tickZone.y*scale + world->tickZone.h * scale))};
-            GPU_Rectangle2(target, r6, col);
-
-            col = {0x00, 0xff, 0x00, 0xff};
-            GPU_Rect r7 = GPU_Rect {(float)(ofsX + camX + world->width / 2 * scale - (WIDTH / 3 * scale / 2)), (float)(ofsY + camY + world->height / 2 * scale - (HEIGHT / 3 * scale / 2)), (float)(WIDTH / 3 * scale), (float)(HEIGHT / 3 * scale)};
-            GPU_Rectangle2(target, r7, col);
-
-            EASY_END_BLOCK; // draw load zones
-        }
-
-        if(Settings::draw_physics_meshes) {
-            EASY_BLOCK("draw physics meshes", RENDER_PROFILER_COLOR);
-            for(size_t i = 0; i < world->rigidBodies.size(); i++) {
-                RigidBody cur = *world->rigidBodies[i];
-
-                float x = cur.body->GetPosition().x;
-                float y = cur.body->GetPosition().y;
-                x = ((x)* scale + ofsX + camX);
-                y = ((y)* scale + ofsY + camY);
-
-                /*SDL_Rect* r = new SDL_Rect{ (int)x, (int)y, cur.surface->w * scale, cur.surface->h * scale };
-                SDL_RenderCopyEx(renderer, cur.texture, NULL, r, cur.body->GetAngle() * 180 / M_PI, new SDL_Point{ 0, 0 }, SDL_RendererFlip::SDL_FLIP_NONE);
-                delete r;*/
-
-                Uint32 color = 0x0000ff;
-
-                SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
-
-                b2Fixture* fix = cur.body->GetFixtureList();
-                while(fix) {
-                    b2Shape* shape = fix->GetShape();
-
-                    switch(shape->GetType()) {
-                    case b2Shape::Type::e_polygon:
-                        b2PolygonShape* poly = (b2PolygonShape*)shape;
-                        b2Vec2* verts = poly->m_vertices;
-
-                        Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
-
-                        break;
-                    }
-
-                    fix = fix->GetNext();
-                }
-            }
-
-            if(world->player) {
-                RigidBody cur = *world->player->rb;
-
-                float x = cur.body->GetPosition().x;
-                float y = cur.body->GetPosition().y;
-                x = ((x)* scale + ofsX + camX);
-                y = ((y)* scale + ofsY + camY);
-
-                Uint32 color = 0x0000ff;
-
-                SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
-
-                b2Fixture* fix = cur.body->GetFixtureList();
-                while(fix) {
-                    b2Shape* shape = fix->GetShape();
-                    switch(shape->GetType()) {
-                    case b2Shape::Type::e_polygon:
-                        b2PolygonShape* poly = (b2PolygonShape*)shape;
-                        b2Vec2* verts = poly->m_vertices;
-
-                        Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
-
-                        break;
-                    }
-
-                    fix = fix->GetNext();
-                }
-            }
-
-            for(size_t i = 0; i < world->worldRigidBodies.size(); i++) {
-                RigidBody cur = *world->worldRigidBodies[i];
-
-                float x = cur.body->GetPosition().x;
-                float y = cur.body->GetPosition().y;
-                x = ((x)* scale + ofsX + camX);
-                y = ((y)* scale + ofsY + camY);
-
-                Uint32 color = 0x00ff00;
-
-                SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
-
-                b2Fixture* fix = cur.body->GetFixtureList();
-                while(fix) {
-                    b2Shape* shape = fix->GetShape();
-                    switch(shape->GetType()) {
-                    case b2Shape::Type::e_polygon:
-                        b2PolygonShape* poly = (b2PolygonShape*)shape;
-                        b2Vec2* verts = poly->m_vertices;
-
-                        Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
-
-                        break;
-                    }
-
-                    fix = fix->GetNext();
-                }
-
-                /*color = 0xff0000;
-                SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff);
-                SDL_RenderDrawPoint(renderer, x, y);
-                color = 0x00ff00;
-                SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff);
-                SDL_RenderDrawPoint(renderer, cur.body->GetLocalCenter().x * scale + ofsX, cur.body->GetLocalCenter().y * scale + ofsY);*/
-            }
-
-            int minChX = (int)floor((world->meshZone.x - world->loadZone.x) / CHUNK_W);
-            int minChY = (int)floor((world->meshZone.y - world->loadZone.y) / CHUNK_H);
-            int maxChX = (int)ceil((world->meshZone.x + world->meshZone.w - world->loadZone.x) / CHUNK_W);
-            int maxChY = (int)ceil((world->meshZone.y + world->meshZone.h - world->loadZone.y) / CHUNK_H);
-
-            /*minChX = 0;
-            minChY = 0;
-            maxChX = 4;
-            maxChY = 4;*/
-
-            for(int cx = minChX; cx <= maxChX; cx++) {
-                for(int cy = minChY; cy <= maxChY; cy++) {
-                    Chunk* ch = world->getChunk(cx, cy);
-                    SDL_Color col = {255, 0, 0, 255};
-
-                    float x = ((ch->x * CHUNK_W + world->loadZone.x)* scale + ofsX + camX);
-                    float y = ((ch->y * CHUNK_H + world->loadZone.y)* scale + ofsY + camY);
-
-                    GPU_Rectangle(target, x, y, x + CHUNK_W * scale, y + CHUNK_H * scale, {0, 0, 0, 255});
-
-                    for(int i = 0; i < ch->polys.size(); i++) {
-                        Drawing::drawPolygon(target, col, ch->polys[i].m_vertices, (int)x, (int)y, scale, ch->polys[i].m_count, 0/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
-                    }
-
-
-                }
-            }
-
-            EASY_END_BLOCK; // draw physics meshes
-        }
-
-        if(Settings::draw_material_info) {
-            EASY_BLOCK("draw material info", RENDER_PROFILER_COLOR);
-            int msx = (int)((mx - ofsX - camX) / scale);
-            int msy = (int)((my - ofsY - camY) / scale);
-
-            if(msx >= 0 && msy >= 0 && msx < world->width && msy < world->height) {
-                MaterialInstance tile = world->tiles[msx + msy * world->width];
-                Drawing::drawText(target, tile.mat->name.c_str(), font16, 2, 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
-                int ln = 0;
-                if(tile.mat->interact) {
-                    for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
-                        if(tile.mat->nInteractions[i] > 0) {
-                            char buff2[40];
-                            snprintf(buff2, sizeof(buff2), "    %s", Materials::MATERIALS[i]->name.c_str());
-                            Drawing::drawText(target, buff2, font16, 2, 2 + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
-
-                            for(int j = 0; j < tile.mat->nInteractions[i]; j++) {
-                                MaterialInteraction inter = tile.mat->interactions[i][j];
-                                char buff1[40];
-                                if(inter.type == INTERACT_TRANSFORM_MATERIAL) {
-                                    snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "TRANSFORM", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
-                                } else if(inter.type == INTERACT_SPAWN_MATERIAL) {
-                                    snprintf(buff1, sizeof(buff1), "        %s %s r=%d x=%d y=%d", "SPAWN", Materials::MATERIALS[inter.data1]->name.c_str(), inter.data2, inter.ofsX, inter.ofsY);
-                                }
-                                Drawing::drawText(target, buff1, font16, 2, 2 + 14 * ++ln, 0xff, 0xff, 0xff, ALIGN_LEFT);
-                            }
-                        }
-                    }
-                }
-            }
-
-            EASY_END_BLOCK; // draw material info
-        }
-
-        EASY_BLOCK("draw fps", RENDER_PROFILER_COLOR);
-        if(dt_fps.w == -1) {
-            char buffFps[20];
-            snprintf(buffFps, sizeof(buffFps), "%d FPS", fps);
-            if(dt_fps.t1 != nullptr) GPU_FreeImage(dt_fps.t1);
-            if(dt_fps.t2 != nullptr) GPU_FreeImage(dt_fps.t2);
-            dt_fps = Drawing::drawTextParams(target, buffFps, font16, WIDTH - 4, 2, 0xff, 0xff, 0xff, ALIGN_RIGHT);
-        }
-
-        Drawing::drawText(target, dt_fps, WIDTH - 4, 2, ALIGN_RIGHT);
-        EASY_END_BLOCK; // draw fps
-
-        if(Settings::draw_chunk_state) {
-            EASY_BLOCK("draw chunk state", RENDER_PROFILER_COLOR);
-            GPU_Rect r = {0 , 0, 10, 10};
-            for(auto& p : world->chunkCache) {
-                if(p.first == INT_MIN) continue;
-                int cx = p.first;
-                for(auto& p2 : p.second) {
-                    if(p2.first == INT_MIN) continue;
-                    int cy = p2.first;
-                    Chunk* m = p2.second;
-                    r.x = WIDTH / 2 + m->x * 10;
-                    r.y = HEIGHT / 2 + m->y * 10;
-                    SDL_Color col;
-                    if(m->generationPhase == -1) {
-                        col = {0x60, 0x60, 0x60, 0xff};
-                    } else if(m->generationPhase == 0) {
-                        col = {0xff, 0x00, 0x00, 0xff};
-                    } else if(m->generationPhase == 1) {
-                        col = {0x00, 0xff, 0x00, 0xff};
-                    } else if(m->generationPhase == 2) {
-                        col = {0x00, 0x00, 0xff, 0xff};
-                    } else if(m->generationPhase == 3) {
-                        col = {0xff, 0xff, 0x00, 0xff};
-                    } else if(m->generationPhase == 4) {
-                        col = {0xff, 0x00, 0xff, 0xff};
-                    } else if(m->generationPhase == 5) {
-                        col = {0x00, 0xff, 0xff, 0xff};
-                    } else {}
-                    GPU_Rectangle2(target, r, col);
-                }
-            }
-            EASY_END_BLOCK; // draw chunk state
-        }
-
-        if(Settings::draw_chunk_queue) {
-            EASY_BLOCK("draw chunk queue", RENDER_PROFILER_COLOR);
-            int dbgIndex = 1;
-
-            char buff1[32];
-            snprintf(buff1, sizeof(buff1), "world->readyToReadyToMerge (%d)", (int)world->readyToReadyToMerge.size());
-            std::string buffAsStdStr1 = buff1;
-            Drawing::drawText(target, buffAsStdStr1.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
-            for(size_t i = 0; i < world->readyToReadyToMerge.size(); i++) {
-                char buff[10];
-                snprintf(buff, sizeof(buff), "    #%d", (int)i);
-                std::string buffAsStdStr = buff;
-                Drawing::drawText(target, buffAsStdStr.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
-            }
-            char buff2[30];
-            snprintf(buff2, sizeof(buff2), "world->readyToMerge (%d)", (int)world->readyToMerge.size());
-            std::string buffAsStdStr2 = buff2;
-            Drawing::drawText(target, buffAsStdStr2.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
-            for(size_t i = 0; i < world->readyToMerge.size(); i++) {
-                char buff[20];
-                snprintf(buff, sizeof(buff), "    #%d (%d, %d)", (int)i, world->readyToMerge[i]->x, world->readyToMerge[i]->y);
-                std::string buffAsStdStr = buff;
-                Drawing::drawText(target, buffAsStdStr.c_str(), font14, 2, 2 + (12 * dbgIndex++), 0xff, 0xff, 0xff, ALIGN_LEFT);
-            }
-
-            EASY_END_BLOCK; // draw chunk queue
-        }
-
-        if(Settings::draw_frame_graph) {
-            EASY_BLOCK("draw frame graph", RENDER_PROFILER_COLOR);
-            for(int i = 0; i <= 4; i++) {
-                if(dt_frameGraph[i].w == -1) {
-                    char buff[20];
-                    snprintf(buff, sizeof(buff), "%d", i * 25);
-                    std::string buffAsStdStr = buff;
-                    if(dt_frameGraph[i].t1 != nullptr) GPU_FreeImage(dt_frameGraph[i].t1);
-                    if(dt_frameGraph[i].t2 != nullptr) GPU_FreeImage(dt_frameGraph[i].t2);
-                    dt_frameGraph[i] = Drawing::drawTextParams(target, buffAsStdStr.c_str(), font14, WIDTH - 20, HEIGHT - 15 - (i * 25) - 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
-                }
-
-                Drawing::drawText(target, dt_frameGraph[i], WIDTH - 20, HEIGHT - 15 - (i * 25) - 2, ALIGN_LEFT);
-                GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (i * 25), WIDTH - 25, HEIGHT - 10 - (i * 25), {0xff, 0xff, 0xff, 0xff});
-            }
-            /*for (int i = 0; i <= 100; i += 25) {
-                char buff[20];
-                snprintf(buff, sizeof(buff), "%d", i);
-                std::string buffAsStdStr = buff;
-                Drawing::drawText(renderer, buffAsStdStr.c_str(), font14, WIDTH - 20, HEIGHT - 15 - i - 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
-                SDL_RenderDrawLine(renderer, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - i, WIDTH - 25, HEIGHT - 10 - i);
-            }*/
-
-            for(int i = 0; i < frameTimeNum; i++) {
-                int h = frameTime[i];
-
-                SDL_Color col;
-                if(h <= (int)(1000 / 144.0)) {
-                    col = {0x00, 0xff, 0x00, 0xff};
-                } else if(h <= (int)(1000 / 60.0)) {
-                    col = {0xa0, 0xe0, 0x00, 0xff};
-                } else if(h <= (int)(1000 / 30.0)) {
-                    col = {0xff, 0xff, 0x00, 0xff};
-                } else if(h <= (int)(1000 / 15.0)) {
-                    col = {0xff, 0x80, 0x00, 0xff};
-                } else {
-                    col = {0xff, 0x00, 0x00, 0xff};
-                }
-
-                GPU_Line(target, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10 - h, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10, col);
-                //SDL_RenderDrawLine(renderer, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10 - h, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10);
-            }
-
-            GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (int)(1000.0 / fps), WIDTH - 25, HEIGHT - 10 - (int)(1000.0 / fps), {0x00, 0xff, 0xff, 0xff});
-
-            EASY_END_BLOCK; // draw frame graph
-        }
-
-        EASY_BLOCK("draw ui", RENDER_PROFILER_COLOR);
-        GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
-
-        for(auto& v : uis) {
-            v->bounds->x = max(0, min(v->bounds->x, WIDTH - v->bounds->w));
-            v->bounds->y = max(0, min(v->bounds->y, HEIGHT - v->bounds->h));
-        }
-
-        EASY_BLOCK("draw debugUI", RENDER_PROFILER_COLOR);
-        debugUI->draw(target, 0, 0);
-        EASY_END_BLOCK; // draw debugUI
-
-        EASY_BLOCK("draw debugDrawUI", RENDER_PROFILER_COLOR);
-        debugDrawUI->draw(target, 0, 0);
-        EASY_END_BLOCK; // draw debugDrawUI
-
-        EASY_BLOCK("draw debugItemUI", RENDER_PROFILER_COLOR);
-        debugItemUI->draw(target, 0, 0);
-        EASY_END_BLOCK; // draw debugItemUI
-
-        EASY_BLOCK("draw chiselUI", RENDER_PROFILER_COLOR);
-        if(chiselUI != NULL) {
-            if(!chiselUI->visible) {
-                uis.erase(std::remove(uis.begin(), uis.end(), chiselUI), uis.end());
-                delete chiselUI;
-                chiselUI = NULL;
-            } else {
-                chiselUI->draw(target, 0, 0);
-            }
-        }
-        EASY_END_BLOCK; // draw chiselUI
-        EASY_BLOCK("draw mainMenuUI", RENDER_PROFILER_COLOR);
-        //if (state == MAIN_MENU) { // handled by setting mainMenuUI->visible
-        mainMenuUI->draw(target, 0, 0);
-        //}
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("draw createWorldUI", RENDER_PROFILER_COLOR);
-        //if (state == MAIN_MENU) { // handled by setting createWorldUI->visible
-        createWorldUI->draw(target, 0, 0);
-        //}
-        EASY_END_BLOCK;
-        EASY_END_BLOCK; // draw ui
-
-        EASY_BLOCK("draw version info", RENDER_PROFILER_COLOR);
-        #ifdef DEVELOPMENT_BUILD
-        if(dt_versionInfo1.w == -1) {
-            char buffDevBuild[40];
-            snprintf(buffDevBuild, sizeof(buffDevBuild), "Development Build");
-            if(dt_versionInfo1.t1 != nullptr) GPU_FreeImage(dt_versionInfo1.t1);
-            if(dt_versionInfo1.t2 != nullptr) GPU_FreeImage(dt_versionInfo1.t2);
-            dt_versionInfo1 = Drawing::drawTextParams(target, buffDevBuild, font16, 4, HEIGHT - 32 - 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
-
-            char buffVersion[40];
-            snprintf(buffVersion, sizeof(buffVersion), "Version %s - dev", VERSION);
-            if(dt_versionInfo2.t1 != nullptr) GPU_FreeImage(dt_versionInfo2.t1);
-            if(dt_versionInfo2.t2 != nullptr) GPU_FreeImage(dt_versionInfo2.t2);
-            dt_versionInfo2 = Drawing::drawTextParams(target, buffVersion, font16, 4, HEIGHT - 32, 0xff, 0xff, 0xff, ALIGN_LEFT);
-
-            char buffBuildDate[40];
-            snprintf(buffBuildDate, sizeof(buffBuildDate), "%s : %s", __DATE__, __TIME__);
-            if(dt_versionInfo3.t1 != nullptr) GPU_FreeImage(dt_versionInfo3.t1);
-            if(dt_versionInfo3.t2 != nullptr) GPU_FreeImage(dt_versionInfo3.t2);
-            dt_versionInfo3 = Drawing::drawTextParams(target, buffBuildDate, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
-        }
-
-        Drawing::drawText(target, dt_versionInfo1, 4, HEIGHT - 32 - 13, ALIGN_LEFT);
-        Drawing::drawText(target, dt_versionInfo2, 4, HEIGHT - 32, ALIGN_LEFT);
-        Drawing::drawText(target, dt_versionInfo3, 4, HEIGHT - 32 + 13, ALIGN_LEFT);
-        #elif defined ALPHA_BUILD
-        char buffDevBuild[40];
-        snprintf(buffDevBuild, sizeof(buffDevBuild), "Alpha Build");
-        Drawing::drawText(target, buffDevBuild, font16, 4, HEIGHT - 32, 0xff, 0xff, 0xff, ALIGN_LEFT);
-
-        char buffVersion[40];
-        snprintf(buffVersion, sizeof(buffVersion), "Version %s - alpha", VERSION);
-        Drawing::drawText(target, buffVersion, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
-        #else
-        char buffVersion[40];
-        snprintf(buffVersion, sizeof(buffVersion), "Version %s", VERSION);
-        Drawing::drawText(target, buffVersion, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
-        #endif
-        EASY_END_BLOCK; // draw version info
+        renderOverlays();
 
     }
 }
 
-void Game::renderLightmap(World* world) {
+void Game::renderOverlays() {
     EASY_FUNCTION(GAME_PROFILER_COLOR);
 
-    GPU_Target* lightTarget = GPU_LoadTarget(lightMap);
-    GPU_Rect r = GPU_Rect {0, 0, (float)world->tickZone.w, (float)world->tickZone.h};
-    GPU_RectangleFilled2(lightTarget, r, {0, 0, 0, 0xff});
+    GPU_Rect r1 = GPU_Rect {(float)(ofsX + camX), (float)(ofsY + camY), (float)(world->width * scale), (float)(world->height * scale)};
+    GPU_Rect r2 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x * scale), (float)(ofsY + camY + world->tickZone.y * scale), (float)(world->tickZone.w * scale), (float)(world->tickZone.h * scale)};
 
-    GPU_SetBlendFunction(lightTex,
-        GPU_BlendFuncEnum::GPU_FUNC_ONE,
-        GPU_BlendFuncEnum::GPU_FUNC_ONE,
-        GPU_BlendFuncEnum::GPU_FUNC_ONE,
-        GPU_BlendFuncEnum::GPU_FUNC_ONE
-    );
+    if(Settings::draw_temperature_map) {
+        GPU_SetBlendMode(temperatureMap, GPU_BLEND_NORMAL);
+        GPU_BlitRect(temperatureMap, NULL, target, &r1);
+    }
+    EASY_END_BLOCK; // draw world textures
 
-    GPU_SetBlendEquation(lightTex,
-        GPU_BlendEqEnum::GPU_EQ_ADD,
-        GPU_BlendEqEnum::GPU_EQ_ADD
-    );
+    if(Settings::draw_load_zones) {
+        GPU_Rect r2m = GPU_Rect {(float)(ofsX + camX + world->meshZone.x * scale),
+            (float)(ofsY + camY + world->meshZone.y * scale),
+            (float)(world->meshZone.w * scale),
+            (float)(world->meshZone.h * scale)};
 
-    for(int x = world->tickZone.x; x < world->tickZone.w + world->tickZone.x; x += 8) {
-        for(int y = world->tickZone.y; y < world->tickZone.h + world->tickZone.y; y += 8) {
-            if(world->tiles[x + y * world->width].mat->emit > 0) {
-                GPU_Rect lr = {(float)(x - world->tickZone.x - world->tiles[x + y * world->width].mat->emit), (float)(y - world->tickZone.y - world->tiles[x + y * world->width].mat->emit), (float)(world->tiles[x + y * world->width].mat->emit * 2), (float)(world->tiles[x + y * world->width].mat->emit * 2)};
-                GPU_SetColor(lightTex, {(world->tiles[x + y * world->width].mat->emitColor >> 16) & 0xff, (world->tiles[x + y * world->width].mat->emitColor >> 8) & 0xff, (world->tiles[x + y * world->width].mat->emitColor >> 0) & 0xff});
-                GPU_BlitRect(lightTex, NULL, lightTarget, &lr);
-            }
-        }
+        GPU_Rectangle2(target, r2m, {0x00, 0xff, 0xff, 0xff});
+        GPU_Rectangle2(target, r2, {0xff, 0x00, 0x00, 0xff});
     }
 
-    GPU_FreeTarget(lightTarget);
+    if(Settings::draw_load_zones) {
+        EASY_BLOCK("draw load zones", RENDER_PROFILER_COLOR);
+        SDL_Color col = {0xff, 0x00, 0x00, 0x20};
+        GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
+
+        GPU_Rect r3 = GPU_Rect {(float)(0), (float)(0), (float)((ofsX + camX + world->tickZone.x * scale)), (float)(HEIGHT)};
+        GPU_Rectangle2(target, r3, col);
+
+        GPU_Rect r4 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x * scale + world->tickZone.w * scale), (float)(0), (float)((WIDTH)-(ofsX + camX + world->tickZone.x * scale + world->tickZone.w * scale)), (float)(HEIGHT)};
+        GPU_Rectangle2(target, r3, col);
+
+        GPU_Rect r5 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x * scale), (float)(0), (float)(world->tickZone.w * scale), (float)(ofsY + camY + world->tickZone.y * scale)};
+        GPU_Rectangle2(target, r3, col);
+
+        GPU_Rect r6 = GPU_Rect {(float)(ofsX + camX + world->tickZone.x * scale), (float)(ofsY + camY + world->tickZone.y * scale + world->tickZone.h * scale), (float)(world->tickZone.w * scale), (float)(HEIGHT - (ofsY + camY + world->tickZone.y * scale + world->tickZone.h * scale))};
+        GPU_Rectangle2(target, r6, col);
+
+        col = {0x00, 0xff, 0x00, 0xff};
+        GPU_Rect r7 = GPU_Rect {(float)(ofsX + camX + world->width / 2 * scale - (WIDTH / 3 * scale / 2)), (float)(ofsY + camY + world->height / 2 * scale - (HEIGHT / 3 * scale / 2)), (float)(WIDTH / 3 * scale), (float)(HEIGHT / 3 * scale)};
+        GPU_Rectangle2(target, r7, col);
+
+        EASY_END_BLOCK; // draw load zones
+    }
+
+    if(Settings::draw_physics_debug) {
+        //EASY_BLOCK("draw physics meshes", RENDER_PROFILER_COLOR);
+        //for(size_t i = 0; i < world->rigidBodies.size(); i++) {
+        //    RigidBody cur = *world->rigidBodies[i];
+
+        //    float x = cur.body->GetPosition().x;
+        //    float y = cur.body->GetPosition().y;
+        //    x = ((x)*scale + ofsX + camX);
+        //    y = ((y)*scale + ofsY + camY);
+
+        //    /*SDL_Rect* r = new SDL_Rect{ (int)x, (int)y, cur.surface->w * scale, cur.surface->h * scale };
+        //    SDL_RenderCopyEx(renderer, cur.texture, NULL, r, cur.body->GetAngle() * 180 / M_PI, new SDL_Point{ 0, 0 }, SDL_RendererFlip::SDL_FLIP_NONE);
+        //    delete r;*/
+
+        //    Uint32 color = 0x0000ff;
+
+        //    SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
+
+        //    b2Fixture* fix = cur.body->GetFixtureList();
+        //    while(fix) {
+        //        b2Shape* shape = fix->GetShape();
+
+        //        switch(shape->GetType()) {
+        //        case b2Shape::Type::e_polygon:
+        //            b2PolygonShape* poly = (b2PolygonShape*)shape;
+        //            b2Vec2* verts = poly->m_vertices;
+
+        //            Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
+
+        //            break;
+        //        }
+
+        //        fix = fix->GetNext();
+        //    }
+        //}
+
+        //if(world->player) {
+        //    RigidBody cur = *world->player->rb;
+
+        //    float x = cur.body->GetPosition().x;
+        //    float y = cur.body->GetPosition().y;
+        //    x = ((x)*scale + ofsX + camX);
+        //    y = ((y)*scale + ofsY + camY);
+
+        //    Uint32 color = 0x0000ff;
+
+        //    SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
+
+        //    b2Fixture* fix = cur.body->GetFixtureList();
+        //    while(fix) {
+        //        b2Shape* shape = fix->GetShape();
+        //        switch(shape->GetType()) {
+        //        case b2Shape::Type::e_polygon:
+        //            b2PolygonShape* poly = (b2PolygonShape*)shape;
+        //            b2Vec2* verts = poly->m_vertices;
+
+        //            Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
+
+        //            break;
+        //        }
+
+        //        fix = fix->GetNext();
+        //    }
+        //}
+
+        //for(size_t i = 0; i < world->worldRigidBodies.size(); i++) {
+        //    RigidBody cur = *world->worldRigidBodies[i];
+
+        //    float x = cur.body->GetPosition().x;
+        //    float y = cur.body->GetPosition().y;
+        //    x = ((x)*scale + ofsX + camX);
+        //    y = ((y)*scale + ofsY + camY);
+
+        //    Uint32 color = 0x00ff00;
+
+        //    SDL_Color col = {(color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff};
+
+        //    b2Fixture* fix = cur.body->GetFixtureList();
+        //    while(fix) {
+        //        b2Shape* shape = fix->GetShape();
+        //        switch(shape->GetType()) {
+        //        case b2Shape::Type::e_polygon:
+        //            b2PolygonShape* poly = (b2PolygonShape*)shape;
+        //            b2Vec2* verts = poly->m_vertices;
+
+        //            Drawing::drawPolygon(target, col, verts, (int)x, (int)y, scale, poly->m_count, cur.body->GetAngle()/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
+
+        //            break;
+        //        }
+
+        //        fix = fix->GetNext();
+        //    }
+
+        //    /*color = 0xff0000;
+        //    SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff);
+        //    SDL_RenderDrawPoint(renderer, x, y);
+        //    color = 0x00ff00;
+        //    SDL_SetRenderDrawColor(renderer, (color >> 16) & 0xff, (color >> 8) & 0xff, (color >> 0) & 0xff, 0xff);
+        //    SDL_RenderDrawPoint(renderer, cur.body->GetLocalCenter().x * scale + ofsX, cur.body->GetLocalCenter().y * scale + ofsY);*/
+        //}
+
+        int minChX = (int)floor((world->meshZone.x - world->loadZone.x) / CHUNK_W);
+        int minChY = (int)floor((world->meshZone.y - world->loadZone.y) / CHUNK_H);
+        int maxChX = (int)ceil((world->meshZone.x + world->meshZone.w - world->loadZone.x) / CHUNK_W);
+        int maxChY = (int)ceil((world->meshZone.y + world->meshZone.h - world->loadZone.y) / CHUNK_H);
+
+        for(int cx = minChX; cx <= maxChX; cx++) {
+            for(int cy = minChY; cy <= maxChY; cy++) {
+                Chunk* ch = world->getChunk(cx, cy);
+                SDL_Color col = {255, 0, 0, 255};
+
+                float x = ((ch->x * CHUNK_W + world->loadZone.x) * scale + ofsX + camX);
+                float y = ((ch->y * CHUNK_H + world->loadZone.y) * scale + ofsY + camY);
+
+                GPU_Rectangle(target, x, y, x + CHUNK_W * scale, y + CHUNK_H * scale, {50, 50, 0, 255});
+
+                //for(int i = 0; i < ch->polys.size(); i++) {
+                //    Drawing::drawPolygon(target, col, ch->polys[i].m_vertices, (int)x, (int)y, scale, ch->polys[i].m_count, 0/* + fmod((Time::millis() / 1000.0), 360)*/, 0, 0);
+                //}
+            }
+        }
+
+        //EASY_END_BLOCK; // draw physics meshes
+
+        world->b2world->SetDebugDraw(b2DebugDraw);
+        b2DebugDraw->scale = scale;
+        b2DebugDraw->xOfs = ofsX + camX;
+        b2DebugDraw->yOfs = ofsY + camY;
+        b2DebugDraw->SetFlags(0);
+        if(Settings::draw_b2d_shape)      b2DebugDraw->AppendFlags(b2Draw::e_shapeBit);
+        if(Settings::draw_b2d_joint)      b2DebugDraw->AppendFlags(b2Draw::e_jointBit);
+        if(Settings::draw_b2d_aabb)       b2DebugDraw->AppendFlags(b2Draw::e_aabbBit);
+        if(Settings::draw_b2d_pair)       b2DebugDraw->AppendFlags(b2Draw::e_pairBit);
+        if(Settings::draw_b2d_centerMass) b2DebugDraw->AppendFlags(b2Draw::e_centerOfMassBit);
+        world->b2world->DebugDraw();
+
+    }
+
+    EASY_BLOCK("draw fps", RENDER_PROFILER_COLOR);
+    if(dt_fps.w == -1) {
+        char buffFps[20];
+        snprintf(buffFps, sizeof(buffFps), "%d FPS", fps);
+        if(dt_fps.t1 != nullptr) GPU_FreeImage(dt_fps.t1);
+        if(dt_fps.t2 != nullptr) GPU_FreeImage(dt_fps.t2);
+        dt_fps = Drawing::drawTextParams(target, buffFps, font16, WIDTH - 4, 2, 0xff, 0xff, 0xff, ALIGN_RIGHT);
+    }
+
+    Drawing::drawText(target, dt_fps, WIDTH - 4, 2, ALIGN_RIGHT);
+    EASY_END_BLOCK; // draw fps
+
+    EASY_BLOCK("draw feels like fps", RENDER_PROFILER_COLOR);
+    if(dt_feelsLikeFps.w == -1) {
+        char buffFps[22];
+        snprintf(buffFps, sizeof(buffFps), "Feels Like: %d FPS", feelsLikeFps);
+        if(dt_feelsLikeFps.t1 != nullptr) GPU_FreeImage(dt_feelsLikeFps.t1);
+        if(dt_feelsLikeFps.t2 != nullptr) GPU_FreeImage(dt_feelsLikeFps.t2);
+        dt_feelsLikeFps = Drawing::drawTextParams(target, buffFps, font16, WIDTH - 4, 2, 0xff, 0xff, 0xff, ALIGN_RIGHT);
+    }
+
+    Drawing::drawText(target, dt_feelsLikeFps, WIDTH - 4, 2 + 14, ALIGN_RIGHT);
+    EASY_END_BLOCK; // draw feels like fps
+
+    if(Settings::draw_chunk_state) {
+        EASY_BLOCK("draw chunk state", RENDER_PROFILER_COLOR);
+        int chSize = 10;
+
+        int centerX = WIDTH / 2;
+        int centerY = CHUNK_UNLOAD_DIST * chSize + 10;
+
+
+        int pposX = plPosX;
+        int pposY = plPosY;
+        int pchx = (int)((pposX / CHUNK_W) * chSize);
+        int pchy = (int)((pposY / CHUNK_H) * chSize);
+        int pchxf = (int)(((float)pposX / CHUNK_W) * chSize);
+        int pchyf = (int)(((float)pposY / CHUNK_H) * chSize);
+
+        GPU_Rectangle(target, centerX - chSize * CHUNK_UNLOAD_DIST + chSize, centerY - chSize * CHUNK_UNLOAD_DIST + chSize, centerX + chSize * CHUNK_UNLOAD_DIST + chSize, centerY + chSize * CHUNK_UNLOAD_DIST + chSize, {0xcc, 0xcc, 0xcc, 0xff});
+
+        GPU_Rect r = {0 , 0, (float)chSize, (float)chSize};
+        for(auto& p : world->chunkCache) {
+            if(p.first == INT_MIN) continue;
+            int cx = p.first;
+            for(auto& p2 : p.second) {
+                if(p2.first == INT_MIN) continue;
+                int cy = p2.first;
+                Chunk* m = p2.second;
+                r.x = centerX + m->x * chSize - pchx;
+                r.y = centerY + m->y * chSize - pchy;
+                SDL_Color col;
+                if(m->generationPhase == -1) {
+                    col = {0x60, 0x60, 0x60, 0xff};
+                } else if(m->generationPhase == 0) {
+                    col = {0xff, 0x00, 0x00, 0xff};
+                } else if(m->generationPhase == 1) {
+                    col = {0x00, 0xff, 0x00, 0xff};
+                } else if(m->generationPhase == 2) {
+                    col = {0x00, 0x00, 0xff, 0xff};
+                } else if(m->generationPhase == 3) {
+                    col = {0xff, 0xff, 0x00, 0xff};
+                } else if(m->generationPhase == 4) {
+                    col = {0xff, 0x00, 0xff, 0xff};
+                } else if(m->generationPhase == 5) {
+                    col = {0x00, 0xff, 0xff, 0xff};
+                } else {}
+                GPU_Rectangle2(target, r, col);
+            }
+        }
+
+        int loadx = (int)(((float)-world->loadZone.x / CHUNK_W) * chSize);
+        int loady = (int)(((float)-world->loadZone.y / CHUNK_H) * chSize);
+
+        int loadx2 = (int)(((float)(-world->loadZone.x + world->loadZone.w) / CHUNK_W) * chSize);
+        int loady2 = (int)(((float)(-world->loadZone.y + world->loadZone.h) / CHUNK_H) * chSize);
+        GPU_Rectangle(target, centerX - pchx + loadx, centerY - pchy + loady, centerX - pchx + loadx2, centerY - pchy + loady2, {0x00, 0xff, 0xff, 0xff});
+
+        GPU_Rectangle(target, centerX - pchx + pchxf, centerY - pchy + pchyf, centerX + 1 - pchx + pchxf, centerY + 1 - pchy + pchyf, {0x00, 0xff, 0x00, 0xff});
+
+        EASY_END_BLOCK; // draw chunk state
+    }
+
+    if(Settings::draw_debug_stats) {
+        EASY_BLOCK("draw chunk queue", RENDER_PROFILER_COLOR);
+        int dbgIndex = 1;
+
+        int lineHeight = 16;
+
+        char buff1[32];
+        std::string buffAsStdStr1;
+
+        snprintf(buff1, sizeof(buff1), "XY: %.2f / %.2f", plPosX, plPosY);
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+
+        snprintf(buff1, sizeof(buff1), "V: %.3f / %.3f", world->player ? world->player->vx : 0, world->player ? world->player->vy : 0);
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+        
+        snprintf(buff1, sizeof(buff1), "Particles: %d", (int)world->particles.size());
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+
+        snprintf(buff1, sizeof(buff1), "Entities: %d", (int)world->entities.size());
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+
+        int rbCt = 0;
+        for(auto& r : world->rigidBodies) {
+            if(r->body->IsEnabled()) rbCt++;
+        }
+
+        snprintf(buff1, sizeof(buff1), "RigidBodies: %d/%d O, %d W", rbCt, (int)world->rigidBodies.size(), (int)world->worldRigidBodies.size());
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+
+        int rbTriACt = 0;
+        int rbTriCt = 0;
+        for(size_t i = 0; i < world->rigidBodies.size(); i++) {
+            RigidBody cur = *world->rigidBodies[i];
+
+            b2Fixture* fix = cur.body->GetFixtureList();
+            while(fix) {
+                b2Shape* shape = fix->GetShape();
+
+                switch(shape->GetType()) {
+                case b2Shape::Type::e_polygon:
+                    rbTriCt++;
+                    if(cur.body->IsEnabled()) rbTriACt++;
+                    break;
+                }
+
+                fix = fix->GetNext();
+            }
+        }
+
+        int rbTriWCt = 0;
+
+        int minChX = (int)floor((world->meshZone.x - world->loadZone.x) / CHUNK_W);
+        int minChY = (int)floor((world->meshZone.y - world->loadZone.y) / CHUNK_H);
+        int maxChX = (int)ceil((world->meshZone.x + world->meshZone.w - world->loadZone.x) / CHUNK_W);
+        int maxChY = (int)ceil((world->meshZone.y + world->meshZone.h - world->loadZone.y) / CHUNK_H);
+
+        for(int cx = minChX; cx <= maxChX; cx++) {
+            for(int cy = minChY; cy <= maxChY; cy++) {
+                Chunk* ch = world->getChunk(cx, cy);
+                for(int i = 0; i < ch->polys.size(); i++) {
+                    rbTriWCt++;
+                }
+            }
+        }
+
+        snprintf(buff1, sizeof(buff1), "Tris: %d/%d O, %d W", rbTriACt, rbTriCt, rbTriWCt);
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+
+        int chCt = 0;
+        for(auto& p : world->chunkCache) {
+            if(p.first == INT_MIN) continue;
+            int cx = p.first;
+            for(auto& p2 : p.second) {
+                if(p2.first == INT_MIN) continue;
+                chCt++;
+            }
+        }
+
+        snprintf(buff1, sizeof(buff1), "Cached Chunks: %d", chCt);
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+
+        snprintf(buff1, sizeof(buff1), "world->readyToReadyToMerge (%d)", (int)world->readyToReadyToMerge.size());
+        buffAsStdStr1 = buff1;
+        Drawing::drawTextBG(target, buffAsStdStr1.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+        for(size_t i = 0; i < world->readyToReadyToMerge.size(); i++) {
+            char buff[10];
+            snprintf(buff, sizeof(buff), "    #%d", (int)i);
+            std::string buffAsStdStr = buff;
+            Drawing::drawTextBG(target, buffAsStdStr.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+        }
+        char buff2[30];
+        snprintf(buff2, sizeof(buff2), "world->readyToMerge (%d)", (int)world->readyToMerge.size());
+        std::string buffAsStdStr2 = buff2;
+        Drawing::drawTextBG(target, buffAsStdStr2.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+        for(size_t i = 0; i < world->readyToMerge.size(); i++) {
+            char buff[20];
+            snprintf(buff, sizeof(buff), "    #%d (%d, %d)", (int)i, world->readyToMerge[i]->x, world->readyToMerge[i]->y);
+            std::string buffAsStdStr = buff;
+            Drawing::drawTextBG(target, buffAsStdStr.c_str(), font16, 4, 2 + (lineHeight * dbgIndex++), 0xff, 0xff, 0xff, {0x00, 0x00, 0x00, 0x40}, ALIGN_LEFT);
+        }
+
+        EASY_END_BLOCK; // draw chunk queue
+    }
+
+    if(Settings::draw_frame_graph) {
+        EASY_BLOCK("draw frame graph", RENDER_PROFILER_COLOR);
+        for(int i = 0; i <= 4; i++) {
+            if(dt_frameGraph[i].w == -1) {
+                char buff[20];
+                snprintf(buff, sizeof(buff), "%d", i * 25);
+                std::string buffAsStdStr = buff;
+                if(dt_frameGraph[i].t1 != nullptr) GPU_FreeImage(dt_frameGraph[i].t1);
+                if(dt_frameGraph[i].t2 != nullptr) GPU_FreeImage(dt_frameGraph[i].t2);
+                dt_frameGraph[i] = Drawing::drawTextParams(target, buffAsStdStr.c_str(), font14, WIDTH - 20, HEIGHT - 15 - (i * 25) - 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
+            }
+
+            Drawing::drawText(target, dt_frameGraph[i], WIDTH - 20, HEIGHT - 15 - (i * 25) - 2, ALIGN_LEFT);
+            GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (i * 25), WIDTH - 25, HEIGHT - 10 - (i * 25), {0xff, 0xff, 0xff, 0xff});
+        }
+        /*for (int i = 0; i <= 100; i += 25) {
+            char buff[20];
+            snprintf(buff, sizeof(buff), "%d", i);
+            std::string buffAsStdStr = buff;
+            Drawing::drawText(renderer, buffAsStdStr.c_str(), font14, WIDTH - 20, HEIGHT - 15 - i - 2, 0xff, 0xff, 0xff, ALIGN_LEFT);
+            SDL_RenderDrawLine(renderer, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - i, WIDTH - 25, HEIGHT - 10 - i);
+        }*/
+
+        for(int i = 0; i < frameTimeNum; i++) {
+            int h = frameTime[i];
+
+            SDL_Color col;
+            if(h <= (int)(1000 / 144.0)) {
+                col = {0x00, 0xff, 0x00, 0xff};
+            } else if(h <= (int)(1000 / 60.0)) {
+                col = {0xa0, 0xe0, 0x00, 0xff};
+            } else if(h <= (int)(1000 / 30.0)) {
+                col = {0xff, 0xff, 0x00, 0xff};
+            } else if(h <= (int)(1000 / 15.0)) {
+                col = {0xff, 0x80, 0x00, 0xff};
+            } else {
+                col = {0xff, 0x00, 0x00, 0xff};
+            }
+
+            GPU_Line(target, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10 - h, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10, col);
+            //SDL_RenderDrawLine(renderer, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10 - h, WIDTH - frameTimeNum - 30 + i, HEIGHT - 10);
+        }
+
+        GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (int)(1000.0 / fps), WIDTH - 25, HEIGHT - 10 - (int)(1000.0 / fps), {0x00, 0xff, 0xff, 0xff});
+        GPU_Line(target, WIDTH - 30 - frameTimeNum - 5, HEIGHT - 10 - (int)(1000.0 / feelsLikeFps), WIDTH - 25, HEIGHT - 10 - (int)(1000.0 / feelsLikeFps), {0xff, 0x00, 0xff, 0xff});
+
+        EASY_END_BLOCK; // draw frame graph
+    }
+
+    GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
+
+    EASY_BLOCK("draw version info", RENDER_PROFILER_COLOR);
+    #ifdef DEVELOPMENT_BUILD
+    if(dt_versionInfo1.w == -1) {
+        char buffDevBuild[40];
+        snprintf(buffDevBuild, sizeof(buffDevBuild), "Development Build");
+        if(dt_versionInfo1.t1 != nullptr) GPU_FreeImage(dt_versionInfo1.t1);
+        if(dt_versionInfo1.t2 != nullptr) GPU_FreeImage(dt_versionInfo1.t2);
+        dt_versionInfo1 = Drawing::drawTextParams(target, buffDevBuild, font16, 4, HEIGHT - 32 - 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
+
+        char buffVersion[40];
+        snprintf(buffVersion, sizeof(buffVersion), "Version %s - dev", VERSION);
+        if(dt_versionInfo2.t1 != nullptr) GPU_FreeImage(dt_versionInfo2.t1);
+        if(dt_versionInfo2.t2 != nullptr) GPU_FreeImage(dt_versionInfo2.t2);
+        dt_versionInfo2 = Drawing::drawTextParams(target, buffVersion, font16, 4, HEIGHT - 32, 0xff, 0xff, 0xff, ALIGN_LEFT);
+
+        char buffBuildDate[40];
+        snprintf(buffBuildDate, sizeof(buffBuildDate), "%s : %s", __DATE__, __TIME__);
+        if(dt_versionInfo3.t1 != nullptr) GPU_FreeImage(dt_versionInfo3.t1);
+        if(dt_versionInfo3.t2 != nullptr) GPU_FreeImage(dt_versionInfo3.t2);
+        dt_versionInfo3 = Drawing::drawTextParams(target, buffBuildDate, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
+    }
+
+    Drawing::drawText(target, dt_versionInfo1, 4, HEIGHT - 32 - 13, ALIGN_LEFT);
+    Drawing::drawText(target, dt_versionInfo2, 4, HEIGHT - 32, ALIGN_LEFT);
+    Drawing::drawText(target, dt_versionInfo3, 4, HEIGHT - 32 + 13, ALIGN_LEFT);
+    #elif defined ALPHA_BUILD
+    char buffDevBuild[40];
+    snprintf(buffDevBuild, sizeof(buffDevBuild), "Alpha Build");
+    Drawing::drawText(target, buffDevBuild, font16, 4, HEIGHT - 32, 0xff, 0xff, 0xff, ALIGN_LEFT);
+
+    char buffVersion[40];
+    snprintf(buffVersion, sizeof(buffVersion), "Version %s - alpha", VERSION);
+    Drawing::drawText(target, buffVersion, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
+    #else
+    char buffVersion[40];
+    snprintf(buffVersion, sizeof(buffVersion), "Version %s", VERSION);
+    Drawing::drawText(target, buffVersion, font16, 4, HEIGHT - 32 + 13, 0xff, 0xff, 0xff, ALIGN_LEFT);
+    #endif
+    EASY_END_BLOCK; // draw version info
 }
 
 void Game::renderTemperatureMap(World* world) {
@@ -3896,11 +4243,11 @@ int Game::getAimSurface(int dist) {
     float udx = dcx / len;
     float udy = dcy / len;
 
-    int mmx = WIDTH / 2 + udx * dist;
-    int mmy = HEIGHT / 2 + udy * dist;
+    int mmx = WIDTH / 2.0f + udx * dist;
+    int mmy = HEIGHT / 2.0f + udy * dist;
 
-    int wcx = (int)((WIDTH / 2 - ofsX - camX) / scale);
-    int wcy = (int)((HEIGHT / 2 - ofsY - camY) / scale);
+    int wcx = (int)((WIDTH / 2.0f - ofsX - camX) / scale);
+    int wcy = (int)((HEIGHT / 2.0f - ofsY - camY) / scale);
 
     int wmx = (int)((mmx - ofsX - camX) / scale);
     int wmy = (int)((mmy - ofsY - camY) / scale);
@@ -3917,12 +4264,103 @@ int Game::getAimSurface(int dist) {
     return startInd;
 }
 
-string Game::getFileInGameDir(string filePathRel) {
-    return this->gameDir + filePathRel;
-}
+void Game::quitToMainMenu() {
+    EASY_FUNCTION(GAME_PROFILER_COLOR);
 
-string Game::getWorldDir(string worldName) {
-    return this->getFileInGameDir("worlds/" + worldName);
+    if(state == LOADING) return;
+
+    std::string pref = "Saved in: ";
+
+    std::string worldName = "mainMenu";
+    char* wn = (char*)worldName.c_str();
+
+    logInfo("Loading main menu @ {}", gameDir.getWorldPath(wn));
+    MainMenuUI::visible = false;
+    state = LOADING;
+    stateAfterLoad = MAIN_MENU;
+
+    EASY_BLOCK("Close world");
+    delete world;
+    world = nullptr;
+    EASY_END_BLOCK;
+
+    WorldGenerator* generator = new MaterialTestGenerator();
+
+    std::string wpStr = gameDir.getWorldPath(wn);
+
+    EASY_BLOCK("Load world");
+    world = new World();
+    world->noSaveLoad = true;
+    world->init(wpStr, (int)ceil(Game::MAX_WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(Game::MAX_HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode, generator);
+
+    EASY_BLOCK("Queue chunk loading");
+    logInfo("Queueing chunk loading...");
+    for(int x = -CHUNK_W * 4; x < world->width + CHUNK_W * 4; x += CHUNK_W) {
+        for(int y = -CHUNK_H * 3; y < world->height + CHUNK_H * 8; y += CHUNK_H) {
+            world->queueLoadChunk(x / CHUNK_W, y / CHUNK_H, true, true);
+        }
+    }
+    EASY_END_BLOCK;
+    EASY_END_BLOCK;
+
+    std::fill(pixels.begin(), pixels.end(), 0);
+    std::fill(pixelsBackground.begin(), pixelsBackground.end(), 0);
+    std::fill(pixelsLayer2.begin(), pixelsLayer2.end(), 0);
+    std::fill(pixelsFire.begin(), pixelsFire.end(), 0);
+    std::fill(pixelsEmission.begin(), pixelsEmission.end(), 0);
+    std::fill(pixelsParticles.begin(), pixelsParticles.end(), 0);
+
+    GPU_UpdateImageBytes(
+        texture,
+        NULL,
+        &pixels[0],
+        world->width * 4
+    );
+
+    GPU_UpdateImageBytes(
+        textureBackground,
+        NULL,
+        &pixelsBackground[0],
+        world->width * 4
+    );
+
+    GPU_UpdateImageBytes(
+        textureLayer2,
+        NULL,
+        &pixelsLayer2[0],
+        world->width * 4
+    );
+
+    GPU_UpdateImageBytes(
+        textureFire,
+        NULL,
+        &pixelsFire[0],
+        world->width * 4
+    );
+
+    GPU_UpdateImageBytes(
+        emissionTexture,
+        NULL,
+        &pixelsEmission[0],
+        world->width * 4
+    );
+
+    GPU_UpdateImageBytes(
+        textureParticles,
+        NULL,
+        &pixelsParticles[0],
+        world->width * 4
+    );
+
+
+
+    MainMenuUI::visible = true;
+
+    #if BUILD_WITH_DISCORD
+    DiscordIntegration::setStart(0);
+    DiscordIntegration::setActivityState("On Main Menu");
+    DiscordIntegration::flushActivity();
+    #endif
 }
 
 int Game::getAimSolidSurface(int dist) {
@@ -3933,11 +4371,11 @@ int Game::getAimSolidSurface(int dist) {
     float udx = dcx / len;
     float udy = dcy / len;
 
-    int mmx = WIDTH / 2 + udx * dist;
-    int mmy = HEIGHT / 2 + udy * dist;
+    int mmx = WIDTH / 2.0f + udx * dist;
+    int mmy = HEIGHT / 2.0f + udy * dist;
 
-    int wcx = (int)((WIDTH / 2 - ofsX - camX) / scale);
-    int wcy = (int)((HEIGHT / 2 - ofsY - camY) / scale);
+    int wcx = (int)((WIDTH / 2.0f - ofsX - camX) / scale);
+    int wcy = (int)((HEIGHT / 2.0f - ofsY - camY) / scale);
 
     int wmx = (int)((mmx - ofsX - camX) / scale);
     int wmy = (int)((mmy - ofsY - camY) / scale);

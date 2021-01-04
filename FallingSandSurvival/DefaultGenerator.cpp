@@ -1,3 +1,4 @@
+#pragma once
 
 #ifndef INC_WorldGenerator
 #include "WorldGenerator.hpp"
@@ -13,7 +14,11 @@ class DefaultGenerator : public WorldGenerator {
 
     int getBaseHeight(World* world, int x, Chunk* ch) {
 
-        Biome* b = world->getBiomeAt(ch, x, 0);
+        if(nullptr == ch) {
+            return 0;
+        }
+
+        Biome* b = world->getBiomeAt(ch, x, ch->y * CHUNK_H);
 
         if(b->id == Biomes::DEFAULT.id) {
             //return 0;
@@ -33,21 +38,8 @@ class DefaultGenerator : public WorldGenerator {
     }
 
     int getHeight(World* world, int x, Chunk* ch) {
-        int sum = 0;
-
-        int smoothDist = CHUNK_W / 2;
-        int lchx = (int)floor((x - smoothDist) / (float)CHUNK_W);
-
-        Chunk* lch = world->chunkCache[lchx][0];
-        for(int xx = -smoothDist; xx <= smoothDist; xx++) {
-            if(floor((x + xx) / (float)CHUNK_W) != lchx) {
-                lchx = (int)floor((x + xx) / (float)CHUNK_W);
-                lch = world->chunkCache[lchx][0];
-            }
-            sum += getBaseHeight(world, x + xx, lch);
-        }
-
-        int baseH = sum / (2 * smoothDist + 1);
+        
+        int baseH = getBaseHeight(world, x, ch);
 
         Biome* b = world->getBiomeAt(x, 0);
 
@@ -64,7 +56,7 @@ class DefaultGenerator : public WorldGenerator {
         return baseH;
     }
 
-    void WorldGenerator::generateChunk(World* world, Chunk* ch) {
+    void generateChunk(World* world, Chunk* ch) override {
         MaterialInstance* prop = new MaterialInstance[CHUNK_W * CHUNK_H];
         MaterialInstance* layer2 = new MaterialInstance[CHUNK_W * CHUNK_H];
         Uint32* background = new Uint32[CHUNK_W * CHUNK_H];
@@ -215,7 +207,7 @@ class DefaultGenerator : public WorldGenerator {
         ch->background = background;
     }
 
-    std::vector<Populator*> WorldGenerator::getPopulators() {
+    std::vector<Populator*> getPopulators() override {
         return {
             new CavePopulator(),
             new OrePopulator(),

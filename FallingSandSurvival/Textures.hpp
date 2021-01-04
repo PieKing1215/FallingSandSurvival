@@ -1,4 +1,4 @@
-
+#pragma once
 #include <SDL2/SDL.h>
 #include <iostream>
 #include <SDL2/SDL_image.h>
@@ -14,8 +14,10 @@ public:
 
     static SDL_Surface* smoothStone;
     static SDL_Surface* cobbleStone;
+    static SDL_Surface* flatCobbleStone;
     static SDL_Surface* smoothDirt;
     static SDL_Surface* cobbleDirt;
+    static SDL_Surface* flatCobbleDirt;
     static SDL_Surface* softDirt;
     static SDL_Surface* cloud;
     static SDL_Surface* gold;

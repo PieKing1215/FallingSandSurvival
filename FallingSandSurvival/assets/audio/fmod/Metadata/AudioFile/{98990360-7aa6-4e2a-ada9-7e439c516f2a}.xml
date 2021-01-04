@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.00.00">
+	<object class="AudioFile" id="{98990360-7aa6-4e2a-ada9-7e439c516f2a}">
+		<property name="assetPath">
+			<value>thump.ogg</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>48</value>
+		</property>
+		<property name="channelCount">
+			<value>2</value>
+		</property>
+		<property name="length">
+			<value>0.092208333333333337</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{471c6646-f45e-4bb8-be79-d84235f52fb2}</destination>
+		</relationship>
+	</object>
+</objects>

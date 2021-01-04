@@ -96,40 +96,6 @@ public:
     static void free_shader(Uint32 p) {
         GPU_FreeShaderProgram(p);
     }
-
-    static void prepare_water_shader(Uint32 shader, GPU_Target* screen, GPU_Image* image) {
-        if(image != NULL) {
-            float res[2] = {(float)screen->w, (float)screen->h};
-            GPU_SetUniformfv(GPU_GetUniformLocation(shader, "resolution"), 2, 1, res);
-        }
-    }
-
-    // Will change every frame
-
-    static void update_water_shader(Uint32 shader, float t, int w, int h, GPU_Image* img, int mask_x, int mask_y, int mask_w, int mask_h, int scale) {
-        int time_loc = GPU_GetUniformLocation(shader, "time");
-        int res_loc = GPU_GetUniformLocation(shader, "resolution");
-        int mask_loc = GPU_GetUniformLocation(shader, "mask");
-        int mask_pos_loc = GPU_GetUniformLocation(shader, "maskPos");
-        int mask_size_loc = GPU_GetUniformLocation(shader, "maskSize");
-        int scale_loc = GPU_GetUniformLocation(shader, "scale");
-
-        GPU_SetUniformf(time_loc, t);
-
-        float res[2] = {(float)w, (float)h};
-        GPU_SetUniformfv(res_loc, 2, 1, res);
-
-        GPU_SetShaderImage(img, mask_loc, 1);
-
-        float res2[2] = {(float)mask_x, (float)mask_y};
-        GPU_SetUniformfv(mask_pos_loc, 2, 1, res2);
-        float res3[2] = {(float)mask_w, (float)mask_h};
-        GPU_SetUniformfv(mask_size_loc, 2, 1, res3);
-
-        GPU_SetUniformf(scale_loc, scale);
-
-    }
-
 };
 
 class Shader {
@@ -149,64 +115,114 @@ public:
     }
 };
 
-class RaycastLightingShader : public Shader {
+class WaterShader : public Shader {
 public:
-    RaycastLightingShader() : Shader("data/shaders/common.vert", "data/shaders/lighting.frag") {};
+    WaterShader() : Shader("data/shaders/common.vert", "data/shaders/water.frag") {};
 
     void prepare() {}
 
-    void update(GPU_Image* img, float x, float y) {
-        int t0_loc = GPU_GetUniformLocation(shader, "t0");
+    void update(float t, int w, int h, GPU_Image* maskImg, int mask_x, int mask_y, int mask_w, int mask_h, int scale) {
+        int time_loc = GPU_GetUniformLocation(shader, "time");
+        int res_loc = GPU_GetUniformLocation(shader, "resolution");
+        int mask_loc = GPU_GetUniformLocation(shader, "mask");
+        int mask_pos_loc = GPU_GetUniformLocation(shader, "maskPos");
+        int mask_size_loc = GPU_GetUniformLocation(shader, "maskSize");
+        int scale_loc = GPU_GetUniformLocation(shader, "scale");
+
+        GPU_SetUniformf(time_loc, t);
+
+        float res[2] = {(float)w, (float)h};
+        GPU_SetUniformfv(res_loc, 2, 1, res);
+
+        GPU_SetShaderImage(maskImg, mask_loc, 1);
+
+        float res2[2] = {(float)mask_x, (float)mask_y};
+        GPU_SetUniformfv(mask_pos_loc, 2, 1, res2);
+        float res3[2] = {(float)mask_w, (float)mask_h};
+        GPU_SetUniformfv(mask_size_loc, 2, 1, res3);
+
+        GPU_SetUniformf(scale_loc, scale);
+    }
+};
+
+class NewLightingShader : public Shader {
+public:
+    float lastLx = 0.0;
+    float lastLy = 0.0;
+    float lastQuality = 0.0;
+    float lastInside = 0.0;
+    bool lastSimpleMode = false;
+    bool lastEmissionEnabled = false;
+    bool lastDitheringEnabled = false;
+
+    NewLightingShader() : Shader("data/shaders/common.vert", "data/shaders/newLighting.frag") {};
+
+    void prepare() {}
+
+    void setSimpleMode(bool simpleMode) {
+        int simpleOnly_loc = GPU_GetUniformLocation(shader, "simpleOnly");
+        GPU_SetUniformi(simpleOnly_loc, simpleMode);
+
+        lastSimpleMode = simpleMode;
+    }
+
+    void setEmissionEnabled(bool emissionEnabled) {
+        int emission_loc = GPU_GetUniformLocation(shader, "emission");
+        GPU_SetUniformi(emission_loc, emissionEnabled);
+
+        lastEmissionEnabled = emissionEnabled;
+    }
+
+    void setDitheringEnabled(bool ditheringEnabled) {
+        int dithering_loc = GPU_GetUniformLocation(shader, "dithering");
+        GPU_SetUniformi(dithering_loc, ditheringEnabled);
+
+        lastDitheringEnabled = ditheringEnabled;
+    }
+
+    void setQuality(float quality) {
+        int lightingQuality_loc = GPU_GetUniformLocation(shader, "lightingQuality");
+        GPU_SetUniformf(lightingQuality_loc, quality);
+
+        lastQuality = quality;
+    }
+
+    void setInside(float inside) {
+        int inside_loc = GPU_GetUniformLocation(shader, "inside");
+        GPU_SetUniformf(inside_loc, inside);
+
+        lastInside = inside;
+    }
+
+    void setBounds(float minX, float minY, float maxX, float maxY) {
+        int minX_loc = GPU_GetUniformLocation(shader, "minX");
+        int minY_loc = GPU_GetUniformLocation(shader, "minY");
+        int maxX_loc = GPU_GetUniformLocation(shader, "maxX");
+        int maxY_loc = GPU_GetUniformLocation(shader, "maxY");
+
+        GPU_SetUniformf(minX_loc, minX);
+        GPU_SetUniformf(minY_loc, minY);
+        GPU_SetUniformf(maxX_loc, maxX);
+        GPU_SetUniformf(maxY_loc, maxY);
+    }
+
+    void update(GPU_Image* tex, GPU_Image* emit, float x, float y) {
         int txrmap_loc = GPU_GetUniformLocation(shader, "txrmap");
+        int emitmap_loc = GPU_GetUniformLocation(shader, "emitmap");
+        int txrsize_loc = GPU_GetUniformLocation(shader, "texSize");
+        int t0_loc = GPU_GetUniformLocation(shader, "t0");
+
+        lastLx = x;
+        lastLy = y;
 
         float res[2] = {x, y};
         GPU_SetUniformfv(t0_loc, 2, 1, res);
-
-        GPU_SetShaderImage(img, txrmap_loc, 1);
-    }
-};
-
-class SimpleLightingShader : public Shader {
-public:
-    SimpleLightingShader() : Shader("data/shaders/common.vert", "data/shaders/simpleLighting.frag") {};
-
-    void prepare() {}
-
-    void update(GPU_Image* img, float x, float y) {
-        int txrmap_loc = GPU_GetUniformLocation(shader, "txrmap");
-        int txrsize_loc = GPU_GetUniformLocation(shader, "texSize");
-        int lights_loc = GPU_GetUniformLocation(shader, "lightPoints");
-        int nlights_loc = GPU_GetUniformLocation(shader, "nLights");
-
-        float tres[2] = {(float)img->w, (float)img->h};
-        GPU_SetUniformfv(txrsize_loc, 2, 1, tres);
-
-        float light[4] = {x * img->w, y * img->h, 200, 200};
-        GPU_SetUniformfv(lights_loc, 2, 2, light);
-
-        int nLights = 1;
-        GPU_SetUniformi(nlights_loc, nLights);
-
-        GPU_SetShaderImage(img, txrmap_loc, 1);
-    }
-};
-
-class SimpleLighting2Shader : public Shader {
-public:
-    SimpleLighting2Shader() : Shader("data/shaders/common.vert", "data/shaders/simpleLighting2.frag") {};
-
-    void prepare() {}
-
-    void update(GPU_Image* tex, GPU_Image* light, float x, float y) {
-        int txrmap_loc = GPU_GetUniformLocation(shader, "txrmap");
-        int lgtmap_loc = GPU_GetUniformLocation(shader, "lightmap");
-        int txrsize_loc = GPU_GetUniformLocation(shader, "texSize");
 
         float tres[2] = {(float)tex->w, (float)tex->h};
         GPU_SetUniformfv(txrsize_loc, 2, 1, tres);
 
         GPU_SetShaderImage(tex, txrmap_loc, 1);
-        GPU_SetShaderImage(light, lgtmap_loc, 2);
+        GPU_SetShaderImage(emit, emitmap_loc, 2);
     }
 };
 

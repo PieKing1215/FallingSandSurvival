@@ -244,6 +244,24 @@ MaterialInstance Tiles::create(Material* mat, int x, int y) {
         return createSteam();
     } else if(mat->id == Materials::FIRE.id) {
         return createFire();
+    } else if(mat->id == Materials::FLAT_COBBLE_STONE.id) {
+        SDL_Surface* tex = Textures::flatCobbleStone;
+
+        int tx = (tex->w + (x % tex->w)) % tex->w;
+        int ty = (tex->h + (y % tex->h)) % tex->h;
+
+        Uint32 rgb = PIXEL(tex, tx, ty);
+
+        return MaterialInstance(&Materials::FLAT_COBBLE_STONE, rgb);
+    } else if(mat->id == Materials::FLAT_COBBLE_DIRT.id) {
+        SDL_Surface* tex = Textures::flatCobbleDirt;
+
+        int tx = (tex->w + (x % tex->w)) % tex->w;
+        int ty = (tex->h + (y % tex->h)) % tex->h;
+
+        Uint32 rgb = PIXEL(tex, tx, ty);
+
+        return MaterialInstance(&Materials::FLAT_COBBLE_DIRT, rgb);
     }
 
     return MaterialInstance(mat, mat->color);

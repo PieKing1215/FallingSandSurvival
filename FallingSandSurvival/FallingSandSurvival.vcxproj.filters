@@ -59,6 +59,15 @@
     <Filter Include="Source Files\net">
       <UniqueIdentifier>{bdd14dcd-2f91-4e09-86a1-b435f86cd145}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\libraries\imgui">
+      <UniqueIdentifier>{fe639ea7-4dda-4e11-bd5f-f9f5821a219e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\vfx\gui">
+      <UniqueIdentifier>{a5293a6a-99a5-4881-99c0-026613ebb5b6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\integration">
+      <UniqueIdentifier>{8b084989-8b81-418b-92ce-6e6304ec84f6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -211,9 +220,6 @@
     <ClCompile Include="Textures.cpp">
       <Filter>Source Files\vfx</Filter>
     </ClCompile>
-    <ClCompile Include="UI.cpp">
-      <Filter>Source Files\vfx</Filter>
-    </ClCompile>
     <ClCompile Include="PlacedStructure.cpp">
       <Filter>Source Files\world\structures</Filter>
     </ClCompile>
@@ -225,6 +231,45 @@
     </ClCompile>
     <ClCompile Include="Networking.cpp">
       <Filter>Source Files\net</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\imgui\backends\imgui_impl_sdl.cpp">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\imgui\backends\imgui_impl_opengl3.cpp">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="lib\imgui\libs\gl3w\GL\gl3w.c">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="MainMenuUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="CreateWorldUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugCheatsUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugDrawUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="GameDir.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="OptionsUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="DiscordIntegration.cpp">
+      <Filter>Source Files\integration</Filter>
+    </ClCompile>
+    <ClCompile Include="IngameUI.cpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClCompile>
+    <ClCompile Include="b2DebugDraw_impl.cpp">
+      <Filter>Source Files\vfx</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -400,9 +445,6 @@
     <ClInclude Include="Textures.hpp">
       <Filter>Source Files\vfx</Filter>
     </ClInclude>
-    <ClInclude Include="UI.hpp">
-      <Filter>Source Files\vfx</Filter>
-    </ClInclude>
     <ClInclude Include="UTime.hpp">
       <Filter>Source Files\util</Filter>
     </ClInclude>
@@ -423,6 +465,36 @@
     </ClInclude>
     <ClInclude Include="Networking.hpp">
       <Filter>Source Files\net</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\imgui\backends\imgui_impl_sdl.h">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\imgui\backends\imgui_impl_opengl3.h">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\imgui\libs\gl3w\GL\gl3w.h">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\imgui\libs\gl3w\GL\glcorearb.h">
+      <Filter>Source Files\libraries\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="UIs.hpp">
+      <Filter>Source Files\vfx\gui</Filter>
+    </ClInclude>
+    <ClInclude Include="GameDir.hpp">
+      <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="CLArgs.hpp">
+      <Filter>Source Files\util</Filter>
+    </ClInclude>
+    <ClInclude Include="DiscordIntegration.hpp">
+      <Filter>Source Files\integration</Filter>
+    </ClInclude>
+    <ClInclude Include="DiscordUtils.hpp">
+      <Filter>Source Files\integration</Filter>
+    </ClInclude>
+    <ClInclude Include="b2DebugDraw_impl.h">
+      <Filter>Source Files\vfx</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

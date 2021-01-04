@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef __cplusplus
 #define DEVELOPMENT_BUILD
 #define ALPHA_BUILD
 
@@ -26,14 +27,20 @@
 #include <vector>
 #include <deque>
 #include <iterator>
-#include <filesystem>
+#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
+#include <experimental/filesystem>
+namespace std {
+    namespace filesystem = experimental::filesystem;
+}
 #include <regex> 
 #include <memory>
 
 #include "SDL2/SDL.h"
+#undef M_PI
 #include "SDL2/SDL_ttf.h"
 #include "SDL2/SDL_image.h"
 #include "SDL_gpu.h"
+
 
 #include "box2d/b2_math.h"
 #include "box2d/b2_world.h"
@@ -80,6 +87,9 @@
 #undef SendMessage
 #undef ERROR
 
+#ifndef SPDLOG_FMT_EXTERNAL
+#define SPDLOG_FMT_EXTERNAL
+#endif
 #include "spdlog/common.h"
 #undef SPDLOG_ACTIVE_LEVEL
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
@@ -93,3 +103,4 @@
 #define logWarn SPDLOG_WARN
 #define logError SPDLOG_ERROR
 #define logCritical SPDLOG_CRITICAL
+#endif

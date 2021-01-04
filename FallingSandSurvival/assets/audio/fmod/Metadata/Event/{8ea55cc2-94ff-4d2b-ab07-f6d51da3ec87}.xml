@@ -5,10 +5,10 @@
 			<value>Fly</value>
 		</property>
 		<property name="outputFormat">
-			<value>1</value>
+			<value>0</value>
 		</property>
 		<relationship name="folder">
-			<destination>{75b8d149-924f-4b76-aa08-89467e37ca8c}</destination>
+			<destination>{fb0a2284-b5e2-47c1-8079-9f44762b9ff9}</destination>
 		</relationship>
 		<relationship name="mixer">
 			<destination>{6f9b1f8f-01c6-4b05-8a6f-47eb84228384}</destination>
@@ -59,7 +59,7 @@
 			<destination>{3271a68b-2fd8-4ddb-894b-69d309dd6471}</destination>
 		</relationship>
 		<relationship name="output">
-			<destination>{d793002d-2650-4ec7-b15e-d6362c6d07f5}</destination>
+			<destination>{8f58cae6-905a-4401-8a04-ab5d78f81a47}</destination>
 		</relationship>
 	</object>
 	<object class="EventAutomatableProperties" id="{1723525b-77d4-4a0d-8fca-cd2baa4b3aa9}" />
@@ -123,7 +123,7 @@
 			<destination>{cd3f8ee2-fd81-475c-8992-b3bb50a712cd}</destination>
 		</relationship>
 		<relationship name="audioFile">
-			<destination>{46af4e3c-cb21-42f5-aa3d-57063b9a46d3}</destination>
+			<destination>{1cc4c9ac-ac08-4ce3-bdf2-33e4ae00e6c4}</destination>
 		</relationship>
 	</object>
 	<object class="EventMixerGroup" id="{24d288b2-5858-4eef-82bd-c745140db7fb}">
