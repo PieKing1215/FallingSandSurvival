@@ -164,6 +164,11 @@ public:
     vector< unsigned char > pixelsFire;
     unsigned char* pixelsFire_ar = nullptr;
 
+    GPU_Image* textureFlowSpead = nullptr;
+    GPU_Image* textureFlow = nullptr;
+    vector< unsigned char > pixelsFlow;
+    unsigned char* pixelsFlow_ar = nullptr;
+
     GPU_Image* temperatureMap = nullptr;
     vector< unsigned char > pixelsTemp;
     unsigned char* pixelsTemp_ar = nullptr;
@@ -197,11 +202,13 @@ public:
     bool* objectDelete = nullptr;
 
     WaterShader* waterShader = nullptr;
+    WaterFlowPassShader* waterFlowPassShader = nullptr;
     NewLightingShader* newLightingShader = nullptr;
     float newLightingShader_insideDes = 0.0f;
     float newLightingShader_insideCur = 0.0f;
     FireShader* fireShader = nullptr;
     Fire2Shader* fire2Shader = nullptr;
+    void loadShaders();
 
     int fps = 0;
     int feelsLikeFps = 0;

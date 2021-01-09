@@ -31,7 +31,7 @@ void Game::updateMaterialSounds() {
 }
 
 int Game::init(int argc, char *argv[]) {
-    EASY_PROFILER_ENABLE;
+    //EASY_PROFILER_ENABLE;
     profiler::startListen();
     EASY_MAIN_THREAD;
     EASY_FUNCTION(GAME_PROFILER_COLOR);
@@ -540,6 +540,29 @@ int Game::init(int argc, char *argv[]) {
         EASY_END_BLOCK;
 
         EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+        textureFlow = GPU_CreateImage(
+            world->width, world->height,
+            GPU_FormatEnum::GPU_FORMAT_RGBA
+        );
+        EASY_END_BLOCK;
+        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+        GPU_SetImageFilter(textureFlow, GPU_FILTER_NEAREST);
+        EASY_END_BLOCK;
+
+        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+        textureFlowSpead = GPU_CreateImage(
+            world->width, world->height,
+            GPU_FormatEnum::GPU_FORMAT_RGBA
+        );
+        EASY_END_BLOCK;
+        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+        GPU_SetImageFilter(textureFlowSpead, GPU_FILTER_NEAREST);
+        EASY_END_BLOCK;
+        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+        GPU_LoadTarget(textureFlowSpead);
+        EASY_END_BLOCK;
+
+        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
         textureFire = GPU_CreateImage(
             world->width, world->height,
             GPU_FormatEnum::GPU_FORMAT_RGBA
@@ -699,6 +722,8 @@ int Game::init(int argc, char *argv[]) {
         pixelsLoading_ar = &pixelsLoading[0];
         pixelsFire = vector<unsigned char>(world->width * world->height * 4, 0);
         pixelsFire_ar = &pixelsFire[0];
+        pixelsFlow = vector<unsigned char>(world->width * world->height * 4, 0);
+        pixelsFlow_ar = &pixelsFlow[0];
         pixelsEmission = vector<unsigned char>(world->width * world->height * 4, 0);
         pixelsEmission_ar = &pixelsEmission[0];
         EASY_END_BLOCK;
@@ -716,14 +741,7 @@ int Game::init(int argc, char *argv[]) {
 
     if(networkMode != NetworkMode::SERVER) {
         // load shaders
-        #pragma region
-        EASY_BLOCK("load shaders");
-        waterShader = new WaterShader();
-        newLightingShader = new NewLightingShader();
-        fireShader = new FireShader();
-        fire2Shader = new Fire2Shader();
-        EASY_END_BLOCK;
-        #pragma endregion
+        loadShaders();
     }
 
     EASY_EVENT("Done Loading", profiler::colors::Magenta);
@@ -732,6 +750,21 @@ int Game::init(int argc, char *argv[]) {
     return this->run(argc, argv);
 }
 
+void Game::loadShaders() {
+    EASY_FUNCTION(GAME_PROFILER_COLOR);
+
+    if(waterShader) delete waterShader;
+    if(waterFlowPassShader) delete waterFlowPassShader;
+    if(newLightingShader) delete newLightingShader;
+    if(fireShader) delete fireShader;
+    if(fire2Shader) delete fire2Shader;
+
+    waterShader = new WaterShader();
+    waterFlowPassShader = new WaterFlowPassShader();
+    newLightingShader = new NewLightingShader();
+    fireShader = new FireShader();
+    fire2Shader = new Fire2Shader();
+}
 
 void Game::handleWindowSizeChange(int newWidth, int newHeight) {
     int prevWidth = WIDTH;
@@ -746,6 +779,7 @@ void Game::handleWindowSizeChange(int newWidth, int newHeight) {
     GPU_FreeImage(lightingTexture);
     GPU_FreeImage(emissionTexture);
     GPU_FreeImage(textureFire);
+    GPU_FreeImage(textureFlow);
     GPU_FreeImage(texture2Fire);
     GPU_FreeImage(textureLayer2);
     GPU_FreeImage(textureBackground);
@@ -818,6 +852,30 @@ void Game::handleWindowSizeChange(int newWidth, int newHeight) {
     EASY_END_BLOCK;
     EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
     GPU_SetImageFilter(emissionTexture, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureFlow = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureFlow, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+
+
+    EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
+    textureFlowSpead = GPU_CreateImage(
+        world->width, world->height,
+        GPU_FormatEnum::GPU_FORMAT_RGBA
+    );
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
+    GPU_SetImageFilter(textureFlowSpead, GPU_FILTER_NEAREST);
+    EASY_END_BLOCK;
+    EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
+    GPU_LoadTarget(textureFlowSpead);
     EASY_END_BLOCK;
 
     EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
@@ -980,6 +1038,8 @@ void Game::handleWindowSizeChange(int newWidth, int newHeight) {
     pixelsLoading_ar = &pixelsLoading[0];
     pixelsFire = vector<unsigned char>(world->width * world->height * 4, 0);
     pixelsFire_ar = &pixelsFire[0];
+    pixelsFlow = vector<unsigned char>(world->width * world->height * 4, 0);
+    pixelsFlow_ar = &pixelsFlow[0];
     pixelsEmission = vector<unsigned char>(world->width * world->height * 4, 0);
     pixelsEmission_ar = &pixelsEmission[0];
     EASY_END_BLOCK;
@@ -1722,6 +1782,11 @@ int Game::run(int argc, char *argv[]) {
                         ImGui::Text("%s", tile.mat->name.c_str());
 
                         if(Settings::draw_detailed_material_info) {
+
+                            if(tile.mat->physicsType == PhysicsType::SOUP) {
+                                ImGui::Text("fluidAmount = %f", tile.fluidAmount);
+                            }
+
                             int ln = 0;
                             if(tile.mat->interact) {
                                 for(size_t i = 0; i < Materials::MATERIALS.size(); i++) {
@@ -2493,12 +2558,14 @@ void Game::tick() {
         bool hadLayer2Dirty = false;
         bool hadBackgroundDirty = false;
         bool hadFire = false;
+        bool hadFlow = false;
 
         int pitch;
         //void* vdpixels_ar = texture->data;
         //unsigned char* dpixels_ar = (unsigned char*)vdpixels_ar;
         unsigned char* dpixels_ar = pixels_ar;
         unsigned char* dpixelsFire_ar = pixelsFire_ar;
+        unsigned char* dpixelsFlow_ar = pixelsFlow_ar;
         unsigned char* dpixelsEmission_ar = pixelsEmission_ar;
 
         std::vector<std::future<void>> results = {};
@@ -2648,7 +2715,10 @@ void Game::tick() {
                         dpixelsEmission_ar[offset + 0] = 0;        // b
                         dpixelsEmission_ar[offset + 1] = 0;        // g
                         dpixelsEmission_ar[offset + 2] = 0;        // r
-                        dpixelsEmission_ar[offset + 3] = SDL_ALPHA_TRANSPARENT;    // a		
+                        dpixelsEmission_ar[offset + 3] = SDL_ALPHA_TRANSPARENT;    // a
+
+                        world->flowY[i] = 0;
+                        world->flowX[i] = 0;
                     } else {
                         Uint32 color = world->tiles[i].color;
                         Uint32 emit = world->tiles[i].mat->emitColor;
@@ -2669,6 +2739,25 @@ void Game::tick() {
                             dpixelsFire_ar[offset + 0] = ((color >> 16) & 0xff);        // r
                             dpixelsFire_ar[offset + 3] = world->tiles[i].mat->alpha;    // a
                             hadFire = true;
+                        }
+                        if(world->tiles[i].mat->physicsType == PhysicsType::SOUP) {
+
+                            float newFlowX = world->prevFlowX[i] + (world->flowX[i] - world->prevFlowX[i]) * 0.25;
+                            float newFlowY = world->prevFlowY[i] + (world->flowY[i] - world->prevFlowY[i]) * 0.25;
+                            if(newFlowY < 0) newFlowY *= 0.5;
+
+                            dpixelsFlow_ar[offset + 2] = 0; // b
+                            dpixelsFlow_ar[offset + 1] = std::min(std::max(newFlowY * (3.0 / world->tiles[i].mat->iterations + 0.5) / 4.0 + 0.5, 0.0), 1.0) * 255; // g
+                            dpixelsFlow_ar[offset + 0] = std::min(std::max(newFlowX * (3.0 / world->tiles[i].mat->iterations + 0.5) / 4.0 + 0.5, 0.0), 1.0) * 255; // r
+                            dpixelsFlow_ar[offset + 3] = 0xff; // a
+                            hadFlow = true;
+                            world->prevFlowX[i] = newFlowX;
+                            world->prevFlowY[i] = newFlowY;
+                            world->flowY[i] = 0;
+                            world->flowX[i] = 0;
+                        } else {
+                            world->flowY[i] = 0;
+                            world->flowX[i] = 0;
                         }
                     }
                 }
@@ -2823,6 +2912,17 @@ void Game::tick() {
             );
         }
 
+        if(hadFlow) {
+            GPU_UpdateImageBytes(
+                textureFlow,
+                NULL,
+                &pixelsFlow[0],
+                world->width * 4
+            );
+
+            waterFlowPassShader->dirty = true;
+        }
+
         if(hadFire) {
             GPU_UpdateImageBytes(
                 textureFire,
@@ -2948,6 +3048,10 @@ void Game::tickChunkLoading() {
                     //rotate(pixelsFire_ar.begin(), pixelsFire_ar.end() - delta, pixelsFire_ar.end());
                 }));
                 results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsFlow_ar[0]), &(pixelsFlow_ar[world->width * world->height * 4]) - delta, &(pixelsFlow_ar[world->width * world->height * 4]));
+                    //rotate(pixelsFlow_ar.begin(), pixelsFlow_ar.end() - delta, pixelsFlow_ar.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
                     rotate(&(pixelsEmission_ar[0]), &(pixelsEmission_ar[world->width * world->height * 4]) - delta, &(pixelsEmission_ar[world->width * world->height * 4]));
                     //rotate(pixelsEmission_ar.begin(), pixelsEmission_ar.end() - delta, pixelsEmission_ar.end());
                 }));
@@ -2967,6 +3071,10 @@ void Game::tickChunkLoading() {
                 results.push_back(updateDirtyPool->push([&](int id) {
                     rotate(&(pixelsFire_ar[0]), &(pixelsFire_ar[0]) - delta, &(pixelsFire_ar[world->width * world->height * 4]));
                     //rotate(pixelsFire_ar.begin(), pixelsFire_ar.begin() - delta, pixelsFire_ar.end());
+                }));
+                results.push_back(updateDirtyPool->push([&](int id) {
+                    rotate(&(pixelsFlow_ar[0]), &(pixelsFlow_ar[0]) - delta, &(pixelsFlow_ar[world->width * world->height * 4]));
+                    //rotate(pixelsFlow_ar.begin(), pixelsFlow_ar.begin() - delta, pixelsFlow_ar.end());
                 }));
                 results.push_back(updateDirtyPool->push([&](int id) {
                     rotate(&(pixelsEmission_ar[0]), &(pixelsEmission_ar[0]) - delta, &(pixelsEmission_ar[world->width * world->height * 4]));
@@ -2995,6 +3103,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                         CLEARPIXEL(pixelsObjects_ar, offset);
                         CLEARPIXEL(pixelsBackground_ar, offset);
                         CLEARPIXEL(pixelsFire_ar, offset);
+                        CLEARPIXEL(pixelsFlow_ar, offset);
                         CLEARPIXEL(pixelsEmission_ar, offset);
                     }
                 }
@@ -3011,6 +3120,7 @@ pixels[ofs + 3] = SDL_ALPHA_TRANSPARENT;
                         CLEARPIXEL(pixelsObjects_ar, offset);
                         CLEARPIXEL(pixelsBackground_ar, offset);
                         CLEARPIXEL(pixelsFire_ar, offset);
+                        CLEARPIXEL(pixelsFlow_ar, offset);
                         CLEARPIXEL(pixelsEmission_ar, offset);
                     }
                 }
@@ -3608,9 +3718,21 @@ void Game::renderLate() {
         // shader
         EASY_BLOCK("water shader");
         if(Settings::draw_shaders) {
+
+            if(waterFlowPassShader->dirty && Settings::water_showFlow) {
+                EASY_BLOCK("waterFlowPassShader", GPU_PROFILER_COLOR);
+                waterFlowPassShader->activate();
+                waterFlowPassShader->update(world->width, world->height);
+                GPU_SetBlendMode(textureFlow, GPU_BLEND_SET);
+                GPU_BlitRect(textureFlow, NULL, textureFlowSpead->target, NULL);
+                EASY_END_BLOCK;
+
+                waterFlowPassShader->dirty = false;
+            }
+
             waterShader->activate();
             float t = (now - startTime) / 1000.0;
-            waterShader->update(t, target->w * scale, target->h * scale, texture, r1.x, HEIGHT - r1.y, r1.w, r1.h, scale);
+            waterShader->update(t, target->w * scale, target->h * scale, texture, r1.x, r1.y, r1.w, r1.h, scale, textureFlowSpead, Settings::water_overlay, Settings::water_showFlow, Settings::water_pixelated);
         }
 
         target = realTarget;
@@ -4307,6 +4429,7 @@ void Game::quitToMainMenu() {
     std::fill(pixelsBackground.begin(), pixelsBackground.end(), 0);
     std::fill(pixelsLayer2.begin(), pixelsLayer2.end(), 0);
     std::fill(pixelsFire.begin(), pixelsFire.end(), 0);
+    std::fill(pixelsFlow.begin(), pixelsFlow.end(), 0);
     std::fill(pixelsEmission.begin(), pixelsEmission.end(), 0);
     std::fill(pixelsParticles.begin(), pixelsParticles.end(), 0);
 
@@ -4335,6 +4458,13 @@ void Game::quitToMainMenu() {
         textureFire,
         NULL,
         &pixelsFire[0],
+        world->width * 4
+    );
+
+    GPU_UpdateImageBytes(
+        textureFlow,
+        NULL,
+        &pixelsFlow[0],
         world->width * 4
     );
 

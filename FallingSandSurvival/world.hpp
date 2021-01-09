@@ -73,6 +73,19 @@ public:
     bool save(std::string worldFileName);
 };
 
+#define FLUID_MaxValue 0.5f
+#define FLUID_MinValue 0.0005f
+
+// Extra liquid a cell can store than the cell above it
+#define FLUID_MaxCompression 0.1f
+
+// Lowest and highest amount of liquids allowed to flow per iteration
+#define FLUID_MinFlow 0.05f
+#define FLUID_MaxFlow 8.0f
+
+// Adjusts flow speed (0.0f - 1.0f)
+#define FLUID_FlowSpeed 1.0f
+
 class World {
 public:
 
@@ -83,6 +96,10 @@ public:
     GPU_Target* target = nullptr;
 
     MaterialInstance* tiles = nullptr;
+    float* flowX = nullptr;
+    float* flowY = nullptr;
+    float* prevFlowX = nullptr;
+    float* prevFlowY = nullptr;
     MaterialInstance* layer2 = nullptr;
     Uint32* background = nullptr;
     std::vector<Particle *> particles;

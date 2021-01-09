@@ -2,6 +2,7 @@
 
 class Settings {
 public:
+
     static bool draw_frame_graph;
     static bool draw_background;
     static bool draw_background_grid;
@@ -20,6 +21,9 @@ public:
     static bool draw_temperature_map;
 
     static bool draw_shaders;
+    static int water_overlay;
+    static bool water_showFlow;
+    static bool water_pixelated;
     static float lightingQuality;
     static bool draw_light_overlay;
     static bool simpleLighting;

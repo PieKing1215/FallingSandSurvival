@@ -18,6 +18,9 @@ bool Settings::draw_detailed_material_info = true;
 bool Settings::draw_temperature_map = false;
 
 bool Settings::draw_shaders		    = true;
+int Settings::water_overlay         = 0;
+bool Settings::water_showFlow       = true;
+bool Settings::water_pixelated      = false;
 float Settings::lightingQuality     = 0.5f;
 bool Settings::draw_light_overlay   = false;
 bool Settings::simpleLighting       = false;

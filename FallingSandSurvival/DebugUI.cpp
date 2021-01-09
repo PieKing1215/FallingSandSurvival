@@ -47,8 +47,33 @@ void DebugUI::Draw(Game* game) {
 
     ImGui::Checkbox("Draw Shaders", &Settings::draw_shaders);
     if(Settings::draw_shaders) {
-        ImGui::SetNextItemWidth(80);
         ImGui::Indent(10.0f);
+
+        if(ImGui::Button("Reload Shaders")) {
+            game->loadShaders();
+        }
+
+        const char* items[] = {"off", "flow map", "distortion"};
+        const char* combo_label = items[Settings::water_overlay];
+        if(ImGui::BeginCombo("Water Overlay", combo_label, 0)) {
+            for(int n = 0; n < IM_ARRAYSIZE(items); n++) {
+                const bool is_selected = (Settings::water_overlay == n);
+                if(ImGui::Selectable(items[n], is_selected)) {
+                    Settings::water_overlay = n;
+                }
+
+                // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+                if(is_selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        ImGui::Checkbox("Water Show Flow", &Settings::water_showFlow);
+        ImGui::Checkbox("Water Pixelated", &Settings::water_pixelated);
+
+        ImGui::SetNextItemWidth(80);
         ImGui::SliderFloat("Light Quality", &Settings::lightingQuality, 0.0, 1.0, "", 0);
         ImGui::Checkbox("Light Overlay", &Settings::draw_light_overlay);
         ImGui::Checkbox("Simple Lighting", &Settings::simpleLighting);

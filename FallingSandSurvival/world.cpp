@@ -163,6 +163,10 @@ tooClose: {}
 
     EASY_BLOCK("init layer arrays");
     tiles = new MaterialInstance[w * h];
+    flowX = new float[w * h];
+    flowY = new float[w * h];
+    prevFlowX = new float[w * h];
+    prevFlowY = new float[w * h];
     layer2 = new MaterialInstance[w * h];
     background = new Uint32[w * h];
     for(int x = 0; x < width; x++) {
@@ -1064,6 +1068,22 @@ void World::setTileLayer2(int x, int y, MaterialInstance type) {
     layer2Dirty[x + y * width] = true;
 }
 
+float CalculateVerticalFlowValue(float remainingLiquid, float destLiquid) {
+    float sum = remainingLiquid + destLiquid;
+    float value = 0;
+
+    if(sum <= FLUID_MaxValue) {
+        value = FLUID_MaxValue;
+    } else if(sum < 2 * FLUID_MaxValue + FLUID_MaxCompression) {
+        value = (FLUID_MaxValue * FLUID_MaxValue + sum * FLUID_MaxCompression) / (FLUID_MaxValue + FLUID_MaxCompression);
+    } else {
+        value = (sum + FLUID_MaxCompression) / 2.0f;
+    }
+
+    return value;
+}
+
+
 void World::tick() {
     EASY_FUNCTION(WORLD_PROFILER_COLOR);
 
@@ -1071,7 +1091,7 @@ void World::tick() {
 
     //#define DEBUG_FRICTION
     #define DO_MULTITHREADING
-    #define DO_REVERSE
+    //#define DO_REVERSE
 
     #ifdef DO_MULTITHREADING
     bool whichTickVisited = false;
@@ -1080,7 +1100,7 @@ void World::tick() {
     EASY_END_BLOCK;
     #endif
 
-    for(int iter = 0; iter < 4; iter++) {
+    for(int iter = 0; iter < 6; iter++) {
         EASY_BLOCK("iteration");
         #ifdef DO_REVERSE
         bool reverseX = (tickCt + iter) % 2 == 0;
@@ -1126,7 +1146,8 @@ void World::tick() {
                     #endif
                     EASY_BLOCK("chunk");
                     EASY_BLOCK("iter 1");
-                    for(int dy = CHUNK_H - 1; dy >= 0; dy--) {
+                    for(int dy = 0; dy < CHUNK_H; dy++) {
+                    //for(int dy = CHUNK_H - 1; dy >= 0; dy--) {
                         int y = cy + dy;
                         for(int dxf = 0; dxf < CHUNK_W; dxf++) {
                             int dx = reverseX ? (CHUNK_W - 1) - dxf : dxf;
@@ -1311,112 +1332,314 @@ void World::tick() {
                                 }
 
                             } else if(type == PhysicsType::SOUP) {
-                                //active[index] = true;
-                                MaterialInstance belowTile = tiles[(x)+(y + 1) * width];
-                                int below = belowTile.mat->physicsType;
 
-                                if(tile.mat->interact && belowTile.mat->id >= 0 && belowTile.mat->id < Materials::nMaterials && tile.mat->nInteractions[belowTile.mat->id] > 0) {
-                                    for(int i = 0; i < tile.mat->nInteractions[belowTile.mat->id]; i++) {
-                                        MaterialInteraction in = tile.mat->interactions[belowTile.mat->id][i];
-                                        if(in.type == INTERACT_TRANSFORM_MATERIAL) {
-                                            for(int xx = in.ofsX - in.data2; xx <= in.ofsX + in.data2; xx++) {
-                                                for(int yy = in.ofsY - in.data2; yy <= in.ofsY + in.data2; yy++) {
-                                                    if(tiles[(x + xx) + (y + yy) * width].mat->id == belowTile.mat->id) {
-                                                        tiles[(x + xx) + (y + yy) * width] = Tiles::create(Materials::MATERIALS[in.data1], x + xx, y + yy);
-                                                        dirty[(x + xx) + (y + yy) * width] = true;
-                                                        tickVisited[(x + xx) + (y + yy) * width] = true;
-                                                    }
-                                                }
-                                            }
-                                        } else if(in.type == INTERACT_SPAWN_MATERIAL) {
-                                            for(int xx = in.ofsX - in.data2; xx <= in.ofsX + in.data2; xx++) {
-                                                for(int yy = in.ofsY - in.data2; yy <= in.ofsY + in.data2; yy++) {
-                                                    if((xx == 0 && yy == 0) || tiles[(x + xx) + (y + yy) * width].mat->id == Tiles::NOTHING.mat->id) {
-                                                        tiles[(x + xx) + (y + yy) * width] = Tiles::create(Materials::MATERIALS[in.data1], x + xx, y + yy);
-                                                        dirty[(x + xx) + (y + yy) * width] = true;
-                                                        tickVisited[(x + xx) + (y + yy) * width] = true;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                                // based on https://github.com/jongallant/LiquidSimulator (MIT License)
+
+                                // NOTE: for liquids, tile.moved is tile.settled in the original algorithm
+
+                                if(tile.fluidAmount == 0.0f) continue;
+
+                                if(tile.fluidAmount < FLUID_MinValue) {
+                                    tile.fluidAmount = 0.0f;
+                                    tiles[index] = tile;
                                     continue;
                                 }
 
-                                if(tile.mat->react && tile.mat->nReactions > 0) {
-                                    bool react = false;
-                                    for(int i = 0; i < tile.mat->nReactions; i++) {
-                                        MaterialInteraction in = tile.mat->reactions[i];
-                                        if(in.type == REACT_TEMPERATURE_BELOW) {
-                                            if(tile.temperature < in.data1) {
-                                                tiles[index] = Tiles::create(Materials::MATERIALS[in.data2], x, y);
-                                                tiles[index].temperature = tile.temperature;
-                                                dirty[index] = true;
-                                                tickVisited[index] = true;
-                                                react = true;
-                                            }
-                                        } else if(in.type == REACT_TEMPERATURE_ABOVE) {
-                                            if(tile.temperature > in.data1) {
-                                                tiles[index] = Tiles::create(Materials::MATERIALS[in.data2], x, y);
-                                                tiles[index].temperature = tile.temperature;
-                                                dirty[index] = true;
-                                                tickVisited[index] = true;
-                                                react = true;
-                                            }
-                                        }
-                                    }
-                                    if(react) continue;
-                                }
+                                if(tile.fluidAmount > 0.005 && getTile(x, y + 1).mat->physicsType == PhysicsType::AIR && getTile(x, y + 2).mat->physicsType == PhysicsType::AIR && getTile(x, y + 3).mat->physicsType == PhysicsType::AIR && getTile(x, y + 4).mat->physicsType == PhysicsType::AIR) {
+                                    setTile(x, y, Tiles::NOTHING);
 
-                                /*if (tile.mat->id == Materials::WATER.id && belowTile.mat->id == Materials::LAVA.id) {
-                                    tiles[index] = Tiles::createSteam();
-                                    dirty[index] = true;
-                                    tiles[(x)+(y + 1) * width] = Tiles::createObsidian(x, y + 1);
-                                    dirty[(x)+(y + 1) * width] = true;
-                                    tickVisited[(x)+(y + 1) * width] = true;
+                                    int n = tile.fluidAmount / 4;
+                                    if(n < 1) n = 1;
 
-                                    for (int xx = -1; xx <= 1; xx++) {
-                                        for (int yy = 0; yy <= 2; yy++) {
-                                            if (tiles[(x + xx) + (y + yy) * width].mat->id == Materials::LAVA.id) {
-                                                tiles[(x + xx) + (y + yy) * width] = Tiles::createObsidian(x + xx, y + yy);
-                                                dirty[(x + xx) + (y + yy) * width] = true;
-                                                tickVisited[(x + xx) + (y + yy) * width] = true;
-                                            }
-                                        }
-                                    }
+                                    for(int i = 0; i < n; i++) {
+                                        float amt = tile.fluidAmount / n;
 
-                                    continue;
-                                }*/
-
-                                bool canMoveBelow = (below == PhysicsType::AIR || (below != PhysicsType::SOLID && belowTile.mat->density < tile.mat->density));
-                                if(!canMoveBelow) continue;
-
-                                MaterialInstance belowLTile = tiles[(x - 1) + (y + 1) * width];
-                                int belowL = belowLTile.mat->physicsType;
-                                MaterialInstance belowRTile = tiles[(x + 1) + (y + 1) * width];
-                                int belowR = belowRTile.mat->physicsType;
-
-                                bool canMoveBelowL = (belowL == PhysicsType::AIR || (belowL != PhysicsType::SOLID && belowLTile.mat->density < tile.mat->density));
-                                bool canMoveBelowR = (belowR == PhysicsType::AIR || (belowR != PhysicsType::SOLID && belowRTile.mat->density < tile.mat->density));
-
-                                if(canMoveBelow && !((canMoveBelowL || canMoveBelowR) && rand() % 10 == 0)) {
-                                    if(belowTile.mat->physicsType == PhysicsType::AIR && getTile(x, y + 2).mat->physicsType == PhysicsType::AIR && getTile(x, y + 3).mat->physicsType == PhysicsType::AIR && getTile(x, y + 4).mat->physicsType == PhysicsType::AIR) {
-                                        setTile(x, y, belowTile);
+                                        MaterialInstance nt = MaterialInstance(tile.mat, tile.color, tile.temperature);
+                                        nt.fluidAmount = amt;
+                                        nt.fluidAmountDiff = 0;
+                                        nt.moved = false;
                                         #ifdef DO_MULTITHREADING
-                                        parts.push_back(new Particle(tile, x, y + 1, (rand() % 10 - 5) / 20.0f, -((rand() % 2) + 3) / 10.0f + 1.5f, 0, 0.1f));
+                                        parts.push_back(new Particle(nt, x, y + 1, (rand() % 10 - 5) / 30.0f, -((rand() % 2) + 3) / 10.0f + 1.0f, 0, 0.1f));
                                         #else
-                                        particles.push_back(new Particle(tile, x, y + 1, (rand() % 10 - 5) / 20.0f, -((rand() % 2) + 3) / 10.0f + 1.5f, 0, 0.1f));
+                                        particles.push_back(new Particle(nt, x, y + 1, (rand() % 10 - 5) / 20.0f, -((rand() % 2) + 3) / 10.0f + 1.5f, 0, 0.1f));
                                         #endif
-                                    } else {
-                                        tiles[index] = belowTile;
-                                        dirty[index] = true;
-                                        //setTile(x, y, belowTile);
-                                        //setTile(x, y + 1, tile);
+
+                                    }
+
+                                    continue;
+                                }
+
+                                if(tile.moved) continue;
+
+                                float startValue = tile.fluidAmount;
+                                float remainingValue = tile.fluidAmount;
+
+                                MaterialInstance bottom = tiles[(x) + (y + 1) * width];
+
+                                bool airBelow = bottom.mat->physicsType == PhysicsType::AIR;
+                                if((airBelow && iter <= 2) || (bottom.mat->id == tile.mat->id)) {
+                                    float dstFl = bottom.mat->physicsType == PhysicsType::SOUP ? bottom.fluidAmount : 0.0f;
+
+                                    float flow = CalculateVerticalFlowValue(startValue, dstFl) - dstFl;
+                                    if(bottom.fluidAmount > 0 && flow > FLUID_MinFlow)
+                                        flow *= FLUID_FlowSpeed;
+
+                                    flow = std::max(flow, 0.0f);
+                                    if(flow > std::min(FLUID_MaxFlow, startValue))
+                                        flow = std::min(FLUID_MaxFlow, startValue);
+
+                                    if(flow != 0) {
+                                        remainingValue -= flow;
+                                        tile.fluidAmountDiff -= flow;
+                                        if(bottom.mat->physicsType == PhysicsType::AIR) {
+                                            tiles[(x)+(y + 1) * width] = MaterialInstance(tile.mat, tile.color, tile.temperature);
+                                            tiles[(x)+(y + 1) * width].fluidAmount = 0.0f;
+                                        }
+                                        tiles[(x)+(y + 1) * width].fluidAmountDiff += flow;
+                                        //tiles[(x)+(y + 1) * width].moved = true;
+                                    }
+                                    flowY[index] += flow;
+                                } else if(iter == 0 && bottom.mat->physicsType == PhysicsType::SOUP && (bottom.mat->id != tile.mat->id)) {
+                                    if(rand() % 10 == 0) {
+                                        tiles[index] = bottom;
                                         tiles[(x)+(y + 1) * width] = tile;
-                                        dirty[(x)+(y + 1) * width] = true;
-                                        tickVisited[x + (y + 1) * width] = true;
+                                        continue;
                                     }
                                 }
+
+                                if(remainingValue < FLUID_MinValue) {
+                                    tile.fluidAmountDiff -= remainingValue;
+                                    tiles[index] = tile;
+                                    continue;
+                                }
+
+                                MaterialInstance left = tiles[(x - 1) + (y) * width];
+                                bool canMoveLeft = (left.mat->physicsType == PhysicsType::AIR || (left.mat->id == tile.mat->id)) && !airBelow;
+
+                                MaterialInstance right = tiles[(x + 1) + (y)*width];
+                                bool canMoveRight = (right.mat->physicsType == PhysicsType::AIR || (right.mat->id == tile.mat->id)) && !airBelow;
+
+                                if(canMoveLeft) {
+                                    float dstFl = left.mat->physicsType == PhysicsType::SOUP ? left.fluidAmount : 0.0f;
+
+                                    float flow = (remainingValue - dstFl) / (canMoveRight ? 3.0f : 2.0f);
+                                    if(flow > FLUID_MinFlow)
+                                        flow *= FLUID_FlowSpeed;
+
+                                    flow = std::max(flow, 0.0f);
+                                    if(flow > std::min(FLUID_MaxFlow, remainingValue))
+                                        flow = std::min(FLUID_MaxFlow, remainingValue);
+
+                                    if(flow != 0) {
+                                        remainingValue -= flow;
+                                        tile.fluidAmountDiff -= flow;
+                                        if(left.mat->physicsType == PhysicsType::AIR) {
+                                            tiles[(x-1)+(y) * width] = MaterialInstance(tile.mat, tile.color, tile.temperature);
+                                            tiles[(x - 1) + (y)*width].fluidAmount = 0.0f;
+                                        }
+                                        tiles[(x - 1) + (y)*width].fluidAmountDiff += flow;
+                                        //tiles[(x - 1) + (y)*width].moved = true;
+                                    }
+                                    flowX[index] -= flow;
+                                }
+
+                                if(remainingValue < FLUID_MinValue) {
+                                    tile.fluidAmountDiff -= remainingValue;
+                                    tiles[index] = tile;
+                                    continue;
+                                }
+
+                                if(canMoveRight) {
+                                    float dstFl = right.mat->physicsType == PhysicsType::SOUP ? right.fluidAmount : 0.0f;
+
+                                    float flow = (remainingValue - dstFl) / (canMoveLeft ? 2.0f : 2.0f);
+                                    if(flow > FLUID_MinFlow)
+                                        flow *= FLUID_FlowSpeed;
+
+                                    flow = std::max(flow, 0.0f);
+                                    if(flow > std::min(FLUID_MaxFlow, remainingValue))
+                                        flow = std::min(FLUID_MaxFlow, remainingValue);
+
+                                    if(flow != 0) {
+                                        remainingValue -= flow;
+                                        tile.fluidAmountDiff -= flow;
+                                        if(right.mat->physicsType == PhysicsType::AIR) {
+                                            tiles[(x + 1) + (y)*width] = MaterialInstance(tile.mat, tile.color, tile.temperature);
+                                            tiles[(x + 1) + (y)*width].fluidAmount = 0.0f;
+                                        }
+                                        tiles[(x + 1) + (y)*width].fluidAmountDiff += flow;
+                                        //tiles[(x + 1) + (y)*width].moved = true;
+                                    }
+                                    flowX[index] += flow;
+                                }
+
+                                if(remainingValue < FLUID_MinValue) {
+                                    tile.fluidAmountDiff -= remainingValue;
+                                    tiles[index] = tile;
+                                    continue;
+                                }
+
+                                MaterialInstance top = tiles[(x) + (y - 1)*width];
+
+                                if(top.mat->physicsType == PhysicsType::AIR || (top.mat->id == tile.mat->id)) {
+                                    float dstFl = top.mat->physicsType == PhysicsType::SOUP ? top.fluidAmount : 0.0f;
+
+                                    float flow = remainingValue - CalculateVerticalFlowValue(remainingValue, dstFl);
+                                    if(flow > FLUID_MinFlow)
+                                        flow *= FLUID_FlowSpeed;
+
+                                    flow = std::max(flow, 0.0f);
+                                    if(flow > std::min(FLUID_MaxFlow, remainingValue))
+                                        flow = std::min(FLUID_MaxFlow, remainingValue);
+
+                                    if(flow != 0) {
+                                        remainingValue -= flow;
+                                        tile.fluidAmountDiff -= flow;
+                                        if(top.mat->physicsType == PhysicsType::AIR) {
+                                            tiles[(x) + (y-1)*width] = MaterialInstance(tile.mat, tile.color, tile.temperature);
+                                            tiles[(x)+(y - 1) * width].fluidAmount = 0.0f;
+                                        }
+                                        tiles[(x)+(y - 1) * width].fluidAmountDiff += flow;
+                                        //tiles[(x)+(y - 1) * width].moved = true;
+                                    }
+                                    flowY[index] -= flow;
+                                } else if(iter == 0 && top.mat->physicsType == PhysicsType::SOUP && (top.mat->id != tile.mat->id)) {
+                                    if(rand() % 10 == 0) {
+                                        tiles[index] = top;
+                                        tiles[(x)+(y - 1) * width] = tile;
+                                        continue;
+                                    }
+                                }
+
+                                if(remainingValue < FLUID_MinValue) {
+                                    tile.fluidAmountDiff -= remainingValue;
+                                    tiles[index] = tile;
+                                    continue;
+                                }
+
+                                if(startValue == remainingValue) {
+                                    tile.settleCount++;
+                                    if(tile.settleCount >= 10) {
+                                        tile.moved = true;
+                                    }
+                                } else {
+                                    dirty[index] = true;
+                                    if(top.mat->physicsType    == PhysicsType::SOUP) tiles[(x)+(y - 1) * width].moved = false;
+                                    if(bottom.mat->physicsType == PhysicsType::SOUP) tiles[(x)+(y + 1) * width].moved = false;
+                                    if(left.mat->physicsType   == PhysicsType::SOUP) tiles[(x - 1)+(y) * width].moved = false;
+                                    if(right.mat->physicsType  == PhysicsType::SOUP) tiles[(x + 1)+(y) * width].moved = false;
+                                }
+
+                                tiles[index] = tile;
+
+                                // OLD: 
+
+                                //active[index] = true;
+                                //MaterialInstance belowTile = tiles[(x)+(y + 1) * width];
+                                //int below = belowTile.mat->physicsType;
+
+                                //if(tile.mat->interact && belowTile.mat->id >= 0 && belowTile.mat->id < Materials::nMaterials && tile.mat->nInteractions[belowTile.mat->id] > 0) {
+                                //    for(int i = 0; i < tile.mat->nInteractions[belowTile.mat->id]; i++) {
+                                //        MaterialInteraction in = tile.mat->interactions[belowTile.mat->id][i];
+                                //        if(in.type == INTERACT_TRANSFORM_MATERIAL) {
+                                //            for(int xx = in.ofsX - in.data2; xx <= in.ofsX + in.data2; xx++) {
+                                //                for(int yy = in.ofsY - in.data2; yy <= in.ofsY + in.data2; yy++) {
+                                //                    if(tiles[(x + xx) + (y + yy) * width].mat->id == belowTile.mat->id) {
+                                //                        tiles[(x + xx) + (y + yy) * width] = Tiles::create(Materials::MATERIALS[in.data1], x + xx, y + yy);
+                                //                        dirty[(x + xx) + (y + yy) * width] = true;
+                                //                        tickVisited[(x + xx) + (y + yy) * width] = true;
+                                //                    }
+                                //                }
+                                //            }
+                                //        } else if(in.type == INTERACT_SPAWN_MATERIAL) {
+                                //            for(int xx = in.ofsX - in.data2; xx <= in.ofsX + in.data2; xx++) {
+                                //                for(int yy = in.ofsY - in.data2; yy <= in.ofsY + in.data2; yy++) {
+                                //                    if((xx == 0 && yy == 0) || tiles[(x + xx) + (y + yy) * width].mat->id == Tiles::NOTHING.mat->id) {
+                                //                        tiles[(x + xx) + (y + yy) * width] = Tiles::create(Materials::MATERIALS[in.data1], x + xx, y + yy);
+                                //                        dirty[(x + xx) + (y + yy) * width] = true;
+                                //                        tickVisited[(x + xx) + (y + yy) * width] = true;
+                                //                    }
+                                //                }
+                                //            }
+                                //        }
+                                //    }
+                                //    continue;
+                                //}
+
+                                //if(tile.mat->react && tile.mat->nReactions > 0) {
+                                //    bool react = false;
+                                //    for(int i = 0; i < tile.mat->nReactions; i++) {
+                                //        MaterialInteraction in = tile.mat->reactions[i];
+                                //        if(in.type == REACT_TEMPERATURE_BELOW) {
+                                //            if(tile.temperature < in.data1) {
+                                //                tiles[index] = Tiles::create(Materials::MATERIALS[in.data2], x, y);
+                                //                tiles[index].temperature = tile.temperature;
+                                //                dirty[index] = true;
+                                //                tickVisited[index] = true;
+                                //                react = true;
+                                //            }
+                                //        } else if(in.type == REACT_TEMPERATURE_ABOVE) {
+                                //            if(tile.temperature > in.data1) {
+                                //                tiles[index] = Tiles::create(Materials::MATERIALS[in.data2], x, y);
+                                //                tiles[index].temperature = tile.temperature;
+                                //                dirty[index] = true;
+                                //                tickVisited[index] = true;
+                                //                react = true;
+                                //            }
+                                //        }
+                                //    }
+                                //    if(react) continue;
+                                //}
+
+                                ///*if (tile.mat->id == Materials::WATER.id && belowTile.mat->id == Materials::LAVA.id) {
+                                //    tiles[index] = Tiles::createSteam();
+                                //    dirty[index] = true;
+                                //    tiles[(x)+(y + 1) * width] = Tiles::createObsidian(x, y + 1);
+                                //    dirty[(x)+(y + 1) * width] = true;
+                                //    tickVisited[(x)+(y + 1) * width] = true;
+
+                                //    for (int xx = -1; xx <= 1; xx++) {
+                                //        for (int yy = 0; yy <= 2; yy++) {
+                                //            if (tiles[(x + xx) + (y + yy) * width].mat->id == Materials::LAVA.id) {
+                                //                tiles[(x + xx) + (y + yy) * width] = Tiles::createObsidian(x + xx, y + yy);
+                                //                dirty[(x + xx) + (y + yy) * width] = true;
+                                //                tickVisited[(x + xx) + (y + yy) * width] = true;
+                                //            }
+                                //        }
+                                //    }
+
+                                //    continue;
+                                //}*/
+
+                                //bool canMoveBelow = (below == PhysicsType::AIR || (below != PhysicsType::SOLID && belowTile.mat->density < tile.mat->density));
+                                //if(!canMoveBelow) continue;
+
+                                //MaterialInstance belowLTile = tiles[(x - 1) + (y + 1) * width];
+                                //int belowL = belowLTile.mat->physicsType;
+                                //MaterialInstance belowRTile = tiles[(x + 1) + (y + 1) * width];
+                                //int belowR = belowRTile.mat->physicsType;
+
+                                //bool canMoveBelowL = (belowL == PhysicsType::AIR || (belowL != PhysicsType::SOLID && belowLTile.mat->density < tile.mat->density));
+                                //bool canMoveBelowR = (belowR == PhysicsType::AIR || (belowR != PhysicsType::SOLID && belowRTile.mat->density < tile.mat->density));
+
+                                //if(canMoveBelow && !((canMoveBelowL || canMoveBelowR) && rand() % 10 == 0)) {
+                                //    if(belowTile.mat->physicsType == PhysicsType::AIR && getTile(x, y + 2).mat->physicsType == PhysicsType::AIR && getTile(x, y + 3).mat->physicsType == PhysicsType::AIR && getTile(x, y + 4).mat->physicsType == PhysicsType::AIR) {
+                                //        setTile(x, y, belowTile);
+                                //        #ifdef DO_MULTITHREADING
+                                //        parts.push_back(new Particle(tile, x, y + 1, (rand() % 10 - 5) / 20.0f, -((rand() % 2) + 3) / 10.0f + 1.5f, 0, 0.1f));
+                                //        #else
+                                //        particles.push_back(new Particle(tile, x, y + 1, (rand() % 10 - 5) / 20.0f, -((rand() % 2) + 3) / 10.0f + 1.5f, 0, 0.1f));
+                                //        #endif
+                                //    } else {
+                                //        tiles[index] = belowTile;
+                                //        dirty[index] = true;
+                                //        //setTile(x, y, belowTile);
+                                //        //setTile(x, y + 1, tile);
+                                //        tiles[(x)+(y + 1) * width] = tile;
+                                //        dirty[(x)+(y + 1) * width] = true;
+                                //        tickVisited[x + (y + 1) * width] = true;
+                                //    }
+                                //}
                             } else if(type == PhysicsType::GAS) {
                                 //active[index] = true;
                                 int above = tiles[(x)+(y - 1) * width].mat->physicsType;
@@ -1579,8 +1802,28 @@ void World::tick() {
                                     #endif
                                 }
                             } else if(type == PhysicsType::SOUP) {
+
+                                tile.fluidAmount += tile.fluidAmountDiff;
+                                tile.fluidAmountDiff = 0.0f;
+                                if(tile.fluidAmount < FLUID_MinValue) {
+                                    tiles[index] = Tiles::NOTHING;
+                                    dirty[index] = true;
+                                    tickVisited[index] = true;
+                                } else {
+                                    tiles[index] = tile;
+                                    /*uint8_t c = (1.0f - tile.fluidAmount / 8.0f) * 255;
+                                    int rgb = c;
+                                    rgb = (rgb << 8) + c;
+                                    rgb = (rgb << 8) + c;
+                                    tiles[index].color = rgb;*/
+                                    dirty[index] = true;
+                                    tickVisited[index] = true;
+                                }
+
+                                // OLD:
+
                                 //active[index] = true;
-                                MaterialInstance belowLTile = tiles[(x - 1) + (y + 1) * width];
+                                /*MaterialInstance belowLTile = tiles[(x - 1) + (y + 1) * width];
                                 int belowL = belowLTile.mat->physicsType;
                                 MaterialInstance belowRTile = tiles[(x + 1) + (y + 1) * width];
                                 int belowR = belowRTile.mat->physicsType;
@@ -1628,7 +1871,7 @@ void World::tick() {
                                         dirty[(x + 1) + (y + 1) * width] = true;
                                         tickVisited[(x + 1) + (y + 1) * width] = true;
                                     }
-                                }
+                                }*/
                             } else if(type == PhysicsType::GAS) {
                                 //active[index] = true;
                                 int aboveL = tiles[(x - 1) + (y - 1) * width].mat->physicsType;
@@ -1671,7 +1914,7 @@ void World::tick() {
                             if(type == PhysicsType::SOUP) {
                                 //active[index] = true;
 
-                                MaterialInstance lTile = tiles[(x - 1) + (y)* width];
+                                /*MaterialInstance lTile = tiles[(x - 1) + (y)* width];
                                 int l = lTile.mat->physicsType;
                                 MaterialInstance rTile = tiles[(x + 1) + (y)* width];
                                 int r = rTile.mat->physicsType;
@@ -1693,7 +1936,7 @@ void World::tick() {
                                     tiles[(x + 1) + (y)* width] = tile;
                                     dirty[(x + 1) + (y)* width] = true;
                                     tickVisited[(x + 1) + (y)* width] = true;
-                                }
+                                }*/
                             } else if(type == PhysicsType::GAS) {
                                 //active[index] = true;
 
@@ -3365,6 +3608,8 @@ World::~World() {
 
     //delete worldName;
     delete[] tiles;
+    delete[] flowX;
+    delete[] flowY;
     delete[] layer2;
     delete[] background;
 

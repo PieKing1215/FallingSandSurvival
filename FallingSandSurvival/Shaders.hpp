@@ -108,10 +108,31 @@ public:
         block = Shaders::load_shader_program(&shader, vertex_shader_file, fragment_shader_file);
     }
 
+    ~Shader() {
+        Shaders::free_shader(shader);
+    }
+
     virtual void prepare() = 0;
 
     void activate() {
         GPU_ActivateShaderProgram(shader, &block);
+    }
+};
+
+class WaterFlowPassShader : public Shader {
+public:
+
+    bool dirty = false;
+
+    WaterFlowPassShader() : Shader("data/shaders/common.vert", "data/shaders/waterFlow.frag") {};
+
+    void prepare() {}
+
+    void update(int w, int h) {
+        int res_loc = GPU_GetUniformLocation(shader, "resolution");
+
+        float res[2] = {(float)w, (float)h};
+        GPU_SetUniformfv(res_loc, 2, 1, res);
     }
 };
 
@@ -121,13 +142,17 @@ public:
 
     void prepare() {}
 
-    void update(float t, int w, int h, GPU_Image* maskImg, int mask_x, int mask_y, int mask_w, int mask_h, int scale) {
+    void update(float t, int w, int h, GPU_Image* maskImg, int mask_x, int mask_y, int mask_w, int mask_h, int scale, GPU_Image* flowImg, int overlay, bool showFlow, bool pixelated) {
         int time_loc = GPU_GetUniformLocation(shader, "time");
         int res_loc = GPU_GetUniformLocation(shader, "resolution");
         int mask_loc = GPU_GetUniformLocation(shader, "mask");
         int mask_pos_loc = GPU_GetUniformLocation(shader, "maskPos");
         int mask_size_loc = GPU_GetUniformLocation(shader, "maskSize");
         int scale_loc = GPU_GetUniformLocation(shader, "scale");
+        int flowTex_loc = GPU_GetUniformLocation(shader, "flowTex");
+        int overlay_loc = GPU_GetUniformLocation(shader, "overlay");
+        int showFlow_loc = GPU_GetUniformLocation(shader, "showFlow");
+        int pixelated_loc = GPU_GetUniformLocation(shader, "pixelated");
 
         GPU_SetUniformf(time_loc, t);
 
@@ -142,6 +167,12 @@ public:
         GPU_SetUniformfv(mask_size_loc, 2, 1, res3);
 
         GPU_SetUniformf(scale_loc, scale);
+
+        GPU_SetShaderImage(flowImg, flowTex_loc, 2);
+
+        GPU_SetUniformi(overlay_loc, overlay);
+        GPU_SetUniformi(showFlow_loc, showFlow);
+        GPU_SetUniformi(pixelated_loc, pixelated);
     }
 };
 
