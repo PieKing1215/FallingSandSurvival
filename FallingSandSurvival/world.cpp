@@ -1146,8 +1146,7 @@ void World::tick() {
                     #endif
                     EASY_BLOCK("chunk");
                     EASY_BLOCK("iter 1");
-                    for(int dy = 0; dy < CHUNK_H; dy++) {
-                    //for(int dy = CHUNK_H - 1; dy >= 0; dy--) {
+                    for(int dy = CHUNK_H - 1; dy >= 0; dy--) {
                         int y = cy + dy;
                         for(int dxf = 0; dxf < CHUNK_W; dxf++) {
                             int dx = reverseX ? (CHUNK_W - 1) - dxf : dxf;
