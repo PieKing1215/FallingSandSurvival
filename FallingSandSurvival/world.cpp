@@ -1100,6 +1100,7 @@ void World::tick() {
     EASY_END_BLOCK;
     #endif
 
+    // TODO: try to figure out a way to optimize this loop since liquids want a high iteration count
     for(int iter = 0; iter < 6; iter++) {
         EASY_BLOCK("iteration");
         #ifdef DO_REVERSE
@@ -2270,6 +2271,12 @@ void World::tickParticles() {
                                     //DO STUFF
                                     if(tiles[(int)(cur->x + x) + (int)(cur->y + y) * width].mat->physicsType == PhysicsType::AIR) {
                                         tiles[(int)(cur->x + x) + (int)(cur->y + y) * width] = cur->tile;
+                                        dirty[(int)(cur->x + x) + (int)(cur->y + y) * width] = true;
+                                        succeeded = true;
+                                        break;
+                                    } else if(cur->tile.mat->physicsType == PhysicsType::SOUP && cur->tile.mat == tiles[(int)(cur->x + x) + (int)(cur->y + y) * width].mat) {
+
+                                        tiles[(int)(cur->x + x) + (int)(cur->y + y) * width].fluidAmount += cur->tile.fluidAmount;
                                         dirty[(int)(cur->x + x) + (int)(cur->y + y) * width] = true;
                                         succeeded = true;
                                         break;
