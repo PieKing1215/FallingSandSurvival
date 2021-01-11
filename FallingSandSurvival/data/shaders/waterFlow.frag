@@ -24,8 +24,13 @@ void main( void ) {
         for(float xx = -range/2; xx <= range/2; xx += 1.0){
             for(float yy = -range/2; yy <= range/2; yy += 1.0){
                 vec4 flowColScan = texture2D(tex, vec2(worldPos.x + xx/resolution.x, worldPos.y + yy/resolution.y));
-                flowColScan.a = 0.0;
+                
+                // invalid
                 if(flowColScan.r == 0.0 && flowColScan.g == 0.0) continue;
+                if(flowColScan.a == 0.0) continue;
+                
+                flowColScan.a = 0.0;
+                
                 //vec2 flow = vec2(flowColScan.r, flowColScan.g) - vec2(0.5);
 
                 //speed += length(flow.xy);
