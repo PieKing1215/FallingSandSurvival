@@ -36,6 +36,7 @@ then
         echo "Bincrafters Conan repo moved, switching in conan..."
         conan remote remove bincrafters
         conan remote add bincrafters https://bincrafters.jfrog.io/artifactory/api/conan/public-conan
+        conan config set general.revisions_enabled=1
         echo "Clearing cache for sdl2_ttf..."
         conan remove sdl2_ttf -f
         echo "Done."
@@ -43,6 +44,7 @@ then
 else
     echo "Adding Bincrafters Conan repo..."
     conan remote add bincrafters "https://bincrafters.jfrog.io/artifactory/api/conan/public-conan"
+    conan config set general.revisions_enabled=1
     echo "Done."
 fi
 
