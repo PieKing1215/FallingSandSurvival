@@ -31,7 +31,7 @@ void Game::updateMaterialSounds() {
 }
 
 int Game::init(int argc, char *argv[]) {
-    EASY_PROFILER_ENABLE;
+    //EASY_PROFILER_ENABLE;
     profiler::startListen();
     EASY_MAIN_THREAD;
     EASY_FUNCTION(GAME_PROFILER_COLOR);
