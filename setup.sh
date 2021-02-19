@@ -42,7 +42,7 @@ then
     fi
 else
     echo "Adding Bincrafters Conan repo..."
-    conan remote add bincrafters "https://api.bintray.com/conan/bincrafters/public-conan"
+    conan remote add bincrafters "https://bincrafters.jfrog.io/artifactory/api/conan/public-conan"
     echo "Done."
 fi
 
