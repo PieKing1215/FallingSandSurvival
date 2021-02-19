@@ -29,7 +29,17 @@ echo "Setting up Conan remotes..."
 
 if conan remote list | grep bincrafters -q
 then
-    echo "Bincrafters Conan repo is already installed."
+    if conan remote list | grep bincrafters.jfrog.io -q
+    then
+        echo "Bincrafters Conan repo is already installed."
+    else
+        echo "Bincrafters Conan repo moved, switching in conan..."
+        conan remote remove bincrafters
+        conan remote add bincrafters https://bincrafters.jfrog.io/artifactory/api/conan/public-conan
+        echo "Clearing cache for sdl2_ttf..."
+        conan remove sdl2_ttf -f
+        echo "Done."
+    fi
 else
     echo "Adding Bincrafters Conan repo..."
     conan remote add bincrafters "https://api.bintray.com/conan/bincrafters/public-conan"
