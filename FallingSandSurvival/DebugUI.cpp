@@ -45,6 +45,8 @@ void DebugUI::Draw(Game* game) {
                 ImGui::Checkbox("aabb", &Settings::draw_b2d_aabb);
                 ImGui::Checkbox("pair", &Settings::draw_b2d_pair);
                 ImGui::Checkbox("center of mass", &Settings::draw_b2d_centerMass);
+
+                ImGui::TreePop();
             }
 
             ImGui::TreePop();

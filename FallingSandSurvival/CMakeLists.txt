@@ -286,7 +286,7 @@ include(${CMAKE_BINARY_DIR}/conan.cmake)
 if(WINDOWS)
 conan_cmake_run(CONANFILE conanfile.txt
                 BASIC_SETUP 
-                BUILD missing SETTINGS compiler.toolset=v141)
+                BUILD missing SETTINGS)
 elseif(LINUX)
 conan_cmake_run(CONANFILE conanfile_linux.txt
                 BASIC_SETUP 
