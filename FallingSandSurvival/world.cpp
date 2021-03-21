@@ -174,6 +174,10 @@ tooClose: {}
             setTile(x, y, Tiles::NOTHING);
             layer2[x + y * width] = Tiles::NOTHING;
             background[x + y * width] = 0x00000000;
+            flowX[x + y * width] = 0;
+            flowY[x + y * width] = 0;
+            prevFlowX[x + y * width] = 0;
+            prevFlowY[x + y * width] = 0;
             //particles.push_back(new Particle(x, y, 0, 0, 0, 0.1, 0xffff00));
         }
     }
