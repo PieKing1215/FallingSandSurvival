@@ -4,8 +4,6 @@
 #undef main
 
 int main(int argc, char *argv[]) {
-    Game* game = new Game();
-
     cxxopts::Options options("FallingSandSurvival", "Falling Sand Survival by PieKing1215: github.com/PieKing1215/FallingSandSurvival");
     options.add_options()
         ("h,help", "Print this help message")
@@ -14,6 +12,8 @@ int main(int argc, char *argv[]) {
         ("vsync", "Enable VSync")
         ("server", "Run as dedicated server")
         ("debug", "Open debug UIs by default")
+        ("profiler", "Enable easy_profiler")
+        ("profiler-dump", "Enable profiler dump to file on exit")
         ;
 
     try {
@@ -24,6 +24,8 @@ int main(int argc, char *argv[]) {
             std::cout << "See more details at: github.com/PieKing1215/FallingSandSurvival/wiki/Command-Line-Arguments" << std::endl;
             return 0;
         }
+
+        Game* game = new Game();
 
         game->clArgs = new CLArgs(&result);
 

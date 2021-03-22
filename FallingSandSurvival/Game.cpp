@@ -31,8 +31,10 @@ void Game::updateMaterialSounds() {
 }
 
 int Game::init(int argc, char *argv[]) {
-    //EASY_PROFILER_ENABLE;
-    profiler::startListen();
+    if(clArgs->getBool("profiler")) {
+        EASY_PROFILER_ENABLE;
+        profiler::startListen();
+    }
     EASY_MAIN_THREAD;
     EASY_FUNCTION(GAME_PROFILER_COLOR);
 
@@ -1114,7 +1116,6 @@ void Game::setMinimizeOnLostFocus(bool minimize) {
 }
 
 int Game::run(int argc, char *argv[]) {
-    EASY_FUNCTION(GAME_PROFILER_COLOR);
     startTime = Time::millis();
 
     // start loading chunks
@@ -1194,7 +1195,7 @@ int Game::run(int argc, char *argv[]) {
     // game loop
     EASY_EVENT("Start of Game Loop", profiler::colors::Magenta);
     while(this->running) {
-        EASY_BLOCK("frame");
+        EASY_BLOCK("Frame", GAME_PROFILER_COLOR);
         now = Time::millis();
         deltaTime = now - lastTime;
 
@@ -1970,28 +1971,32 @@ exit:
     #pragma endregion
 
     if(profiler::isEnabled()) {
-        logDebug("Dumping profile data");
-    
-        // dump profiler data
-        time_t rawtime;
-        struct tm * timeinfo;
-        char buf[80];
+        profiler::stopListen();
 
-        time(&rawtime);
-        timeinfo = localtime(&rawtime);
+        if(clArgs->getBool("profiler-dump")) {
+            logDebug("Dumping profile data");
 
-        strftime(buf, sizeof(buf), gameDir.getPath("profiler/%Y-%m-%d_%H-%M-%S.prof").c_str(), timeinfo);
-        std::string str(buf);
-        logDebug("{}", str.c_str());
+            // dump profiler data
+            time_t rawtime;
+            struct tm* timeinfo;
+            char buf[80];
 
-        profiler::dumpBlocksToFile(str.c_str());
-        struct stat buffer;
-        if(stat(str.c_str(), &buffer) == 0) {
+            time(&rawtime);
+            timeinfo = localtime(&rawtime);
 
-            std::ifstream src(str.c_str(), std::ios::binary);
-            std::ofstream dst(gameDir.getPath("profiler/latest.prof").c_str(), std::ios::binary);
+            strftime(buf, sizeof(buf), gameDir.getPath("profiler/%Y-%m-%d_%H-%M-%S.prof").c_str(), timeinfo);
+            std::string str(buf);
+            logDebug("{}", str.c_str());
 
-            dst << src.rdbuf();
+            profiler::dumpBlocksToFile(str.c_str());
+            struct stat buffer;
+            if(stat(str.c_str(), &buffer) == 0) {
+
+                std::ifstream src(str.c_str(), std::ios::binary);
+                std::ofstream dst(gameDir.getPath("profiler/latest.prof").c_str(), std::ios::binary);
+
+                dst << src.rdbuf();
+            }
         }
     }
     

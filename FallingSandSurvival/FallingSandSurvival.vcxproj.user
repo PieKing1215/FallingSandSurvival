@@ -6,23 +6,21 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LocalDebuggerEnvironment>$(LocalDebuggerEnvironment)$(ProjectDir)lib\bin\$(PlatformShortName)</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>--debug</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--debug --profiler</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerEnvironment>$(LocalDebuggerEnvironment)$(ProjectDir)lib\bin\$(PlatformShortName)</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>--debug</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--debug --profiler</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LocalDebuggerEnvironment>$(LocalDebuggerEnvironment)$(ProjectDir)lib\bin\$(PlatformShortName)</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>
-    </LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--profiler</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerEnvironment>$(LocalDebuggerEnvironment)$(ProjectDir)lib\bin\$(PlatformShortName)</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>
-    </LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--profiler</LocalDebuggerCommandArguments>
   </PropertyGroup>
 </Project>
