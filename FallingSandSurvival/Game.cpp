@@ -30,6 +30,20 @@ void Game::updateMaterialSounds() {
     audioEngine.SetEventParameter("event:/World/WaterFlow", "FlowIntensity", water);
 }
 
+#ifdef _WIN32
+/**
+ Speeds up future calls to SDL_CreateWindow with SDL_WINDOW_OPENGL
+ See https://hero.handmade.network/forums/code-discussion/t/2503-%5Bday_235%5D_opengls_pixel_format_takes_a_long_time
+ On my machine this saves about 100ms during init
+ */
+DWORD WINAPI glSpeedUp(LPVOID param) {
+    HDC dc = GetDC(NULL);
+    DescribePixelFormat(dc, 0, 0, NULL);
+    ReleaseDC(NULL, dc);
+    return 0;
+};
+#endif
+
 int Game::init(int argc, char *argv[]) {
     if(clArgs->getBool("profiler")) {
         EASY_PROFILER_ENABLE;
@@ -39,6 +53,17 @@ int Game::init(int argc, char *argv[]) {
     EASY_FUNCTION(GAME_PROFILER_COLOR);
 
     EASY_EVENT("Start Loading", profiler::colors::Magenta);
+
+    networkMode = clArgs->getBool("server") ? NetworkMode::SERVER : NetworkMode::HOST;
+
+    EASY_BLOCK("warm up opengl");
+    if(networkMode != NetworkMode::SERVER) {
+        #ifdef _WIN32
+        // see comment on glSpeedUp
+        CreateThread(NULL, 3 * 64 * 1024, &glSpeedUp, NULL, STACK_SIZE_PARAM_IS_A_RESERVATION, NULL);
+        #endif
+    }
+    EASY_END_BLOCK;
 
     // init console & print title
     #pragma region
@@ -90,12 +115,6 @@ int Game::init(int argc, char *argv[]) {
 
     this->gameDir = GameDir(clArgs->getString("game-dir"));
 
-    networkMode = clArgs->getBool("server") ? NetworkMode::SERVER : NetworkMode::HOST;
-    if(argc >= 2) {
-        if(strstr(argv[1], "server")) {
-            networkMode = NetworkMode::SERVER;
-        }
-    }
     Networking::init();
     if(networkMode == NetworkMode::SERVER) {
         int port = 1337;
@@ -137,7 +156,10 @@ int Game::init(int argc, char *argv[]) {
         //SDL_SetWindowTitle(window, "Falling Sand Survival (Client)");
     }
 
-    std::thread initFmodThread;
+    ctpl::thread_pool* initThreadPool = new ctpl::thread_pool(1);
+    std::future<void> initThread;
+    ctpl::thread_pool* worldInitThreadPool = new ctpl::thread_pool(1);
+    std::future<void> worldInitThread;
     if(networkMode != NetworkMode::SERVER) {
         #if BUILD_WITH_STEAM
         // SteamAPI_RestartAppIfNecessary
@@ -153,8 +175,9 @@ int Game::init(int argc, char *argv[]) {
 
         // init fmod
         #pragma region
-        initFmodThread = std::thread([&] {
-            EASY_THREAD("Audio init");
+
+        initThread = initThreadPool->push([&](int id) {
+            EASY_THREAD("Async init");
             EASY_BLOCK("init fmod");
             logInfo("Initializing audio engine...");
 
@@ -315,7 +338,7 @@ int Game::init(int argc, char *argv[]) {
 
         ImGui::GetIO().Fonts->AddFontDefault();
         ImGui::GetIO().Fonts->AddFontFromFileTTF("assets/fonts/pixel_operator/PixelOperator.ttf", 32);
-        
+
         ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
 
         const char* glsl_version = "#version 130";
@@ -407,7 +430,7 @@ int Game::init(int argc, char *argv[]) {
         EASY_EVENT("splash screen visible", profiler::colors::Green);
 
         EASY_BLOCK("wait for Fmod", THREAD_WAIT_PROFILER_COLOR);
-        initFmodThread.join();
+        initThread.get();
         EASY_END_BLOCK;
         EASY_BLOCK("play audio");
         audioEngine.PlayEvent("event:/Music/Title");
@@ -415,42 +438,64 @@ int Game::init(int argc, char *argv[]) {
         EASY_END_BLOCK;
         EASY_END_BLOCK;
         #pragma endregion
+    }
 
-        #if BUILD_WITH_STEAM
-        // load SteamAPI
+    // init the world
+    #pragma region
+    // calls IMG_Load and SDL_ConvertSurfaceFormat which I think are thread safe but not actually sure
+    worldInitThread = worldInitThreadPool->push([&](int id) {
+        EASY_THREAD("World init");
+        EASY_BLOCK("init world");
+        logInfo("Initializing world...");
+        world = new World();
+        world->noSaveLoad = true;
+        world->init(gameDir.getWorldPath("mainMenu"), (int)ceil(MAX_WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(MAX_HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode);
+        EASY_END_BLOCK;
+    });
+    #pragma endregion
+
+    if(networkMode != NetworkMode::SERVER) {
+        // init steam and discord
         #pragma region
-        logInfo("Initializing SteamAPI...");
-        EASY_BLOCK("Init SteamAPI", STEAM_PROFILER_COLOR);
-        EASY_BLOCK("SteamAPI_Init", STEAM_PROFILER_COLOR);
-        steamAPI = SteamAPI_Init();
-        EASY_END_BLOCK;
-        if(!steamAPI) {
-            logError("SteamAPI_Init failed.");
-        } else {
-            logInfo("SteamAPI_Init successful.");
-            EASY_BLOCK("SteamHookMessages", STEAM_PROFILER_COLOR);
-            SteamHookMessages();
-            EASY_END_BLOCK;
-        }
-        EASY_END_BLOCK;
-        #pragma endregion
-        #endif
+        initThread = initThreadPool->push([&](int id) {
+            EASY_THREAD("Async init");
 
-        #if BUILD_WITH_DISCORD
-        // init discord
-        #pragma region
-        logInfo("Initializing Discord Game SDK...");
-        EASY_BLOCK("init discord", DISCORD_PROFILER_COLOR);
-        if(DiscordIntegration::init()) {
-            EASY_BLOCK("set activity", DISCORD_PROFILER_COLOR);
-            DiscordIntegration::setActivityState("On Main Menu");
-            DiscordIntegration::flushActivity();
+            #if BUILD_WITH_STEAM
+            // load SteamAPI
+            #pragma region
+            logInfo("Initializing SteamAPI...");
+            EASY_BLOCK("Init SteamAPI", STEAM_PROFILER_COLOR);
+            EASY_BLOCK("SteamAPI_Init", STEAM_PROFILER_COLOR);
+            steamAPI = SteamAPI_Init();
             EASY_END_BLOCK;
-        }
-        EASY_END_BLOCK;
-        #pragma endregion
-        #endif
+            if(!steamAPI) {
+                logError("SteamAPI_Init failed.");
+            } else {
+                logInfo("SteamAPI_Init successful.");
+                EASY_BLOCK("SteamHookMessages", STEAM_PROFILER_COLOR);
+                SteamHookMessages();
+                EASY_END_BLOCK;
+            }
+            EASY_END_BLOCK;
+            #pragma endregion
+            #endif
 
+            #if BUILD_WITH_DISCORD
+            // init discord
+            #pragma region
+            logInfo("Initializing Discord Game SDK...");
+            EASY_BLOCK("init discord", DISCORD_PROFILER_COLOR);
+            if(DiscordIntegration::init()) {
+                EASY_BLOCK("set activity", DISCORD_PROFILER_COLOR);
+                DiscordIntegration::setActivityState("On Main Menu");
+                DiscordIntegration::flushActivity();
+                EASY_END_BLOCK;
+            }
+            EASY_END_BLOCK;
+            #pragma endregion
+            #endif
+        });
+    
         // init the background
         #pragma region
         EASY_BLOCK("load backgrounds");
@@ -481,15 +526,9 @@ int Game::init(int argc, char *argv[]) {
 
     b2DebugDraw = new b2DebugDraw_impl(target);
 
-    // init the world
-    #pragma region
-    EASY_BLOCK("init world");
-    logInfo("Initializing world...");
-    world = new World();
-    world->noSaveLoad = true;
-    world->init(gameDir.getWorldPath("mainMenu"), (int)ceil(MAX_WIDTH / 3 / (double)CHUNK_W) * CHUNK_W + CHUNK_W * 3, (int)ceil(MAX_HEIGHT / 3 / (double)CHUNK_H) * CHUNK_H + CHUNK_H * 3, target, &audioEngine, networkMode);
+    EASY_BLOCK("wait for worldInitThread", THREAD_WAIT_PROFILER_COLOR);
+    worldInitThread.get();
     EASY_END_BLOCK;
-    #pragma endregion
 
     if(networkMode != NetworkMode::SERVER) {
         // set up main menu ui
@@ -498,259 +537,24 @@ int Game::init(int argc, char *argv[]) {
         logInfo("Setting up main menu...");
         TTF_Font* labelFont = TTF_OpenFont("assets/fonts/pixel_operator/PixelOperator.ttf", 32);
         TTF_Font* uiFont = TTF_OpenFont("assets/fonts/pixel_operator/PixelOperator.ttf", 16);
-
-        // create textures
-        #pragma region
-        EASY_BLOCK("create textures");
-        logInfo("Creating world textures...");
-        loadingOnColor = 0xFFFFFFFF;
-        loadingOffColor = 0x000000FF;
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        loadingTexture = GPU_CreateImage(
-            loadingScreenW = (WIDTH / 20), loadingScreenH = (HEIGHT / 20),
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(loadingTexture, GPU_FILTER_NEAREST);
         EASY_END_BLOCK;
 
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        texture = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(texture, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
 
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        worldTexture = GPU_CreateImage(
-            world->width * Settings::hd_objects_size, world->height * Settings::hd_objects_size,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(worldTexture, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
-        GPU_LoadTarget(worldTexture);
-        EASY_END_BLOCK;
+        std::string displayMode = clArgs->getString("display-mode");
 
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        lightingTexture = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(lightingTexture, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
-        GPU_LoadTarget(lightingTexture);
-        EASY_END_BLOCK;
+        if(displayMode == "windowed") {
+            setDisplayMode(DisplayMode::WINDOWED);
+        } else if(displayMode == "borderless") {
+            setDisplayMode(DisplayMode::BORDERLESS);
+        } else if(displayMode == "fullscreen") {
+            setDisplayMode(DisplayMode::FULLSCREEN);
+        }
 
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        emissionTexture = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(emissionTexture, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
+        setVSync(clArgs->getBool("vsync"));
 
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureFlow = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(textureFlow, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureFlowSpead = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(textureFlowSpead, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
-        GPU_LoadTarget(textureFlowSpead);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureFire = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(textureFire, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        texture2Fire = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(texture2Fire, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
-        GPU_LoadTarget(texture2Fire);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureLayer2 = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(textureLayer2, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureBackground = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(textureBackground, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureObjects = GPU_CreateImage(
-            world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(textureObjects, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureObjectsLQ = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(textureObjectsLQ, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureObjectsBack = GPU_CreateImage(
-            world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(textureObjectsBack, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
-        GPU_LoadTarget(textureObjects);
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
-        GPU_LoadTarget(textureObjectsLQ);
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
-        GPU_LoadTarget(textureObjectsBack);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureParticles = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(textureParticles, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureEntities = GPU_CreateImage(
-            world->width * (Settings::hd_objects ? Settings::hd_objects_size : 1), world->height * (Settings::hd_objects ? Settings::hd_objects_size : 1),
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
-        GPU_LoadTarget(textureEntities);
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(textureEntities, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        textureEntitiesLQ = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
-        GPU_LoadTarget(textureEntitiesLQ);
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(textureEntitiesLQ, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        temperatureMap = GPU_CreateImage(
-            world->width, world->height,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(temperatureMap, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-
-        EASY_BLOCK("GPU_CreateImage", GPU_PROFILER_COLOR);
-        backgroundImage = GPU_CreateImage(
-            WIDTH, HEIGHT,
-            GPU_FormatEnum::GPU_FORMAT_RGBA
-        );
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_SetImageFilter", GPU_PROFILER_COLOR);
-        GPU_SetImageFilter(backgroundImage, GPU_FILTER_NEAREST);
-        EASY_END_BLOCK;
-        EASY_BLOCK("GPU_LoadTarget", GPU_PROFILER_COLOR);
-        GPU_LoadTarget(backgroundImage);
-        EASY_END_BLOCK;
-
-        // create texture pixel buffers
-        EASY_BLOCK("create texture pixel buffers");
-        pixels = vector<unsigned char>(world->width * world->height * 4, 0);
-        pixels_ar = &pixels[0];
-        pixelsLayer2 = vector<unsigned char>(world->width * world->height * 4, 0);
-        pixelsLayer2_ar = &pixelsLayer2[0];
-        pixelsBackground = vector<unsigned char>(world->width * world->height * 4, 0);
-        pixelsBackground_ar = &pixelsBackground[0];
-        pixelsObjects = vector<unsigned char>(world->width * world->height * 4, SDL_ALPHA_TRANSPARENT);
-        pixelsObjects_ar = &pixelsObjects[0];
-        pixelsTemp = vector<unsigned char>(world->width * world->height * 4, SDL_ALPHA_TRANSPARENT);
-        pixelsTemp_ar = &pixelsTemp[0];
-        pixelsParticles = vector<unsigned char>(world->width * world->height * 4, SDL_ALPHA_TRANSPARENT);
-        pixelsParticles_ar = &pixelsParticles[0];
-        pixelsLoading = vector<unsigned char>(loadingTexture->w * loadingTexture->h * 4, SDL_ALPHA_TRANSPARENT);
-        pixelsLoading_ar = &pixelsLoading[0];
-        pixelsFire = vector<unsigned char>(world->width * world->height * 4, 0);
-        pixelsFire_ar = &pixelsFire[0];
-        pixelsFlow = vector<unsigned char>(world->width * world->height * 4, 0);
-        pixelsFlow_ar = &pixelsFlow[0];
-        pixelsEmission = vector<unsigned char>(world->width * world->height * 4, 0);
-        pixelsEmission_ar = &pixelsEmission[0];
-        EASY_END_BLOCK;
-        EASY_END_BLOCK;
-        #pragma endregion
+        // TODO: load settings from settings file
+        // also note OptionsUI::minimizeOnFocus exists
+        setMinimizeOnLostFocus(false);
     }
 
     // init threadpools
@@ -764,6 +568,10 @@ int Game::init(int argc, char *argv[]) {
     if(networkMode != NetworkMode::SERVER) {
         // load shaders
         loadShaders();
+
+        EASY_BLOCK("wait for steam/discord init", THREAD_WAIT_PROFILER_COLOR);
+        initThread.get(); // steam & discord
+        EASY_END_BLOCK;
     }
 
     EASY_EVENT("Done Loading", profiler::colors::Magenta);
@@ -789,30 +597,34 @@ void Game::loadShaders() {
 }
 
 void Game::handleWindowSizeChange(int newWidth, int newHeight) {
+    EASY_FUNCTION(GAME_PROFILER_COLOR);
+
     int prevWidth = WIDTH;
     int prevHeight = HEIGHT;
 
     WIDTH = newWidth;
     HEIGHT = newHeight;
 
-    GPU_FreeImage(loadingTexture);
-    GPU_FreeImage(texture);
-    GPU_FreeImage(worldTexture);
-    GPU_FreeImage(lightingTexture);
-    GPU_FreeImage(emissionTexture);
-    GPU_FreeImage(textureFire);
-    GPU_FreeImage(textureFlow);
-    GPU_FreeImage(texture2Fire);
-    GPU_FreeImage(textureLayer2);
-    GPU_FreeImage(textureBackground);
-    GPU_FreeImage(textureObjects);
-    GPU_FreeImage(textureObjectsLQ);
-    GPU_FreeImage(textureObjectsBack);
-    GPU_FreeImage(textureParticles);
-    GPU_FreeImage(textureEntities);
-    GPU_FreeImage(textureEntitiesLQ);
-    GPU_FreeImage(temperatureMap);
-    GPU_FreeImage(backgroundImage);
+    if(loadingTexture) {
+        GPU_FreeImage(loadingTexture);
+        GPU_FreeImage(texture);
+        GPU_FreeImage(worldTexture);
+        GPU_FreeImage(lightingTexture);
+        GPU_FreeImage(emissionTexture);
+        GPU_FreeImage(textureFire);
+        GPU_FreeImage(textureFlow);
+        GPU_FreeImage(texture2Fire);
+        GPU_FreeImage(textureLayer2);
+        GPU_FreeImage(textureBackground);
+        GPU_FreeImage(textureObjects);
+        GPU_FreeImage(textureObjectsLQ);
+        GPU_FreeImage(textureObjectsBack);
+        GPU_FreeImage(textureParticles);
+        GPU_FreeImage(textureEntities);
+        GPU_FreeImage(textureEntitiesLQ);
+        GPU_FreeImage(temperatureMap);
+        GPU_FreeImage(backgroundImage);
+    }
 
     // create textures
     #pragma region
@@ -1245,21 +1057,6 @@ int Game::run(int argc, char *argv[]) {
 
     ofsX = (ofsX - WIDTH / 2) / 2 * 3 + WIDTH / 2;
     ofsY = (ofsY - HEIGHT / 2) / 2 * 3 + HEIGHT / 2;
-
-    std::string displayMode = clArgs->getString("display-mode");
-
-    if(displayMode == "windowed") {
-        setDisplayMode(DisplayMode::WINDOWED);
-    } else if(displayMode == "borderless") {
-        setDisplayMode(DisplayMode::BORDERLESS);
-    } else if(displayMode == "fullscreen") {
-        setDisplayMode(DisplayMode::FULLSCREEN);
-    }
-
-    setVSync(clArgs->getBool("vsync"));
-
-    // TODO: load settings from settings file
-    setMinimizeOnLostFocus(false);
 
     for(int i = 0; i < frameTimeNum; i++) {
         frameTime[i] = 0;
