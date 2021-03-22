@@ -40,6 +40,11 @@ namespace std {
 #include "SDL2/SDL_ttf.h"
 #include "SDL2/SDL_image.h"
 #include "SDL_gpu.h"
+#ifdef _WIN32
+#include "SDL_syswm.h"
+#include <shobjidl.h>
+#undef SendMessage
+#endif
 
 
 #include "box2d/b2_math.h"

@@ -65,6 +65,21 @@ enum DisplayMode {
     FULLSCREEN
 };
 
+enum WindowProgressState {
+    NONE,
+    INDETERMINATE,
+    NORMAL,
+    PAUSED,
+    ERROR
+};
+
+enum WindowFlashAction {
+    START,
+    START_COUNT,
+    START_UNTIL_FG,
+    STOP
+};
+
 class Game {
 public:
 
@@ -116,6 +131,12 @@ public:
     TTF_Font* font14 = nullptr;
 
     SDL_Window* window = nullptr;
+    #ifdef _WIN32
+    HWND hwnd = NULL;
+    ITaskbarList3* win_taskbar = NULL;
+    #endif
+    void setWindowProgress(WindowProgressState state, float value);
+    void setWindowFlash(WindowFlashAction action, int count, int period);
 
     GPU_Target* realTarget = nullptr;
     GPU_Target* target = nullptr;

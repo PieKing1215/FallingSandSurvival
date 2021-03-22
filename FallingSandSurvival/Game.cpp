@@ -250,6 +250,26 @@ int Game::init(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
 
+        #ifdef _WIN32
+        // get windows specific handle
+        SDL_SysWMinfo wmInfo;
+        SDL_VERSION(&wmInfo.version);
+        SDL_GetWindowWMInfo(window, &wmInfo);
+        this->hwnd = wmInfo.info.win.window;
+
+        // get windows taskbar handler
+        HRESULT hr = CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&win_taskbar));
+        if(SUCCEEDED(hr)) {
+            hr = win_taskbar->HrInit();
+            if(FAILED(hr)) {
+                win_taskbar->Release();
+                win_taskbar = NULL;
+            }
+        }
+        #endif
+
+        setWindowProgress(WindowProgressState::INDETERMINATE, 0.0f);
+
         EASY_BLOCK("SDL_SetWindowIcon", SDL_PROFILER_COLOR);
         SDL_SetWindowIcon(window, Textures::loadTexture("assets/Icon_32x.png"));
         EASY_END_BLOCK;
@@ -1061,6 +1081,67 @@ void Game::handleWindowSizeChange(int newWidth, int newHeight) {
         }
     }
 
+}
+
+void Game::setWindowProgress(WindowProgressState state, float value) {
+    // TODO: look into alternatives for linux/crossplatform
+    #ifdef _WIN32
+
+    if(!hwnd || !win_taskbar) return;
+
+    switch(state) {
+    case WindowProgressState::NONE:
+        win_taskbar->SetProgressState(hwnd, TBPF_NOPROGRESS);
+        break;
+    case WindowProgressState::INDETERMINATE:
+        win_taskbar->SetProgressState(hwnd, TBPF_INDETERMINATE);
+        break;
+    case WindowProgressState::NORMAL:
+        win_taskbar->SetProgressState(hwnd, TBPF_NORMAL);
+        win_taskbar->SetProgressValue(hwnd, value * 10000, 10000);
+        break;
+    case WindowProgressState::PAUSED:
+        win_taskbar->SetProgressValue(hwnd, value * 10000, 10000);
+        win_taskbar->SetProgressState(hwnd, TBPF_PAUSED);
+        break;
+    case WindowProgressState::ERROR:
+        win_taskbar->SetProgressValue(hwnd, value * 10000, 10000);
+        win_taskbar->SetProgressState(hwnd, TBPF_ERROR);
+        break;
+    }
+
+    #endif
+}
+
+void Game::setWindowFlash(WindowFlashAction action, int count, int period) {
+    // TODO: look into alternatives for linux/crossplatform
+    #ifdef _WIN32
+
+    FLASHWINFO flash;
+    flash.cbSize = sizeof(FLASHWINFO);
+    flash.hwnd = hwnd;
+    flash.uCount = count;
+    flash.dwTimeout = period;
+
+    // pretty sure these flags are supposed to work but they all seem to do the same thing on my machine so idk
+    switch(action) {
+    case WindowFlashAction::START:
+        flash.dwFlags = FLASHW_ALL;
+        break;
+    case WindowFlashAction::START_COUNT:
+        flash.dwFlags = FLASHW_ALL | FLASHW_TIMER;
+        break;
+    case WindowFlashAction::START_UNTIL_FG:
+        flash.dwFlags = FLASHW_ALL | FLASHW_TIMERNOFG;
+        break;
+    case WindowFlashAction::STOP:
+        flash.dwFlags = FLASHW_STOP;
+        break;
+    }
+
+    FlashWindowEx(&flash);
+
+    #endif
 }
 
 void Game::setDisplayMode(DisplayMode mode) {
@@ -2365,6 +2446,9 @@ void Game::tick() {
                     fadeInWaitFrames = 4;
                     state = stateAfterLoad;
                 };
+
+                setWindowProgress(WindowProgressState::NONE, 0.0f);
+                setWindowFlash(WindowFlashAction::START_COUNT, 1, 333);
 
                 EASY_EVENT("world done loading", profiler::colors::Magenta);
             }
