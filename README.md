@@ -10,6 +10,9 @@ URL: https://github.com/PieKing1215/FallingSandSurvival
   <a href="https://github.com/PieKing1215/FallingSandSurvival/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/PieKing1215/FallingSandSurvival"></a>
 </h1>
 
+*(Development in this repo has stopped. The engine is in the process of being rewritten in another language, and will be made open source when it gets close to the feature set of this version)*
+<br><br>
+
 2D survival game inspired by Noita and slightly Terraria<br>
 (*name TBD*)
 
