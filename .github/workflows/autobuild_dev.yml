@@ -41,9 +41,14 @@ jobs:
         run: conan install ./FallingSandSurvival/conanfile.txt -g visual_studio --install-folder ./x64/Release/.conan -s arch=x86_64 -s build_type=Release -s compiler.runtime=MD  --build=missing --update
         shell: bash
         
+      - name: Add good version of msbuild
+        uses: microsoft/setup-msbuild@v1.1
+        with:
+          vs-version: '[16.4,16.12)'
+        
       - name: Build Binary
         run: |
-          bash -c "'C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/MSBuild/Current/Bin/MSBuild.exe' -p:Configuration=Release;Platform=x64"
+          bash -c "msbuild -p:Configuration=Release;Platform=x64"
           mkdir Build
           cp ./x64/Release/FallingSandSurvival.exe ./Build/FallingSandSurvival.exe
           cp ./FallingSandSurvival/lib/bin/x64/fmodL.dll ./Build/fmodL.dll
