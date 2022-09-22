@@ -46,7 +46,10 @@ jobs:
         
       - name: Build Binary
         run: |
-          bash -c "msbuild -p:Configuration=Release;Platform=x64"
+          msbuild -p:Configuration=Release;Platform=x64
+          
+      - name: Collect artifacts
+        run: |
           mkdir Build
           cp ./x64/Release/FallingSandSurvival.exe ./Build/FallingSandSurvival.exe
           cp ./FallingSandSurvival/lib/bin/x64/fmodL.dll ./Build/fmodL.dll
