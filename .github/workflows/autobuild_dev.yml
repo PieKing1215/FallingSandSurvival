@@ -46,7 +46,7 @@ jobs:
         
       - name: Build Binary
         run: |
-          msbuild -p:Configuration=Release;Platform=x64
+          msbuild -p:Configuration=Release -p:Platform=x64
           
       - name: Collect artifacts
         run: |
