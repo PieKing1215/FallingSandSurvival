@@ -48,7 +48,7 @@ jobs:
           
       - name: Fix Windows SDK
         run: |
-          "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64 10.0.16299.0
+          "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64 10.0.16299.0
         
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
