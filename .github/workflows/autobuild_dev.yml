@@ -45,6 +45,10 @@ jobs:
         uses: GuillaumeFalourd/setup-windows10-sdk-action@v1.7
         with:
           sdk-version: 16299
+          
+      - name: Fix Windows SDK
+        run: |
+          "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64 10.0.16299.0
         
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
